@@ -1,17 +1,19 @@
 import {
   getCrmDatabase,
   getLocalTenancyStore,
+  CalendarStore,
   CrmStore,
   InboxStore,
   KnowledgeStore,
   SqliteJobQueue,
+  VoiceStore,
   WorkflowStore,
 } from "@leadorbit/db";
 
 /**
  * Durable worker process. Claims jobs from SQLite-backed queue and executes
- * workflow ticks, message sends, and knowledge reindex. Must not run inside
- * Vercel request handlers.
+ * workflow ticks, message sends, knowledge reindex, appointment reminders,
+ * and voice post-processing. Must not run inside Vercel request handlers.
  */
 const db = getCrmDatabase();
 const tenancy = getLocalTenancyStore();
@@ -20,6 +22,8 @@ const crm = new CrmStore(tenancy, db);
 const workflows = new WorkflowStore(tenancy, db, queue, crm);
 const inbox = new InboxStore(tenancy, db, queue);
 const knowledge = new KnowledgeStore(tenancy, db, queue);
+const calendar = new CalendarStore(tenancy, db, queue);
+const voice = new VoiceStore(tenancy, db, queue, calendar);
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
 
@@ -53,8 +57,13 @@ async function drain(): Promise<void> {
         if (p.entityType === "knowledge_document") {
           knowledge.indexDocument(p.orgId, p.entityId);
         }
+      } else if (job.name === "appointment.reminder") {
+        const p = job.payload as { orgId: string; reminderId: string };
+        calendar.processReminder(p.orgId, p.reminderId);
+      } else if (job.name === "voice.process") {
+        const p = job.payload as { orgId: string; callId: string };
+        voice.processCall(p.orgId, p.callId);
       } else if (job.name === "ai.run_turn") {
-        // Turns execute synchronously in the BFF for low latency; worker acks only.
         console.log(`[worker] ai.run_turn ack`, job.payload);
       } else if (job.name === "lead.score") {
         console.log(`[worker] lead.score stub`, job.payload);

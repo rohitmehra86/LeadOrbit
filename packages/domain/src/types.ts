@@ -120,6 +120,8 @@ export type JobName =
   | "embedding.upsert"
   | "knowledge.reindex"
   | "ai.run_turn"
+  | "appointment.reminder"
+  | "voice.process"
   | "payment.reconcile"
   | "ads.sync";
 
@@ -147,6 +149,14 @@ export type JobPayloadMap = {
   "ai.run_turn": {
     orgId: string;
     turnId: string;
+  };
+  "appointment.reminder": {
+    orgId: string;
+    reminderId: string;
+  };
+  "voice.process": {
+    orgId: string;
+    callId: string;
   };
   "payment.reconcile": { orgId: string; paymentIntentId: string };
   "ads.sync": { orgId: string; connectionId: string };

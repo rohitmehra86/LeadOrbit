@@ -8,6 +8,8 @@ export * from "./inbox";
 export * from "./ai";
 export * from "./knowledge";
 export * from "./llm-gateway";
+export * from "./appointments";
+export * from "./voice";
 
 
 import type { MembershipRole } from "./types";

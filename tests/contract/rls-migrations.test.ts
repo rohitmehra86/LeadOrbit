@@ -78,3 +78,17 @@ test("ai/knowledge migration enables RLS and pgvector", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("calendar/voice migration enables RLS", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00009_calendar_voice.sql"),
+    "utf8",
+  );
+  assert.match(sql, /appointment_types/);
+  assert.match(sql, /appointments/);
+  assert.match(sql, /calendar_connections/);
+  assert.match(sql, /voice_calls/);
+  assert.match(sql, /org_voice_policies/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});

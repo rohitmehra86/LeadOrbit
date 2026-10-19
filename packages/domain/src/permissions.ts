@@ -40,6 +40,12 @@ export type Permission =
   | "ai:run"
   | "knowledge:read"
   | "knowledge:write"
+  | "calendar:read"
+  | "calendar:write"
+  | "appointments:read"
+  | "appointments:write"
+  | "voice:read"
+  | "voice:write"
   | "platform:admin";
 
 
@@ -60,6 +66,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "inbox:read",
     "ai:read",
     "knowledge:read",
+    "calendar:read",
+    "appointments:read",
+    "voice:read",
   ],
   agent: [
     "org:read",
@@ -82,6 +91,11 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "ai:read",
     "ai:run",
     "knowledge:read",
+    "calendar:read",
+    "appointments:read",
+    "appointments:write",
+    "voice:read",
+    "voice:write",
   ],
   manager: [
     "org:read",
@@ -115,6 +129,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "ai:run",
     "knowledge:read",
     "knowledge:write",
+    "calendar:read",
+    "calendar:write",
+    "appointments:read",
+    "appointments:write",
+    "voice:read",
+    "voice:write",
   ],
   admin: [
     "org:read",
@@ -154,6 +174,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "ai:run",
     "knowledge:read",
     "knowledge:write",
+    "calendar:read",
+    "calendar:write",
+    "appointments:read",
+    "appointments:write",
+    "voice:read",
+    "voice:write",
   ],
   owner: [
     "org:read",
@@ -193,6 +219,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "ai:run",
     "knowledge:read",
     "knowledge:write",
+    "calendar:read",
+    "calendar:write",
+    "appointments:read",
+    "appointments:write",
+    "voice:read",
+    "voice:write",
   ],
 };
 

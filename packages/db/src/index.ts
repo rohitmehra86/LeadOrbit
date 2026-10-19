@@ -13,6 +13,8 @@ export { WorkflowStore } from "./workflow-store";
 export { InboxStore } from "./inbox-store";
 export { KnowledgeStore } from "./knowledge-store";
 export { AiStore } from "./ai-store";
+export { CalendarStore } from "./calendar-store";
+export { VoiceStore } from "./voice-store";
 export { SqliteJobQueue, getJobQueue } from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 

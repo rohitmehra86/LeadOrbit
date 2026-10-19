@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 7 (AI agents, RAG, knowledge)  
+**Current milestone focus:** Milestone 8 (Voice, calendar, appointments)  
 **Honesty policy:** Status reflects verified reality only.
 
 ---
@@ -16,36 +16,34 @@
 
 ---
 
-## Milestone 1–6
+## Milestone 1–7
 
 | Area | Status |
 |------|--------|
-| Foundation, auth/tenancy, CRM, marketing, ingestion, workflows, inbox | Implemented/verified |
-| Live Supabase Auth / Postgres RLS / live messaging providers | **Blocked** (no credentials) |
+| Foundation through AI/RAG/knowledge | Implemented/verified |
+| Live Supabase / RLS / messaging / LLM providers | **Blocked** (no credentials) |
 
 ---
 
-## Milestone 7 — AI agents, RAG & knowledge
+## Milestone 8 — Voice, calendar & appointments
 
 | Item | Status | Notes |
 |------|--------|-------|
-| AI agents (enquiry, extract, qualify, score, Q&A, recommend, next actions, appointment hooks, summaries, follow-up drafts, multilingual scaffold) | Implemented/verified | Deterministic core + optional LLM |
-| AI config console (personas, knowledge, tools, channels, policies, handoff, usage/cost, evals, prompt versions) | Implemented/verified | `/app/orgs/:id/ai` |
-| Never invent pricing/availability; auth for consequential tools; human escalation | Implemented/verified | Inventory SQL authoritative |
-| Provider-agnostic OpenAI-compatible LLM gateway + structured outputs + tool auth | Implemented/verified | No keys → `pending_configuration` |
-| Tenant-isolated KB upload/parse/chunk/embed/retrieve/version/reindex/delete | Implemented/verified | |
-| Local vector fallback + honest status | Implemented/verified | `local_fallback` |
-| pgvector migration authored | Implemented/verified (authored) | Not applied remotely |
-| Retrieval quality tests | Implemented/verified | Unit + store |
-| Structured inventory/prices in SQL | Implemented/verified | |
-| Migration `00008_ai_knowledge.sql` | Implemented/verified (authored) | |
-| Live LLM / embedding provider HTTP success | **Blocked** | No API keys; do not fake |
-| Remote pgvector ANN | **Blocked** | |
+| Appointment types, availability, booking pages, timezones, duration, buffers | Implemented/verified | |
+| Transactional conflict prevention (double-book) | Implemented/verified | Store tests |
+| Reschedule / cancel / reminders / agent assignment | Implemented/verified | |
+| Site visit booking | Implemented/verified | Address required |
+| Google / Microsoft calendar OAuth adapters | Implemented/verified | `pending_configuration` without creds |
+| Pluggable telephony (inbound/outbound scaffold) | Implemented/verified | |
+| AI qualification hooks, transcription/summary/outcome scaffold | Implemented/verified | |
+| Human transfer, book appt from call, history, consent, cost, analytics | Implemented/verified | |
+| Migration `00009_calendar_voice.sql` | Implemented/verified (authored) | |
+| Live calendar OAuth / live call dial | **Blocked** | Never faked |
 | Draft PR | **Blocked** | `agent_temp` remote |
 
 ---
 
-## Milestones 8–12
+## Milestones 9–12
 
 Not implemented. Not claimed.
 
@@ -53,18 +51,17 @@ Not implemented. Not claimed.
 
 ## Blockers for Rohit
 
-1. Supabase project (migrations 00002–00008) + optional pgvector  
-2. `LLM_API_KEY` / `OPENAI_API_KEY` (and optional `LLM_BASE_URL`, `LLM_MODEL`)  
-3. Messaging provider tokens (M6)  
-4. Standard GitHub remote for PRs  
-5. Vercel deploy token  
+1. Supabase (migrations through 00009)  
+2. `GOOGLE_CALENDAR_CLIENT_ID/SECRET`, `MICROSOFT_CALENDAR_CLIENT_ID/SECRET`  
+3. `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` (or Vonage)  
+4. LLM / messaging credentials (prior milestones)  
+5. Standard GitHub remote for PRs  
 
 ---
 
 ## Known issues
 
-1. Auth tenancy still in-memory; domain data in SQLite — restart clears sessions.  
-2. Web + worker must share `LEADORBIT_SQLITE_PATH` (defaults to repo-root `.data/leadorbit.sqlite`).  
-3. Calling/voice is scaffolding only.  
-4. PDF binary OCR not claimed — upload text extracts for indexing.  
-5. LLM with keys present but unreachable is reported as `unverified`, not ready.
+1. Auth tenancy in-memory; domain data in SQLite.  
+2. Web + worker must share `LEADORBIT_SQLITE_PATH`.  
+3. Availability windows use UTC wall-clock approximation in local runtime.  
+4. Reminder “send” is pending without SMTP/SMS credentials.

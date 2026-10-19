@@ -762,6 +762,152 @@ create table if not exists ai_turns (
   created_at text not null
 );
 create index if not exists ai_turns_org_idx on ai_turns(org_id);
+
+-- Milestone 8: appointments / calendar / voice
+create table if not exists appointment_types (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  kind text not null,
+  duration_minutes integer not null,
+  buffer_before_minutes integer not null default 0,
+  buffer_after_minutes integer not null default 0,
+  timezone text not null default 'UTC',
+  requires_site_visit integer not null default 0,
+  description text,
+  active integer not null default 1,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists appointment_types_org_idx on appointment_types(org_id);
+
+create table if not exists team_availability (
+  id text primary key,
+  org_id text not null,
+  user_id text not null,
+  weekday integer not null,
+  start_time text not null,
+  end_time text not null,
+  timezone text not null default 'UTC',
+  created_at text not null
+);
+create index if not exists team_availability_org_user_idx on team_availability(org_id, user_id);
+
+create table if not exists booking_pages (
+  id text primary key,
+  org_id text not null,
+  slug text not null,
+  title text not null,
+  appointment_type_id text not null,
+  timezone text not null default 'UTC',
+  assigned_user_ids text not null default '[]',
+  public integer not null default 1,
+  active integer not null default 1,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, slug)
+);
+
+create table if not exists appointments (
+  id text primary key,
+  org_id text not null,
+  appointment_type_id text not null,
+  booking_page_id text,
+  lead_id text,
+  assignee_user_id text,
+  status text not null,
+  kind text not null,
+  title text not null,
+  starts_at text not null,
+  ends_at text not null,
+  timezone text not null,
+  buffer_before_minutes integer not null default 0,
+  buffer_after_minutes integer not null default 0,
+  blocked_start text not null,
+  blocked_end text not null,
+  location text,
+  site_visit_address text,
+  notes text,
+  reminder_job_id text,
+  external_calendar_event_id text,
+  calendar_provider text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists appointments_org_assignee_idx
+  on appointments(org_id, assignee_user_id, blocked_start, blocked_end);
+create index if not exists appointments_org_starts_idx on appointments(org_id, starts_at);
+
+create table if not exists calendar_connections (
+  id text primary key,
+  org_id text not null,
+  provider text not null,
+  status text not null,
+  account_email text,
+  detail text not null,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, provider)
+);
+
+create table if not exists appointment_reminders (
+  id text primary key,
+  org_id text not null,
+  appointment_id text not null,
+  channel text not null,
+  scheduled_at text not null,
+  status text not null,
+  detail text,
+  created_at text not null
+);
+
+create table if not exists voice_connections (
+  id text primary key,
+  org_id text not null,
+  provider text not null,
+  status text not null,
+  from_number text,
+  detail text not null,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, provider)
+);
+
+create table if not exists voice_calls (
+  id text primary key,
+  org_id text not null,
+  provider text not null,
+  direction text not null,
+  status text not null,
+  from_number text not null,
+  to_number text not null,
+  lead_id text,
+  assignee_user_id text,
+  appointment_id text,
+  recording_consent integer not null default 0,
+  recording_url text,
+  transcript_status text not null default 'pending',
+  transcript_text text,
+  summary text,
+  outcome text not null default 'unknown',
+  ai_assisted integer not null default 0,
+  duration_seconds integer,
+  cost_usd real,
+  legal_outbound_allowed integer not null default 0,
+  detail text,
+  started_at text,
+  ended_at text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists voice_calls_org_idx on voice_calls(org_id);
+
+create table if not exists org_voice_policies (
+  org_id text primary key,
+  legal_outbound_allowed integer not null default 0,
+  require_recording_consent integer not null default 1,
+  updated_at text not null
+);
 `;
 
 export function defaultDbPath(): string {
