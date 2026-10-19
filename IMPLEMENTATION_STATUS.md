@@ -37,6 +37,8 @@
 | `pnpm typecheck` / `lint` / `test` | Implemented/verified | All passed locally 2026-10-19 |
 | Dev server uncommon port | Implemented/verified | [http://127.0.0.1:43127](http://127.0.0.1:43127) — Ready; `GET /api/v1/health` → 200; `GET /api/v1/orgs` → 501 |
 | Private GitHub repo (`gh`) | **Blocked** | `GH_TOKEN` invalid |
+| Draft PR on current remote | **Blocked** | Origin remote is `agent_temp` (New Project scratch); PRs unsupported until a standard repo exists |
+
 | Vercel project / CLI | **Blocked** | CLI missing; no project token |
 | Supabase project / CLI | **Blocked** | CLI missing; no project; Docker missing for local |
 | Docker (local Supabase) | **Blocked** | `docker` not found |
