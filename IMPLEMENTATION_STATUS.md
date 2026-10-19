@@ -14,7 +14,6 @@
 | **Unverified** | Code or docs exist but not fully exercised |
 | **Blocked** | Cannot proceed without credential/approval/tooling |
 | **Not implemented** | Not started |
-| **Known issues** | Defects or gaps to track |
 
 ---
 
@@ -22,7 +21,7 @@
 
 | Item | Status |
 |------|--------|
-| Docs, monorepo, CI skeleton, OpenAPI stub, web scaffold | Implemented/verified (prior turn) |
+| Docs, monorepo, CI, OpenAPI stub, web scaffold | Implemented/verified |
 
 ---
 
@@ -30,57 +29,45 @@
 
 | Item | Status | Evidence / notes |
 |------|--------|------------------|
-| Permission model (Owner→Viewer + fine-grained keys) | Implemented/verified | `@leadorbit/domain` permissions unit tests |
-| Local auth (signup/login/logout/session cookie JWT) | Implemented/verified | APIs + UI; default when Supabase unset |
-| Organizations CRUD-ish + multi-org membership | Implemented/verified | Local store + `/app` UI |
-| Invites create/accept | Implemented/verified | Token hash stored; accept email match enforced |
-| Org settings (tz/locale/currency) + branding fields | Implemented/verified | PATCH `/api/v1/orgs/:id` + settings form |
-| Feature flags + entitlement/quota scaffolding | Implemented/verified | Local store + billing/flags APIs |
-| Audit trail (append-only in local store) | Implemented/verified | Service-layer; manager+ read |
+| Permission model (Owner→Viewer + fine-grained keys) | Implemented/verified | Unit tests in `@leadorbit/domain` |
+| Local auth (signup/login/logout/session JWT cookie) | Implemented/verified | HTTP smoke: signup → session |
+| Organizations + multi-org membership | Implemented/verified | Create org API + `/app` UI |
+| Invites create/accept | Implemented/verified | HTTP: invite → accept → 200 on org |
+| Cross-tenant denial (service/API) | Implemented/verified | HTTP: non-member GET org → **403**; unit tests |
+| Org settings + branding fields | Implemented/verified | PATCH + settings form |
+| Feature flags + entitlements/quotas scaffolding | Implemented/verified | Local store + APIs |
+| Audit trail | Implemented/verified | Local append + manager+ read |
 | Super-admin portal skeleton | Implemented/verified | `/platform`; first local user bootstrapped |
-| Supabase Auth SSR clients + middleware refresh | Implemented/verified (code) | Wired; **not live-tested** — no project credentials |
-| Supabase tenancy repositories against live DB | **Blocked** | No URL/keys; MCP auth timed out; Docker/CLI missing |
-| RLS migrations authored | Implemented/verified (static) | `00002`, `00003`; contract tests assert SQL content |
-| Postgres RLS cross-tenant isolation | **Blocked / not verified** | Cannot run against real Postgres here |
-| Service-layer cross-tenant denial tests | Implemented/verified | `packages/db` + `apps/web` tests |
-| Draft PR on proper remote | **Blocked** | `agent_temp` Origin remote; `gh` token invalid |
+| Supabase Auth SSR + middleware | Implemented/verified (code only) | Not live-tested — no credentials |
+| Supabase tenancy repos on live DB | **Blocked** | No project; MCP auth timed out |
+| RLS SQL migrations | Implemented/verified (static) | `00002`, `00003` + contract tests |
+| Postgres RLS isolation | **Blocked / not verified** | No Docker/Postgres/Supabase project |
+| `pnpm typecheck` / `lint` / `test` | Implemented/verified | Pass after M2 |
+| Web on :43127 | Implemented/verified | health `authMode: local` |
+| Draft PR on proper remote | **Blocked** | `agent_temp` remote; invalid `gh` token |
 
 ---
 
 ## Milestones 3–12
 
-| Milestone | Status |
-|-----------|--------|
-| M3–M12 | Not implemented |
+Not implemented.
 
 ---
 
-## Integration blockers (need Rohit)
+## Blockers for Rohit
 
-| Dependency | Blocked work |
-|------------|--------------|
-| Supabase project URL + anon + service role | Live Auth, apply RLS migrations, verify DB isolation |
-| Supabase MCP / CLI auth | Remote migration apply + advisors |
-| Valid GitHub auth | Private canonical repo + PR/CI on GitHub |
-| Vercel project | Hosted deploy |
-| Docker (optional) | `supabase start` local |
+1. **Supabase** project URL + anon key + service role (apply migrations; verify RLS)  
+2. **GitHub** valid auth for private repo + PR  
+3. **Vercel** project (deploy)  
+4. Optional: Docker for `supabase start`
+
+Do not paste secrets into chat.
 
 ---
 
 ## Known issues
 
-1. Local auth store is **in-memory** — resets on server restart; not production.  
-2. Supabase mode session works only after credentials; tenancy **writes** still require repository adapters + applied migrations (explicit 4xx when `AUTH_MODE=supabase` without wiring).  
-3. Platform-admin bootstrap on first local signup is **dev-only**.  
-4. Postgres RLS not executed — do not treat multi-tenant isolation as production-verified.
-
----
-
-## Verification log
-
-| Check | Result |
-|-------|--------|
-| `pnpm typecheck` / `lint` / `test` | Pending update after M2 commit |
-| Service-layer cross-tenant tests | Pass (authored) |
-| Live Supabase RLS | Blocked |
-| Web URL | http://127.0.0.1:43127 |
+1. Local store is in-memory (resets on server restart) — not production.  
+2. `AUTH_MODE=supabase` session clients exist; tenancy **mutations** still require DB adapters after migrations are applied.  
+3. First local signup becomes platform admin (dev-only).  
+4. **Do not claim production multi-tenant isolation** until Postgres RLS tests pass on a real project.

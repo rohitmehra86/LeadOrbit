@@ -210,8 +210,10 @@ Public form inserts go through a **security definer** function or edge path that
 | Migration | Milestone | Contents |
 |-----------|-----------|----------|
 | `00001_extensions.sql` | M1 | pgcrypto, vector |
-| `00002_tenancy.sql` | M1 stub / M2 complete | orgs, profiles, memberships, invites |
-| `00003_crm_core.sql` | M3 | leads, contacts, companies, tags, activities |
+| `00002_tenancy.sql` | M2 | profiles, orgs, memberships, invites, platform_admins, RLS helpers |
+| `00003_flags_entitlements_audit.sql` | M2 | feature_flags, entitlements, usage_quotas, audit_logs + RLS |
+| `00004_crm_core.sql` | M3 | leads, contacts, companies, tags, activities |
+
 | `00004_pipeline.sql` | M4 | pipelines, opps |
 | `00005_conversations.sql` | M5 | threads, messages |
 | `00006_automation.sql` | M6 | workflows, jobs |
