@@ -15,6 +15,7 @@ export * from "./industry-templates";
 export * from "./billing";
 export * from "./analytics";
 export * from "./white-label";
+export * from "./security";
 
 
 import type { MembershipRole } from "./types";

@@ -11,9 +11,9 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint · Typecheck · Test
+    name: Lint · Typecheck · Test · Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -39,8 +39,70 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
+      - name: Unit + package tests + contract
         run: pnpm test
+
+      - name: Integration coverage (M11)
+        run: pnpm test:integration
+
+      - name: Security checks
+        run: pnpm test:security
 
       - name: Build web
         run: pnpm --filter @leadorbit/web build
+
+  audit:
+    name: Dependency audit (high+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Surfaced as a required check once transitive Next/eslint advisories are clearable.
+    # Today this job is expected to fail on known high/critical transitive deps — see IMPLEMENTATION_STATUS.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit
+        run: pnpm audit --audit-level=high
+
+  e2e:
+    name: Playwright e2e + a11y
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: verify
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E
+        env:
+          CI: "true"
+          AUTH_MODE: local
+          CSRF_ALLOW_MISSING: "1"
+          LEADORBIT_BASE_URL: http://127.0.0.1:43127
+          LEADORBIT_SQLITE_PATH: ${{ github.workspace }}/.data/e2e.sqlite
+        run: pnpm test:e2e

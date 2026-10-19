@@ -8,13 +8,27 @@ import {
 } from "@leadorbit/db";
 
 const COOKIE = "lo_session";
+const DEV_DEFAULT_SECRET = "leadorbit-local-dev-only-change-me";
 
 function sessionSecret(): Uint8Array {
   const raw =
-    process.env.DEV_SESSION_SECRET ||
     process.env.SESSION_SECRET ||
-    "leadorbit-local-dev-only-change-me";
+    process.env.DEV_SESSION_SECRET ||
+    DEV_DEFAULT_SECRET;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!process.env.SESSION_SECRET || raw === DEV_DEFAULT_SECRET)
+  ) {
+    throw new Error(
+      "SESSION_SECRET must be set to a strong value in production",
+    );
+  }
   return new TextEncoder().encode(raw);
+}
+
+export function sessionUsesDevDefaultSecret(): boolean {
+  const raw = process.env.SESSION_SECRET || process.env.DEV_SESSION_SECRET;
+  return !raw || raw === DEV_DEFAULT_SECRET;
 }
 
 export async function createLocalSessionToken(user: SessionUser): Promise<string> {
@@ -39,6 +53,7 @@ export async function setLocalSessionCookie(user: SessionUser): Promise<void> {
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
+    // Prevent client JS from reading; host-only cookie (no domain=).
   });
 }
 
@@ -91,5 +106,6 @@ export function authStatus() {
   return {
     authMode: getAuthMode(),
     supabaseConfigured: isSupabaseConfigured(),
+    sessionSecretConfigured: !sessionUsesDevDefaultSecret(),
   };
 }

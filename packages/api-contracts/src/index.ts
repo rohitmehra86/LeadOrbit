@@ -5,6 +5,7 @@ export type HealthResponse = {
   timestamp?: string;
   authMode?: "local" | "supabase";
   supabaseConfigured?: boolean;
+  sessionSecretConfigured?: boolean;
 };
 
 export type ProblemDetails = {
