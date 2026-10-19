@@ -92,3 +92,17 @@ test("calendar/voice migration enables RLS", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("real estate vertical migration enables RLS", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00010_real_estate_vertical.sql"),
+    "utf8",
+  );
+  assert.match(sql, /org_vertical_modules/);
+  assert.match(sql, /re_developers/);
+  assert.match(sql, /re_projects/);
+  assert.match(sql, /re_units/);
+  assert.match(sql, /re_enquiries/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});

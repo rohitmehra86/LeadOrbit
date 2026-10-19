@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 8 (Voice, calendar, appointments)  
+**Current milestone focus:** Milestone 9 (Real estate vertical — optional)  
 **Honesty policy:** Status reflects verified reality only.
 
 ---
@@ -16,34 +16,36 @@
 
 ---
 
-## Milestone 1–7
+## Milestone 1–8
 
 | Area | Status |
 |------|--------|
-| Foundation through AI/RAG/knowledge | Implemented/verified |
-| Live Supabase / RLS / messaging / LLM providers | **Blocked** (no credentials) |
+| Foundation through calendar/voice | Implemented/verified |
+| Live Supabase / providers | **Blocked** (no credentials) |
 
 ---
 
-## Milestone 8 — Voice, calendar & appointments
+## Milestone 9 — Real estate vertical (optional)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Appointment types, availability, booking pages, timezones, duration, buffers | Implemented/verified | |
-| Transactional conflict prevention (double-book) | Implemented/verified | Store tests |
-| Reschedule / cancel / reminders / agent assignment | Implemented/verified | |
-| Site visit booking | Implemented/verified | Address required |
-| Google / Microsoft calendar OAuth adapters | Implemented/verified | `pending_configuration` without creds |
-| Pluggable telephony (inbound/outbound scaffold) | Implemented/verified | |
-| AI qualification hooks, transcription/summary/outcome scaffold | Implemented/verified | |
-| Human transfer, book appt from call, history, consent, cost, analytics | Implemented/verified | |
-| Migration `00009_calendar_voice.sql` | Implemented/verified (authored) | |
-| Live calendar OAuth / live call dial | **Blocked** | Never faked |
+| Optional module (not in core CRM) | Implemented/verified | `org_vertical_modules` |
+| Developers/projects/properties/towers/units/floor plans/amenities/pricing/status | Implemented/verified | |
+| Brokers / channel partners | Implemented/verified | |
+| Buyer preferences + property enquiries | Implemented/verified | |
+| Matching (budget/location/BHK) + inventory search | Implemented/verified | Unit + store tests |
+| Tenant isolation | Implemented/verified | Cross-tenant forbidden |
+| Site visits via calendar | Implemented/verified | |
+| Agent routing + broker tracking + enquiry analytics | Implemented/verified | |
+| Brochures path + inventory-aware AI (SQL prices) | Implemented/verified | When module enabled |
+| Industry templates (education/automotive/service scaffold) | Implemented/verified | Config only |
+| Migration `00010_real_estate_vertical.sql` | Implemented/verified (authored) | |
+| Full education/automotive/service verticals | **Not implemented** | Scaffold templates only |
 | Draft PR | **Blocked** | `agent_temp` remote |
 
 ---
 
-## Milestones 9–12
+## Milestones 10–12
 
 Not implemented. Not claimed.
 
@@ -51,11 +53,9 @@ Not implemented. Not claimed.
 
 ## Blockers for Rohit
 
-1. Supabase (migrations through 00009)  
-2. `GOOGLE_CALENDAR_CLIENT_ID/SECRET`, `MICROSOFT_CALENDAR_CLIENT_ID/SECRET`  
-3. `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` (or Vonage)  
-4. LLM / messaging credentials (prior milestones)  
-5. Standard GitHub remote for PRs  
+1. Supabase (migrations through 00010)  
+2. Provider credentials from prior milestones  
+3. Standard GitHub remote for PRs  
 
 ---
 
@@ -63,5 +63,4 @@ Not implemented. Not claimed.
 
 1. Auth tenancy in-memory; domain data in SQLite.  
 2. Web + worker must share `LEADORBIT_SQLITE_PATH`.  
-3. Availability windows use UTC wall-clock approximation in local runtime.  
-4. Reminder “send” is pending without SMTP/SMS credentials.
+3. Real estate module must be enabled per org before inventory APIs work.

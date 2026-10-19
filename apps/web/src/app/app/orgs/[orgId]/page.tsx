@@ -80,6 +80,9 @@ export default async function OrgDetailPage({ params }: Props) {
           <Link href={`/app/orgs/${orgId}/calendar`}>
             <Button type="button">Calendar & voice</Button>
           </Link>
+          <Link href={`/app/orgs/${orgId}/real-estate`}>
+            <Button type="button">Real estate</Button>
+          </Link>
         </div>
       </div>
 

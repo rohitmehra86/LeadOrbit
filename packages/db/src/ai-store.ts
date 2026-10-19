@@ -29,6 +29,7 @@ import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-s
 import { getCrmDatabase } from "./sqlite";
 import { KnowledgeStore } from "./knowledge-store";
 import { SqliteJobQueue } from "./job-queue";
+import type { RealEstateStore } from "./real-estate-store";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -49,7 +50,12 @@ export class AiStore {
     private db: DatabaseSync = getCrmDatabase(),
     private knowledge: KnowledgeStore,
     private queue: SqliteJobQueue = new SqliteJobQueue(db),
+    private realEstate: RealEstateStore | null = null,
   ) {}
+
+  setRealEstateStore(store: RealEstateStore | null): void {
+    this.realEstate = store;
+  }
 
   private async gate(
     actor: SessionUser,
@@ -604,6 +610,16 @@ export class AiStore {
           price: i.price,
           availability: i.availability,
         }));
+        // Optional real-estate vertical: merge authoritative unit prices when enabled.
+        if (this.realEstate?.isEnabled(orgId)) {
+          const reFacts = this.realEstate.lookupUnitsForAi(orgId, q);
+          inventoryFacts = [...reFacts, ...inventoryFacts];
+          if (reFacts.length) {
+            warnings.push(
+              "Real estate module inventory included (SQL unit prices authoritative)",
+            );
+          }
+        }
       }
     }
 

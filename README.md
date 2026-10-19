@@ -59,10 +59,10 @@ Set Supabase URL/anon key (and apply `supabase/migrations`) for production Auth 
 - `GET|POST /api/v1/orgs`, `GET|PATCH /api/v1/orgs/:id`  
 - Members, invites, flags, billing stubs, audit, `GET /api/v1/platform/orgs`  
 
-UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, CRM, Marketing, Integrations, Workflows, Inbox, AI & knowledge, Calendar & voice, `/platform`
+UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, CRM, Marketing, Integrations, Workflows, Inbox, AI & knowledge, Calendar & voice, Real estate (optional), `/platform`
 
 Domain data persists to shared SQLite at repo-root `.data/leadorbit.sqlite` (override `LEADORBIT_SQLITE_PATH`).  
-Docs: [`MILESTONE_3_CRM`](./docs/MILESTONE_3_CRM.md) · [`MILESTONE_4_MARKETING`](./docs/MILESTONE_4_MARKETING.md) · [`MILESTONE_5_INGESTION`](./docs/MILESTONE_5_INGESTION.md) · [`MILESTONE_6_AUTOMATION`](./docs/MILESTONE_6_AUTOMATION.md) · [`MILESTONE_7_AI_KNOWLEDGE`](./docs/MILESTONE_7_AI_KNOWLEDGE.md) · [`MILESTONE_8_CALENDAR_VOICE`](./docs/MILESTONE_8_CALENDAR_VOICE.md).
+Docs: [`MILESTONE_3_CRM`](./docs/MILESTONE_3_CRM.md) · [`MILESTONE_4_MARKETING`](./docs/MILESTONE_4_MARKETING.md) · [`MILESTONE_5_INGESTION`](./docs/MILESTONE_5_INGESTION.md) · [`MILESTONE_6_AUTOMATION`](./docs/MILESTONE_6_AUTOMATION.md) · [`MILESTONE_7_AI_KNOWLEDGE`](./docs/MILESTONE_7_AI_KNOWLEDGE.md) · [`MILESTONE_8_CALENDAR_VOICE`](./docs/MILESTONE_8_CALENDAR_VOICE.md) · [`MILESTONE_9_REAL_ESTATE`](./docs/MILESTONE_9_REAL_ESTATE.md).
 
 ```bash
 pnpm dev:web     # http://127.0.0.1:43127

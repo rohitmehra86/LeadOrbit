@@ -908,6 +908,152 @@ create table if not exists org_voice_policies (
   require_recording_consent integer not null default 1,
   updated_at text not null
 );
+
+-- Milestone 9: optional vertical modules (real estate) + industry template selection
+create table if not exists org_vertical_modules (
+  org_id text not null,
+  module_key text not null,
+  enabled integer not null default 0,
+  config text not null default '{}',
+  updated_at text not null,
+  primary key (org_id, module_key)
+);
+
+create table if not exists org_industry_templates (
+  org_id text not null,
+  template_id text not null,
+  selected integer not null default 0,
+  config text not null default '{}',
+  updated_at text not null,
+  primary key (org_id, template_id)
+);
+
+create table if not exists re_developers (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  website text,
+  contact_email text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists re_developers_org_idx on re_developers(org_id);
+
+create table if not exists re_projects (
+  id text primary key,
+  org_id text not null,
+  developer_id text not null,
+  name text not null,
+  location text not null,
+  city text not null,
+  status text not null,
+  brochure_path text,
+  amenities text not null default '[]',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists re_projects_org_idx on re_projects(org_id);
+
+create table if not exists re_properties (
+  id text primary key,
+  org_id text not null,
+  project_id text not null,
+  name text not null,
+  property_type text not null,
+  address text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists re_towers (
+  id text primary key,
+  org_id text not null,
+  property_id text not null,
+  name text not null,
+  floors integer not null default 0,
+  created_at text not null
+);
+
+create table if not exists re_floor_plans (
+  id text primary key,
+  org_id text not null,
+  project_id text not null,
+  name text not null,
+  bhk integer not null,
+  carpet_sqft real,
+  built_up_sqft real,
+  bathrooms integer,
+  created_at text not null
+);
+
+create table if not exists re_units (
+  id text primary key,
+  org_id text not null,
+  project_id text not null,
+  property_id text not null,
+  tower_id text,
+  floor_plan_id text,
+  unit_number text not null,
+  floor integer,
+  bhk integer not null,
+  price real,
+  currency text not null default 'INR',
+  status text not null,
+  facing text,
+  amenities text not null default '[]',
+  metadata text not null default '{}',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists re_units_org_status_idx on re_units(org_id, status);
+create index if not exists re_units_org_bhk_idx on re_units(org_id, bhk);
+
+create table if not exists re_brokers (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  email text,
+  phone text,
+  firm text,
+  channel_partner integer not null default 0,
+  active integer not null default 1,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists re_buyer_preferences (
+  id text primary key,
+  org_id text not null,
+  lead_id text,
+  budget_min real,
+  budget_max real,
+  locations text not null default '[]',
+  bhk_min integer,
+  bhk_max integer,
+  property_types text not null default '[]',
+  must_have_amenities text not null default '[]',
+  notes text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists re_enquiries (
+  id text primary key,
+  org_id text not null,
+  lead_id text,
+  project_id text,
+  unit_id text,
+  broker_id text,
+  assignee_user_id text,
+  status text not null,
+  source text not null,
+  message text,
+  preference_id text,
+  site_visit_appointment_id text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists re_enquiries_org_idx on re_enquiries(org_id);
 `;
 
 export function defaultDbPath(): string {

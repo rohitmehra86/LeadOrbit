@@ -15,6 +15,7 @@ export { KnowledgeStore } from "./knowledge-store";
 export { AiStore } from "./ai-store";
 export { CalendarStore } from "./calendar-store";
 export { VoiceStore } from "./voice-store";
+export { RealEstateStore } from "./real-estate-store";
 export { SqliteJobQueue, getJobQueue } from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 

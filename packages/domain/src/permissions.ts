@@ -46,6 +46,8 @@ export type Permission =
   | "appointments:write"
   | "voice:read"
   | "voice:write"
+  | "realestate:read"
+  | "realestate:write"
   | "platform:admin";
 
 
@@ -69,6 +71,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "calendar:read",
     "appointments:read",
     "voice:read",
+    "realestate:read",
   ],
   agent: [
     "org:read",
@@ -96,6 +99,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "appointments:write",
     "voice:read",
     "voice:write",
+    "realestate:read",
+    "realestate:write",
   ],
   manager: [
     "org:read",
@@ -135,6 +140,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "appointments:write",
     "voice:read",
     "voice:write",
+    "realestate:read",
+    "realestate:write",
   ],
   admin: [
     "org:read",
@@ -180,6 +187,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "appointments:write",
     "voice:read",
     "voice:write",
+    "realestate:read",
+    "realestate:write",
   ],
   owner: [
     "org:read",
@@ -225,6 +234,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "appointments:write",
     "voice:read",
     "voice:write",
+    "realestate:read",
+    "realestate:write",
   ],
 };
 

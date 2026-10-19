@@ -10,6 +10,8 @@ export * from "./knowledge";
 export * from "./llm-gateway";
 export * from "./appointments";
 export * from "./voice";
+export * from "./real-estate";
+export * from "./industry-templates";
 
 
 import type { MembershipRole } from "./types";
