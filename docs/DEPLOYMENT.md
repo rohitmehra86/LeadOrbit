@@ -42,10 +42,13 @@ pnpm dlx vercel env pull   # verify vars — do not print secrets
 pnpm dlx vercel --prod     # only after staging soak
 ```
 
-Root `vercel.json` builds `@leadorbit/web`. For the Vercel project UI:
+**Required Vercel project setting (monorepo):**
 
-- **Preferred Root Directory:** `apps/web` (uses `apps/web/vercel.json`, finds `next` in that package)
-- **Also supported:** Root Directory `./` — root `package.json` declares `next` so Vercel’s detector succeeds; build still runs `pnpm --filter @leadorbit/web build`
+1. Project **leadorbit** → Settings → General → **Root Directory** = `apps/web` (not `./`)
+2. Framework: Next.js (from `apps/web/vercel.json`)
+3. Install/build come from `apps/web/vercel.json` (`pnpm` at repo root, then `next build` in `apps/web` so `.next` lands where Vercel expects)
+
+Root Directory `./` causes `NEXT_OUTPUT_DIR_MISSING` because Next writes `apps/web/.next`, not `/.next`.
 
 Do not attach LeadOrbit to LinkBooks Vercel projects.
 
