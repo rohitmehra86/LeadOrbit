@@ -1,4 +1,4 @@
-import { InMemoryJobQueue } from "./queue.js";
+import { InMemoryJobQueue } from "./queue";
 
 const queue = new InMemoryJobQueue();
 

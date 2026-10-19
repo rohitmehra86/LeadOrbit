@@ -1,143 +1,176 @@
 openapi: 3.1.0
 info:
   title: LeadOrbit API
-  version: 0.1.0
+  version: 0.2.0
   description: |
-    Contract-first public/BFF API for LeadOrbit (ai-lead-revenue-cloud).
-    Implemented today by Next.js Route Handlers; designed for a future Spring Boot extract.
-    See docs/MIGRATION_TO_JAVA.md.
+    Contract-first API for LeadOrbit. Milestone 2 adds auth session, orgs, invites,
+    flags, entitlements stubs, audit, and platform admin listing.
 servers:
   - url: /api/v1
-    description: Relative to the web application origin
 tags:
   - name: Health
+  - name: Auth
   - name: Tenancy
+  - name: Platform
 paths:
   /health:
     get:
       tags: [Health]
       operationId: getHealth
-      summary: Liveness and build metadata
       responses:
         "200":
           description: Service is up
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
+  /auth/signup:
+    post:
+      tags: [Auth]
+      operationId: signUp
+      summary: Local-mode sign-up (Supabase path uses client SDK)
+      responses:
+        "201":
+          description: Created session
+        "501":
+          description: Use Supabase client when AUTH_MODE=supabase
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      responses:
+        "200":
+          description: Session established
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      responses:
+        "200":
+          description: Signed out
+  /auth/session:
+    get:
+      tags: [Auth]
+      operationId: getSession
+      responses:
+        "200":
+          description: Current session
+        "401":
+          description: No session
   /orgs:
     get:
       tags: [Tenancy]
       operationId: listOrgs
-      summary: List organizations for the authenticated user
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Organizations
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Organization"
+          description: Organizations for the user
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Unauthorized
     post:
       tags: [Tenancy]
       operationId: createOrg
-      summary: Create an organization (stub until Milestone 2)
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrganizationRequest"
       responses:
-        "501":
-          description: Not implemented until auth/tenancy milestone
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
+        "201":
+          description: Created
+  /orgs/{orgId}:
+    get:
+      tags: [Tenancy]
+      operationId: getOrg
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Organization
+        "403":
+          description: Cross-tenant forbidden
+    patch:
+      tags: [Tenancy]
+      operationId: updateOrgSettings
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Updated
+  /orgs/{orgId}/members:
+    get:
+      tags: [Tenancy]
+      operationId: listMembers
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Members
+  /orgs/{orgId}/invites:
+    post:
+      tags: [Tenancy]
+      operationId: createInvite
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "201":
+          description: Invite created (token returned once)
+  /invites/accept:
+    post:
+      tags: [Tenancy]
+      operationId: acceptInvite
+      responses:
+        "200":
+          description: Membership created
+  /orgs/{orgId}/flags:
+    get:
+      tags: [Tenancy]
+      operationId: listFlags
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Feature flags
+    put:
+      tags: [Tenancy]
+      operationId: setFlag
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Flag upserted
+  /orgs/{orgId}/billing:
+    get:
+      tags: [Tenancy]
+      operationId: getBillingScaffold
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Entitlements + quotas stubs
+  /orgs/{orgId}/audit:
+    get:
+      tags: [Tenancy]
+      operationId: listAudit
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Audit trail
+  /platform/orgs:
+    get:
+      tags: [Platform]
+      operationId: listAllOrgsPlatform
+      responses:
+        "200":
+          description: All tenants (platform admin)
+        "403":
+          description: Not a platform admin
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  responses:
-    Unauthorized:
-      description: Missing or invalid credentials
-      content:
-        application/problem+json:
-          schema:
-            $ref: "#/components/schemas/ProblemDetails"
-  schemas:
-    HealthResponse:
-      type: object
-      required: [status, service, version]
-      properties:
-        status:
-          type: string
-          enum: [ok]
-        service:
-          type: string
-          example: leadorbit-web
-        version:
-          type: string
-          example: 0.1.0
-        timestamp:
-          type: string
-          format: date-time
-    Organization:
-      type: object
-      required: [id, name, slug, orgType]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        slug:
-          type: string
-        orgType:
-          type: string
-          enum: [agency, workspace]
-        parentOrgId:
-          type: string
-          format: uuid
-          nullable: true
-    CreateOrganizationRequest:
-      type: object
-      required: [name]
-      properties:
-        name:
-          type: string
-          minLength: 2
-          maxLength: 120
-        orgType:
-          type: string
-          enum: [agency, workspace]
-          default: workspace
-    ProblemDetails:
-      type: object
-      required: [type, title, status]
-      properties:
-        type:
-          type: string
-          format: uri
-        title:
-          type: string
-        status:
-          type: integer
-        detail:
-          type: string
-        instance:
-          type: string
+  parameters:
+    orgId:
+      name: orgId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

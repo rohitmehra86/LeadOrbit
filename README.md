@@ -47,11 +47,21 @@ pnpm test
 
 Supabase CLI, Docker, Vercel CLI, and provider credentials are **not** assumed. See `IMPLEMENTATION_STATUS.md` for blockers.
 
-## API (Milestone 1)
+## Auth (Milestone 2)
 
-- `GET /api/v1/health` → `{ status: "ok", ... }`  
-- `GET|POST /api/v1/orgs` → `501` until Milestone 2 auth  
+Default **`AUTH_MODE=local`** when Supabase env is unset: cookie session + in-process tenancy store (permission-checked).  
+Set Supabase URL/anon key (and apply `supabase/migrations`) for production Auth + RLS. Details: [`docs/MILESTONE_2_AUTH.md`](./docs/MILESTONE_2_AUTH.md).
+
+## API (current)
+
+- `GET /api/v1/health` → status + `authMode`  
+- `POST /api/v1/auth/signup|login|logout`, `GET /api/v1/auth/session`  
+- `GET|POST /api/v1/orgs`, `GET|PATCH /api/v1/orgs/:id`  
+- Members, invites, flags, billing stubs, audit, `GET /api/v1/platform/orgs`  
+
+UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, `/platform`
 
 ## License
 
 Proprietary — all rights reserved.
+

@@ -1,10 +1,15 @@
+export {
+  AuthError,
+  LocalTenancyStore,
+  getLocalTenancyStore,
+  type SessionUser,
+} from "./tenancy-store";
+
+export { isSupabaseConfigured, getAuthMode } from "./config";
+
+
 import type { Lead, Organization } from "@leadorbit/domain";
 
-/**
- * Repository ports. Supabase implementations land in Milestone 2+.
- * Keep I/O behind these interfaces so a future Spring Boot service
- * can reimplement the same contracts.
- */
 export interface OrganizationRepository {
   listForUser(userId: string): Promise<Organization[]>;
   create(input: {
@@ -23,7 +28,7 @@ export interface LeadRepository {
 export class NotConfiguredError extends Error {
   constructor(resource: string) {
     super(
-      `${resource} repository is not configured. Set Supabase credentials (Milestone 2).`,
+      `${resource} repository is not configured. Set Supabase credentials.`,
     );
     this.name = "NotConfiguredError";
   }

@@ -3,6 +3,8 @@ export type HealthResponse = {
   service: string;
   version: string;
   timestamp?: string;
+  authMode?: "local" | "supabase";
+  supabaseConfigured?: boolean;
 };
 
 export type ProblemDetails = {
@@ -11,19 +13,6 @@ export type ProblemDetails = {
   status: number;
   detail?: string;
   instance?: string;
-};
-
-export type OrganizationDto = {
-  id: string;
-  name: string;
-  slug: string;
-  orgType: "agency" | "workspace";
-  parentOrgId: string | null;
-};
-
-export type CreateOrganizationRequest = {
-  name: string;
-  orgType?: "agency" | "workspace";
 };
 
 export const API_VERSION = "v1" as const;
@@ -40,3 +29,6 @@ export function problem(
     detail,
   };
 }
+
+export * from "./tenancy";
+

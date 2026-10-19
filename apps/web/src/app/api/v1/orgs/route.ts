@@ -1,26 +1,56 @@
-import { NextResponse } from "next/server";
-import { problem } from "@leadorbit/api-contracts";
+import type { CreateOrganizationRequest, OrganizationDto } from "@leadorbit/api-contracts";
+import { fromAuthError, jsonOk, requireUser } from "@/lib/api/http";
+import { getTenancyStore } from "@/lib/tenancy/service";
 
-/**
- * Tenancy endpoints are stubbed until Milestone 2 (Supabase Auth + RLS).
- * Returning 501 avoids pretending the feature works.
- */
-export async function GET() {
-  return NextResponse.json(
-    problem(501, "Not Implemented", "Organization listing requires Milestone 2 auth."),
-    {
-      status: 501,
-      headers: { "content-type": "application/problem+json" },
-    },
-  );
+function toDto(org: {
+  id: string;
+  name: string;
+  slug: string;
+  orgType: OrganizationDto["orgType"];
+  parentOrgId: string | null;
+  timezone: string;
+  locale: string;
+  currency: string;
+  branding: OrganizationDto["branding"];
+}): OrganizationDto {
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    orgType: org.orgType,
+    parentOrgId: org.parentOrgId,
+    timezone: org.timezone,
+    locale: org.locale,
+    currency: org.currency,
+    branding: org.branding,
+  };
 }
 
-export async function POST() {
-  return NextResponse.json(
-    problem(501, "Not Implemented", "Organization create requires Milestone 2 auth."),
-    {
-      status: 501,
-      headers: { "content-type": "application/problem+json" },
-    },
-  );
+export async function GET() {
+  try {
+    const user = await requireUser();
+    const store = getTenancyStore();
+    const items = await store.listOrganizationsForUser(user.id);
+    return jsonOk({ items: items.map(toDto) });
+  } catch (err) {
+    return fromAuthError(err);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await requireUser();
+    const body = (await request.json()) as CreateOrganizationRequest;
+    const store = getTenancyStore();
+    const org = await store.createOrganization(user, {
+      name: body.name,
+      orgType: body.orgType,
+      timezone: body.timezone,
+      locale: body.locale,
+      currency: body.currency,
+    });
+    return jsonOk({ item: toDto(org) }, { status: 201 });
+  } catch (err) {
+    return fromAuthError(err);
+  }
 }

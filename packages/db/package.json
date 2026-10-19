@@ -10,9 +10,13 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./config": {
+      "types": "./src/config.ts",
+      "import": "./src/config.ts",
+      "default": "./src/config.ts"
     }
   },
-
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
@@ -27,5 +31,4 @@
     "tsx": "^4.20.5",
     "typescript": "^5"
   }
-
 }

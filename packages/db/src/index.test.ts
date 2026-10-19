@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NotConfiguredError, StubOrganizationRepository } from "./index.js";
+import { NotConfiguredError, StubOrganizationRepository } from "./index";
 
 test("stub org repo signals missing Supabase config", async () => {
   const repo = new StubOrganizationRepository();

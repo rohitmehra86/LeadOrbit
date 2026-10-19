@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canManageMembers, clampLeadScore, normalizePhone } from "./index.js";
+import { canManageMembers, clampLeadScore, normalizePhone } from "./index";
 
 test("clampLeadScore bounds values", () => {
   assert.equal(clampLeadScore(-5), 0);

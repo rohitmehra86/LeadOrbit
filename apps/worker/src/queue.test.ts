@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { InMemoryJobQueue } from "./queue.js";
+import { InMemoryJobQueue } from "./queue";
 
 test("enqueue returns a job id", async () => {
   const q = new InMemoryJobQueue();

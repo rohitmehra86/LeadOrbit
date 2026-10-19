@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
     "@leadorbit/ui",
     "@leadorbit/domain",
     "@leadorbit/api-contracts",
+    "@leadorbit/db",
   ],
+  serverExternalPackages: ["@supabase/ssr", "@supabase/supabase-js"],
+
 };
 
 export default nextConfig;
