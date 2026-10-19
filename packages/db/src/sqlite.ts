@@ -628,6 +628,140 @@ create table if not exists opt_outs (
   created_at text not null,
   unique(org_id, channel, address)
 );
+
+-- Milestone 7: AI agents + knowledge / RAG
+create table if not exists knowledge_collections (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  description text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists knowledge_collections_org_idx on knowledge_collections(org_id);
+
+create table if not exists knowledge_documents (
+  id text primary key,
+  org_id text not null,
+  collection_id text not null,
+  title text not null,
+  kind text not null,
+  status text not null,
+  version integer not null default 1,
+  source_path text,
+  mime_type text,
+  byte_size integer not null default 0,
+  raw_text text not null default '',
+  metadata text not null default '{}',
+  error text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists knowledge_documents_org_idx on knowledge_documents(org_id);
+create index if not exists knowledge_documents_collection_idx on knowledge_documents(org_id, collection_id);
+
+create table if not exists knowledge_chunks (
+  id text primary key,
+  org_id text not null,
+  document_id text not null,
+  collection_id text not null,
+  ordinal integer not null,
+  content text not null,
+  embedding text,
+  metadata text not null default '{}',
+  created_at text not null
+);
+create index if not exists knowledge_chunks_org_doc_idx on knowledge_chunks(org_id, document_id);
+create index if not exists knowledge_chunks_org_collection_idx on knowledge_chunks(org_id, collection_id);
+
+create table if not exists inventory_items (
+  id text primary key,
+  org_id text not null,
+  sku text not null,
+  name text not null,
+  description text,
+  price real,
+  currency text not null default 'USD',
+  availability text not null default 'unknown',
+  category text,
+  metadata text not null default '{}',
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, sku)
+);
+create index if not exists inventory_items_org_idx on inventory_items(org_id);
+
+create table if not exists ai_personas (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  kind text not null,
+  system_prompt text not null,
+  locale text not null default 'en',
+  tone text not null default 'concise-helpful',
+  allowed_tools text not null default '[]',
+  allowed_channels text not null default '[]',
+  policies text not null default '{}',
+  handoff_rules text not null default '{}',
+  knowledge_collection_ids text not null default '[]',
+  prompt_version integer not null default 1,
+  enabled integer not null default 1,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists ai_personas_org_idx on ai_personas(org_id);
+
+create table if not exists ai_prompt_versions (
+  id text primary key,
+  org_id text not null,
+  persona_id text not null,
+  version integer not null,
+  system_prompt text not null,
+  note text,
+  created_at text not null
+);
+
+create table if not exists ai_usage_events (
+  id text primary key,
+  org_id text not null,
+  persona_id text,
+  provider text not null,
+  model text not null,
+  status text not null,
+  prompt_tokens integer not null default 0,
+  completion_tokens integer not null default 0,
+  estimated_cost_usd real,
+  tool_calls integer not null default 0,
+  latency_ms integer not null default 0,
+  created_at text not null
+);
+create index if not exists ai_usage_org_idx on ai_usage_events(org_id);
+
+create table if not exists ai_evals (
+  id text primary key,
+  org_id text not null,
+  persona_id text,
+  name text not null,
+  input_json text not null,
+  expected_json text not null,
+  last_score real,
+  last_ran_at text,
+  created_at text not null
+);
+
+create table if not exists ai_turns (
+  id text primary key,
+  org_id text not null,
+  persona_id text,
+  channel text not null,
+  lead_id text,
+  conversation_id text,
+  user_text text not null,
+  result_json text not null,
+  status text not null,
+  created_at text not null
+);
+create index if not exists ai_turns_org_idx on ai_turns(org_id);
 `;
 
 export function defaultDbPath(): string {

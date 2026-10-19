@@ -5,6 +5,9 @@ export * from "./campaigns";
 export * from "./ingestion";
 export * from "./workflows";
 export * from "./inbox";
+export * from "./ai";
+export * from "./knowledge";
+export * from "./llm-gateway";
 
 
 import type { MembershipRole } from "./types";

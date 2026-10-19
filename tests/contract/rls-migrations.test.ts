@@ -63,3 +63,18 @@ test("workflows/inbox migration enables RLS", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("ai/knowledge migration enables RLS and pgvector", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00008_ai_knowledge.sql"),
+    "utf8",
+  );
+  assert.match(sql, /create extension if not exists vector/);
+  assert.match(sql, /knowledge_documents/);
+  assert.match(sql, /knowledge_chunks/);
+  assert.match(sql, /inventory_items/);
+  assert.match(sql, /ai_personas/);
+  assert.match(sql, /ai_usage_events/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});

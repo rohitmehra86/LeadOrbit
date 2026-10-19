@@ -35,6 +35,11 @@ export type Permission =
   | "workflows:write"
   | "inbox:read"
   | "inbox:write"
+  | "ai:read"
+  | "ai:write"
+  | "ai:run"
+  | "knowledge:read"
+  | "knowledge:write"
   | "platform:admin";
 
 
@@ -53,6 +58,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "ingestion:read",
     "workflows:read",
     "inbox:read",
+    "ai:read",
+    "knowledge:read",
   ],
   agent: [
     "org:read",
@@ -72,6 +79,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "workflows:read",
     "inbox:read",
     "inbox:write",
+    "ai:read",
+    "ai:run",
+    "knowledge:read",
   ],
   manager: [
     "org:read",
@@ -100,6 +110,11 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "workflows:write",
     "inbox:read",
     "inbox:write",
+    "ai:read",
+    "ai:write",
+    "ai:run",
+    "knowledge:read",
+    "knowledge:write",
   ],
   admin: [
     "org:read",
@@ -134,6 +149,11 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "workflows:write",
     "inbox:read",
     "inbox:write",
+    "ai:read",
+    "ai:write",
+    "ai:run",
+    "knowledge:read",
+    "knowledge:write",
   ],
   owner: [
     "org:read",
@@ -168,6 +188,11 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "workflows:write",
     "inbox:read",
     "inbox:write",
+    "ai:read",
+    "ai:write",
+    "ai:run",
+    "knowledge:read",
+    "knowledge:write",
   ],
 };
 

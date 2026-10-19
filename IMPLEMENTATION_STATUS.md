@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 6 (Workflow automation & unified inbox)  
+**Current milestone focus:** Milestone 7 (AI agents, RAG, knowledge)  
 **Honesty policy:** Status reflects verified reality only.
 
 ---
@@ -16,37 +16,36 @@
 
 ---
 
-## Milestone 1–5
+## Milestone 1–6
 
 | Area | Status |
 |------|--------|
-| Foundation, auth/tenancy, CRM, marketing, ingestion/attribution | Implemented/verified |
-| Live Supabase Auth / Postgres RLS | **Blocked** (no credentials) |
+| Foundation, auth/tenancy, CRM, marketing, ingestion, workflows, inbox | Implemented/verified |
+| Live Supabase Auth / Postgres RLS / live messaging providers | **Blocked** (no credentials) |
 
 ---
 
-## Milestone 6 — Workflows & unified communications
+## Milestone 7 — AI agents, RAG & knowledge
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Visual workflow builder (triggers + actions) | Implemented/verified | `/app/orgs/:id/workflows` |
-| Draft/publish, versioning, test mode | Implemented/verified | |
-| Enrollment pause/resume/cancel + execution history | Implemented/verified | |
-| Retry / dead-letter / idempotency | Implemented/verified | Unit + store tests |
-| Audit logs | Implemented/verified | |
-| Durable execution via `apps/worker` + SQLite job queue | Implemented/verified | Not in request handlers |
-| Unified inbox (multi-channel model) | Implemented/verified | `/app/orgs/:id/inbox` |
-| History, assignment, unread, notes, tags, search, templates, SLA, opt-out, schedule | Implemented/verified | |
-| Provider adapters + signed messaging webhooks | Implemented/verified | |
-| Outbound without credentials | Implemented/verified | `pending_configuration` — not faked |
-| Migration `00007_workflows_inbox.sql` | Implemented/verified (authored) | Not applied remotely |
-| Live provider delivery (WhatsApp/Email/SMS/Meta) | **Blocked** | No credentials; stubs only |
-| Postgres RLS | **Blocked** | |
+| AI agents (enquiry, extract, qualify, score, Q&A, recommend, next actions, appointment hooks, summaries, follow-up drafts, multilingual scaffold) | Implemented/verified | Deterministic core + optional LLM |
+| AI config console (personas, knowledge, tools, channels, policies, handoff, usage/cost, evals, prompt versions) | Implemented/verified | `/app/orgs/:id/ai` |
+| Never invent pricing/availability; auth for consequential tools; human escalation | Implemented/verified | Inventory SQL authoritative |
+| Provider-agnostic OpenAI-compatible LLM gateway + structured outputs + tool auth | Implemented/verified | No keys → `pending_configuration` |
+| Tenant-isolated KB upload/parse/chunk/embed/retrieve/version/reindex/delete | Implemented/verified | |
+| Local vector fallback + honest status | Implemented/verified | `local_fallback` |
+| pgvector migration authored | Implemented/verified (authored) | Not applied remotely |
+| Retrieval quality tests | Implemented/verified | Unit + store |
+| Structured inventory/prices in SQL | Implemented/verified | |
+| Migration `00008_ai_knowledge.sql` | Implemented/verified (authored) | |
+| Live LLM / embedding provider HTTP success | **Blocked** | No API keys; do not fake |
+| Remote pgvector ANN | **Blocked** | |
 | Draft PR | **Blocked** | `agent_temp` remote |
 
 ---
 
-## Milestones 7–12
+## Milestones 8–12
 
 Not implemented. Not claimed.
 
@@ -54,10 +53,11 @@ Not implemented. Not claimed.
 
 ## Blockers for Rohit
 
-1. Supabase project (migrations 00002–00007)  
-2. Messaging provider tokens (`WHATSAPP_TOKEN`, `SMTP_URL`/`RESEND_API_KEY`, `TWILIO_AUTH_TOKEN`, `META_MESSAGING_TOKEN`)  
-3. Standard GitHub remote for PRs  
-4. Vercel deploy token  
+1. Supabase project (migrations 00002–00008) + optional pgvector  
+2. `LLM_API_KEY` / `OPENAI_API_KEY` (and optional `LLM_BASE_URL`, `LLM_MODEL`)  
+3. Messaging provider tokens (M6)  
+4. Standard GitHub remote for PRs  
+5. Vercel deploy token  
 
 ---
 
@@ -66,4 +66,5 @@ Not implemented. Not claimed.
 1. Auth tenancy still in-memory; domain data in SQLite — restart clears sessions.  
 2. Web + worker must share `LEADORBIT_SQLITE_PATH` (defaults to repo-root `.data/leadorbit.sqlite`).  
 3. Calling/voice is scaffolding only.  
-4. Workflow webhook action records intent only (no live outbound HTTP claimed).
+4. PDF binary OCR not claimed — upload text extracts for indexing.  
+5. LLM with keys present but unreachable is reported as `unverified`, not ready.

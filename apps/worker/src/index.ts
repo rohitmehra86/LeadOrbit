@@ -3,13 +3,15 @@ import {
   getLocalTenancyStore,
   CrmStore,
   InboxStore,
+  KnowledgeStore,
   SqliteJobQueue,
   WorkflowStore,
 } from "@leadorbit/db";
 
 /**
  * Durable worker process. Claims jobs from SQLite-backed queue and executes
- * workflow ticks + message sends. Must not run inside Vercel request handlers.
+ * workflow ticks, message sends, and knowledge reindex. Must not run inside
+ * Vercel request handlers.
  */
 const db = getCrmDatabase();
 const tenancy = getLocalTenancyStore();
@@ -17,6 +19,7 @@ const queue = new SqliteJobQueue(db);
 const crm = new CrmStore(tenancy, db);
 const workflows = new WorkflowStore(tenancy, db, queue, crm);
 const inbox = new InboxStore(tenancy, db, queue);
+const knowledge = new KnowledgeStore(tenancy, db, queue);
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
 
@@ -38,6 +41,21 @@ async function drain(): Promise<void> {
         };
         await workflows.processTick(p.orgId, p.enrollmentId);
         void p.stepId;
+      } else if (job.name === "knowledge.reindex") {
+        const p = job.payload as { orgId: string; documentId: string };
+        knowledge.indexDocument(p.orgId, p.documentId);
+      } else if (job.name === "embedding.upsert") {
+        const p = job.payload as {
+          orgId: string;
+          entityType: string;
+          entityId: string;
+        };
+        if (p.entityType === "knowledge_document") {
+          knowledge.indexDocument(p.orgId, p.entityId);
+        }
+      } else if (job.name === "ai.run_turn") {
+        // Turns execute synchronously in the BFF for low latency; worker acks only.
+        console.log(`[worker] ai.run_turn ack`, job.payload);
       } else if (job.name === "lead.score") {
         console.log(`[worker] lead.score stub`, job.payload);
       } else {

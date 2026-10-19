@@ -118,6 +118,8 @@ export type JobName =
   | "workflow.tick"
   | "message.send"
   | "embedding.upsert"
+  | "knowledge.reindex"
+  | "ai.run_turn"
   | "payment.reconcile"
   | "ads.sync";
 
@@ -137,6 +139,14 @@ export type JobPayloadMap = {
     orgId: string;
     entityType: string;
     entityId: string;
+  };
+  "knowledge.reindex": {
+    orgId: string;
+    documentId: string;
+  };
+  "ai.run_turn": {
+    orgId: string;
+    turnId: string;
   };
   "payment.reconcile": { orgId: string; paymentIntentId: string };
   "ads.sync": { orgId: string; connectionId: string };
