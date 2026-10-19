@@ -1,6 +1,8 @@
 import type { CreateOrganizationRequest, OrganizationDto } from "@leadorbit/api-contracts";
 import { fromAuthError, jsonOk, requireUser } from "@/lib/api/http";
 import { getTenancyStore } from "@/lib/tenancy/service";
+import { getCrmStore } from "@/lib/tenancy/crm";
+
 
 function toDto(org: {
   id: string;
@@ -49,7 +51,9 @@ export async function POST(request: Request) {
       locale: body.locale,
       currency: body.currency,
     });
+    getCrmStore().registerOrg(org.id, org.name);
     return jsonOk({ item: toDto(org) }, { status: 201 });
+
   } catch (err) {
     return fromAuthError(err);
   }

@@ -1,5 +1,7 @@
 export * from "./types";
 export * from "./permissions";
+export * from "./crm";
+
 
 import type { MembershipRole } from "./types";
 import { canManageMembers as canManageMembersImpl } from "./permissions";

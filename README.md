@@ -59,7 +59,10 @@ Set Supabase URL/anon key (and apply `supabase/migrations`) for production Auth 
 - `GET|POST /api/v1/orgs`, `GET|PATCH /api/v1/orgs/:id`  
 - Members, invites, flags, billing stubs, audit, `GET /api/v1/platform/orgs`  
 
-UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, `/platform`
+UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, `/app/orgs/:id/crm`, `/platform`
+
+CRM (Milestone 3) persists to local SQLite (`.data/`). See [`docs/MILESTONE_3_CRM.md`](./docs/MILESTONE_3_CRM.md).
+
 
 ## License
 

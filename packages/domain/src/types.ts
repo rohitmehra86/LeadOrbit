@@ -112,19 +112,8 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-export interface Lead {
-  id: string;
-  orgId: string;
-  email: string | null;
-  phone: string | null;
-  fullName: string;
-  source: string;
-  lifecycleStage: LifecycleStage;
-  score: number;
-  ownerUserId: string | null;
-}
-
 export type JobName =
+
   | "lead.score"
   | "workflow.run_step"
   | "message.send"

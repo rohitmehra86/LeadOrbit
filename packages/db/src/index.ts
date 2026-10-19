@@ -6,6 +6,9 @@ export {
 } from "./tenancy-store";
 
 export { isSupabaseConfigured, getAuthMode } from "./config";
+export { CrmStore } from "./crm-store";
+export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
+
 
 
 import type { Lead, Organization } from "@leadorbit/domain";

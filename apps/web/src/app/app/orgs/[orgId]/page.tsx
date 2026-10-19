@@ -2,9 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { getTenancyStore } from "@/lib/tenancy/service";
 import { AuthError } from "@leadorbit/db";
+import Link from "next/link";
 import { InviteForm } from "./invite-form";
 import { SettingsForm } from "./settings-form";
-import { Badge } from "@leadorbit/ui";
+import { Badge, Button } from "@leadorbit/ui";
+
 
 type Props = { params: Promise<{ orgId: string }> };
 
@@ -45,16 +47,22 @@ export default async function OrgDetailPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-10">
-      <div>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{org.name}</h1>
-          <Badge>{org.orgType}</Badge>
-          {membership ? <Badge>{membership.role}</Badge> : null}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">{org.name}</h1>
+            <Badge>{org.orgType}</Badge>
+            {membership ? <Badge>{membership.role}</Badge> : null}
+          </div>
+          <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
+            {org.slug} · {org.timezone} · {org.locale} · {org.currency}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
-          {org.slug} · {org.timezone} · {org.locale} · {org.currency}
-        </p>
+        <Link href={`/app/orgs/${orgId}/crm`}>
+          <Button type="button">Open CRM</Button>
+        </Link>
       </div>
+
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div>
