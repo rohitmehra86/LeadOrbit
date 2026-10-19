@@ -7,16 +7,18 @@ import {
   featureAllowed,
   hasPermission,
   quotaExceeded,
-  verifyRazorpayWebhook,
-  verifyStripeWebhook,
   type BillingPlan,
   type BillingProvider,
   type Invoice,
   type InvoiceStatus,
   type OrgSubscription,
   type PlanInterval,
-  type SubscriptionStatus,
+  type SubscriptionStatus
 } from "@leadorbit/domain";
+import {
+  verifyRazorpayWebhook,
+  verifyStripeWebhook
+} from "@leadorbit/domain/server";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
 

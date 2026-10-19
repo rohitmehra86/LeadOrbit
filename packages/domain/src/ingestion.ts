@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import type { UtmParams } from "./campaigns";
 
 export type IngestionChannel =
@@ -98,49 +97,6 @@ export interface ChannelAdapter {
   lastError: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-const SIG_PREFIX = "sha256=";
-
-/** HMAC-SHA256 over `${timestamp}.${rawBody}` — Stripe-style signed webhooks. */
-export function signWebhookPayload(
-  secret: string,
-  timestamp: string,
-  rawBody: string,
-): string {
-  const digest = createHmac("sha256", secret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest("hex");
-  return `${SIG_PREFIX}${digest}`;
-}
-
-export function verifyWebhookSignature(input: {
-  secret: string;
-  timestamp: string;
-  rawBody: string;
-  signature: string;
-  nowMs?: number;
-  maxSkewSec?: number;
-}): { ok: true } | { ok: false; reason: string } {
-  const maxSkew = input.maxSkewSec ?? 300;
-  const now = input.nowMs ?? Date.now();
-  const ts = Number(input.timestamp);
-  if (!Number.isFinite(ts)) {
-    return { ok: false, reason: "Invalid timestamp" };
-  }
-  // Support both unix seconds and ms
-  const tsMs = ts > 1e12 ? ts : ts * 1000;
-  if (Math.abs(now - tsMs) > maxSkew * 1000) {
-    return { ok: false, reason: "Timestamp outside allowed skew" };
-  }
-  const expected = signWebhookPayload(input.secret, input.timestamp, input.rawBody);
-  const provided = input.signature.trim();
-  const a = Buffer.from(expected);
-  const b = Buffer.from(provided);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { ok: false, reason: "Signature mismatch" };
-  }
-  return { ok: true };
 }
 
 export function normalizeIdempotencyKey(

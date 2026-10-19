@@ -15,6 +15,11 @@
       "types": "./src/security.ts",
       "import": "./src/security.ts",
       "default": "./src/security.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "import": "./src/server.ts",
+      "default": "./src/server.ts"
     }
   },
 

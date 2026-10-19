@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { signRazorpayWebhook, signStripeWebhook } from "@leadorbit/domain";
+import {
+  signRazorpayWebhook,
+  signStripeWebhook
+} from "@leadorbit/domain/server";
 import { BillingStore } from "./billing-store";
 import { LocalTenancyStore } from "./tenancy-store";
 import { resetCrmDatabaseForTests } from "./sqlite";

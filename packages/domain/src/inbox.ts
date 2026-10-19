@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 /** Milestone 6 — unified communications / inbox */
 
 export type InboxChannel =
@@ -168,44 +166,4 @@ export function attemptProviderSend(input: {
     providerMessageId: null,
     error: `${input.channel} adapter authorized stub only — live send not implemented (to=${input.to})`,
   };
-}
-
-export function signMessagingWebhook(
-  secret: string,
-  timestamp: string,
-  rawBody: string,
-): string {
-  const digest = createHmac("sha256", secret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest("hex");
-  return `sha256=${digest}`;
-}
-
-export function verifyMessagingWebhook(input: {
-  secret: string;
-  timestamp: string;
-  rawBody: string;
-  signature: string;
-  nowMs?: number;
-  maxSkewSec?: number;
-}): { ok: true } | { ok: false; reason: string } {
-  const maxSkew = input.maxSkewSec ?? 300;
-  const now = input.nowMs ?? Date.now();
-  const ts = Number(input.timestamp);
-  if (!Number.isFinite(ts)) return { ok: false, reason: "Invalid timestamp" };
-  const tsMs = ts > 1e12 ? ts : ts * 1000;
-  if (Math.abs(now - tsMs) > maxSkew * 1000) {
-    return { ok: false, reason: "Timestamp outside allowed skew" };
-  }
-  const expected = signMessagingWebhook(
-    input.secret,
-    input.timestamp,
-    input.rawBody,
-  );
-  const a = Buffer.from(expected);
-  const b = Buffer.from(input.signature.trim());
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { ok: false, reason: "Signature mismatch" };
-  }
-  return { ok: true };
 }

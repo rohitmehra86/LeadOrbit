@@ -7,10 +7,9 @@ import {
   matchCampaignByUtm,
   normalizeIdempotencyKey,
   resolveAttribution,
-  signWebhookPayload,
-  verifyWebhookSignature,
   type AttributionTouchpoint,
 } from "./ingestion";
+import { signWebhookPayload, verifyWebhookSignature } from "./server";
 
 test("webhook signature validates and rejects tampering", () => {
   const secret = "whsec_test";

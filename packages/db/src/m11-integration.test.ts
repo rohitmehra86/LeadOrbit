@@ -8,14 +8,16 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  validateStructuredOutput,
+  hasPermission,
+  sanitizePageDocument
+} from "@leadorbit/domain";
+import {
   signRazorpayWebhook,
   signStripeWebhook,
   signWebhookPayload,
-  verifyWebhookSignature,
-  validateStructuredOutput,
-  hasPermission,
-  sanitizePageDocument,
-} from "@leadorbit/domain";
+  verifyWebhookSignature
+} from "@leadorbit/domain/server";
 import {
   AuthError,
   LocalTenancyStore,

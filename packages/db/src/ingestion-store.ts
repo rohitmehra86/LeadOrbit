@@ -8,7 +8,6 @@ import {
   matchCampaignByUtm,
   normalizeIdempotencyKey,
   resolveAttribution,
-  verifyWebhookSignature,
   type AttributionModel,
   type AttributionResult,
   type AttributionTouchpoint,
@@ -19,8 +18,11 @@ import {
   type IngestionStatus,
   type UtmParams,
   type WebhookDelivery,
-  type WebhookEndpoint,
+  type WebhookEndpoint
 } from "@leadorbit/domain";
+import {
+  verifyWebhookSignature
+} from "@leadorbit/domain/server";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
 import type { CrmStore } from "./crm-store";

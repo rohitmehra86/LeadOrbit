@@ -5,11 +5,13 @@ import {
   authorizeBillingProvider,
   featureAllowed,
   quotaExceeded,
+} from "./billing";
+import {
   signRazorpayWebhook,
   signStripeWebhook,
   verifyRazorpayWebhook,
   verifyStripeWebhook,
-} from "./billing";
+} from "./server";
 
 test("stripe without credentials is pending", () => {
   const prev = process.env.STRIPE_SECRET_KEY;

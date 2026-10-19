@@ -4,15 +4,17 @@ import {
   attemptProviderSend,
   authorizeMessagingChannel,
   hasPermission,
-  verifyMessagingWebhook,
   type ChannelConnection,
   type Conversation,
   type ConversationStatus,
   type InboxChannel,
   type InboxMessage,
   type MessageTemplate,
-  type OptOutRecord,
+  type OptOutRecord
 } from "@leadorbit/domain";
+import {
+  verifyMessagingWebhook
+} from "@leadorbit/domain/server";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
 import { SqliteJobQueue } from "./job-queue";

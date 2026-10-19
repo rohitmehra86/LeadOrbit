@@ -3,9 +3,8 @@ import { test } from "node:test";
 import {
   attemptProviderSend,
   authorizeMessagingChannel,
-  signMessagingWebhook,
-  verifyMessagingWebhook,
 } from "./inbox";
+import { signMessagingWebhook, verifyMessagingWebhook } from "./server";
 
 test("messaging webhook signature validates", () => {
   const secret = "msgsec";

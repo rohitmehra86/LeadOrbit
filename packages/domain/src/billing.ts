@@ -4,8 +4,6 @@
  * Stripe/Razorpay: pending_configuration without credentials.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 export type BillingProvider = "stripe" | "razorpay" | "manual";
 
 export type PlanInterval = "monthly" | "annual";
@@ -248,64 +246,6 @@ export function attemptCheckoutSession(input: {
     detail:
       "Checkout session scaffolded — subscription activates only via verified webhook, not client success",
   };
-}
-
-export function signStripeWebhook(
-  rawBody: string,
-  secret: string,
-  timestamp = Math.floor(Date.now() / 1000),
-): string {
-  const signed = `${timestamp}.${rawBody}`;
-  const mac = createHmac("sha256", secret).update(signed).digest("hex");
-  return `t=${timestamp},v1=${mac}`;
-}
-
-export function verifyStripeWebhook(input: {
-  rawBody: string;
-  signatureHeader: string;
-  secret: string;
-  toleranceSec?: number;
-}): { ok: boolean; detail: string } {
-  const parts = Object.fromEntries(
-    input.signatureHeader.split(",").map((p) => {
-      const [k, v] = p.split("=");
-      return [k, v];
-    }),
-  );
-  const t = Number(parts.t);
-  const v1 = parts.v1;
-  if (!t || !v1) return { ok: false, detail: "Malformed Stripe signature" };
-  const skew = Math.abs(Math.floor(Date.now() / 1000) - t);
-  if (skew > (input.toleranceSec ?? 300)) {
-    return { ok: false, detail: "Timestamp outside allowed skew" };
-  }
-  const expected = createHmac("sha256", input.secret)
-    .update(`${t}.${input.rawBody}`)
-    .digest("hex");
-  const a = Buffer.from(v1);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { ok: false, detail: "Invalid Stripe signature" };
-  }
-  return { ok: true, detail: "ok" };
-}
-
-export function signRazorpayWebhook(rawBody: string, secret: string): string {
-  return createHmac("sha256", secret).update(rawBody).digest("hex");
-}
-
-export function verifyRazorpayWebhook(input: {
-  rawBody: string;
-  signatureHeader: string;
-  secret: string;
-}): { ok: boolean; detail: string } {
-  const expected = signRazorpayWebhook(input.rawBody, input.secret);
-  const a = Buffer.from(input.signatureHeader);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { ok: false, detail: "Invalid Razorpay signature" };
-  }
-  return { ok: true, detail: "ok" };
 }
 
 export function featureAllowed(

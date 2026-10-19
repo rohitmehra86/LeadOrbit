@@ -3,7 +3,9 @@ import { test } from "node:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { signMessagingWebhook } from "@leadorbit/domain";
+import {
+  signMessagingWebhook
+} from "@leadorbit/domain/server";
 import { AuthError, LocalTenancyStore } from "./tenancy-store";
 import { openCrmDatabase } from "./sqlite";
 import { SqliteJobQueue } from "./job-queue";
