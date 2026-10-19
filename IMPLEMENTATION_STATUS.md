@@ -45,7 +45,8 @@
 |---------|-------|
 | Supabase MCP | **Authenticated** — org `paxaris`; projects visible; migrate blocked until Rohit confirms staging ref |
 | Supabase CLI | **Blocked** — no `SUPABASE_ACCESS_TOKEN` |
-| Vercel CLI | Installed, **logged out** |
+| Vercel token | **Received** — stored agent-local; CLI **blocked** by `api.vercel.com` / `vercel.com` egress |
+| Vercel project `leadorbit` | Created in UI (paxaris); agent cannot verify deploy via API until egress |
 | GitHub PAT | **Received** — stored agent-local only; git HTTPS accepted |
 | GitHub `gh` / API | **Blocked** — `api.github.com` still egress-blocked (create via UI used instead) |
 | GitHub repo | **Verified** — https://github.com/rohitmehra86/LeadOrbit — default branch is now **`main`** (renamed from M12 branch) @ `75b2e61` |

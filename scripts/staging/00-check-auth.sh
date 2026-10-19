@@ -63,12 +63,26 @@ else
   blk "git origin" "no origin remote"
 fi
 
-# Vercel
+# Vercel — prefer env, else agent-local token file (never printed)
+if [[ -z "${VERCEL_TOKEN:-}" && -f "${HOME}/.config/leadorbit-staging/vercel_token" ]]; then
+  VERCEL_TOKEN="$(cat "${HOME}/.config/leadorbit-staging/vercel_token")"
+  export VERCEL_TOKEN
+fi
+
 if command -v vercel >/dev/null 2>&1; then
-  if vercel whoami >/dev/null 2>&1; then
-    ok "Vercel CLI" "logged in as $(vercel whoami 2>/dev/null | tail -1)"
+  if [[ -n "${VERCEL_TOKEN:-}" ]]; then
+    ok "Vercel token" "present in env/file (value not shown)"
   else
-    blk "Vercel CLI" "installed but logged out — need vercel login or VERCEL_TOKEN"
+    blk "Vercel token" "missing — need VERCEL_TOKEN"
+  fi
+  if curl -sS -o /dev/null --max-time 8 -I https://api.vercel.com/ 2>/dev/null; then
+    if vercel whoami >/dev/null 2>&1; then
+      ok "Vercel CLI" "logged in as $(vercel whoami 2>/dev/null | tail -1)"
+    else
+      blk "Vercel CLI" "token present but whoami failed"
+    fi
+  else
+    blk "Vercel API (api.vercel.com)" "egress/TLS blocked — token stored; cannot wire until allowlisted"
   fi
 else
   blk "Vercel CLI" "not installed"
