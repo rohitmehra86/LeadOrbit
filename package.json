@@ -19,6 +19,9 @@
     "test:e2e": "playwright test",
     "test:m11": "pnpm test && pnpm test:integration && pnpm test:security && pnpm test:perf",
     "audit:deps": "pnpm audit --audit-level=high",
+    "migrate:status": "bash scripts/migrate.sh status",
+    "migrate:apply": "bash scripts/migrate.sh apply",
+    "deploy:check": "bash scripts/deploy-check.sh",
     "format": "prettier --write ."
   },
   "devDependencies": {

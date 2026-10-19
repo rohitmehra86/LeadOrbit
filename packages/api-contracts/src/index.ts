@@ -6,6 +6,9 @@ export type HealthResponse = {
   authMode?: "local" | "supabase";
   supabaseConfigured?: boolean;
   sessionSecretConfigured?: boolean;
+  env?: string;
+  queue?: Record<string, number>;
+  monitors?: Record<string, unknown>;
 };
 
 export type ProblemDetails = {

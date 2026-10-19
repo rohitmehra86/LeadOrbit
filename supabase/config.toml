@@ -1,8 +1,6 @@
-# Supabase local config placeholder.
-# Requires Supabase CLI + Docker (not available in the Milestone 1 agent VM).
-# Link a remote project after Rohit provides credentials:
-#   npx supabase login
-#   npx supabase link --project-ref <ref>
+# Supabase config (Milestone 12). Separate staging vs production projects.
+#   npx supabase login && npx supabase link --project-ref <ref>
+#   pnpm migrate:apply
 
 project_id = "leadorbit"
 

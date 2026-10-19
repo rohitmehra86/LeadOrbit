@@ -1,8 +1,8 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 11 (Hardening — tests, security, performance)  
-**Honesty policy:** Status reflects verified reality only. No fabricated pass/fail.
+**Current milestone focus:** Milestone 12 (Launch readiness / ops)  
+**Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated live deploys. **Not commercially production-ready.**
 
 ---
 
@@ -10,90 +10,71 @@
 
 | Status | Meaning |
 |--------|---------|
-| **Pass** | Exercised here with evidence |
-| **Fail** | Ran and failed |
-| **Blocked** | Needs credentials/tooling/network |
-| **Not implemented** | Not started |
-| **Scaffolded** | Code path exists; not production-complete |
+| **Verified** | Exercised here with evidence |
+| **Blocked** | Needs credentials / vendor / network |
+| **Scaffolded** | Config/docs/code ready; not live-verified |
+| **Not deployed** | No successful staging/prod deploy performed |
 
 ---
 
-## Milestone 1–10
-
-| Area | Status |
-|------|--------|
-| Foundation through analytics/billing/white-label | Pass (prior milestones) |
-| Live Supabase / payment / LLM providers | **Blocked** (no credentials) |
-
----
-
-## Milestone 11 — Testing, security, performance
-
-### Automated coverage (local evidence)
-
-| Check | Result | Evidence |
-|-------|--------|----------|
-| Auth + roles (viewer billing denied) | **Pass** | `packages/db/src/m11-integration.test.ts` |
-| Tenant isolation (leads/campaigns) | **Pass** | same |
-| Lead create + duplicate idempotency | **Pass** | same |
-| Campaign attribution + form publish + page sanitize | **Pass** | same |
-| Workflow execution + job dead-letter | **Pass** | same |
-| CRM stage transitions | **Pass** | same |
-| Appointment conflict prevention | **Pass** | same |
-| AI structured output validation | **Pass** | domain `security.test.ts` + integration |
-| Webhook signature reject + billing idempotency + entitlements | **Pass** | integration + prior billing-store tests |
-| Package unit/domain tests (`@leadorbit/domain`) | **Pass** | 68/68 |
-| DB store suite includes M11 integration | **Pass** | 9/9 integration |
-| Security: RLS migration review + header/CSRF/rate math | **Pass** | `pnpm test:security` 6/6 |
-| API contract (offline + live health when server up) | **Pass** | live health skipped offline; with server `0.11.0-v1` |
-| Perf smoke health + login | **Pass** | health ~275ms, login ~94ms (budget 5s) |
-| Playwright e2e signup→analytics/billing | **Pass** | 3/3 with `PLAYWRIGHT_CHANNEL=chrome` |
-| Playwright a11y (login, axe critical/serious) | **Pass** | 0 blocking violations |
-| `pnpm audit --audit-level=high` | **Fail** | 41 findings (19 high / 3 critical) — transitive `next`/`eslint-config-next` (e.g. sharp, braces). CI audit job runs with continue-on-error until upstream patches. |
-| Live Postgres RLS execution | **Blocked** | No Supabase project |
-| Playwright browser download from CDN | **Blocked** here | Used system Chrome channel instead |
-| Production readiness / M12 | **Not claimed** | |
-
-### Security hardening shipped
+## Milestone 12 — Ops & deploy readiness
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Rate limiting (middleware sliding window) | Pass / scaffolded | In-memory; not multi-instance |
-| Security headers + CSP Report-Only | Pass | Verified on `/api/v1/health` response |
-| CSRF origin review for mutating APIs | Pass | Webhooks/public ingest exempt; local curl allow-missing |
-| Session secret production guard | Pass | Throws if default secret in `NODE_ENV=production` |
-| Signup input validation | Pass | email/password/name sanitize |
-| Secret handling docs | Pass | `docs/SECURITY.md` |
-| Privacy export / delete-request | Scaffolded | Not automated purge |
-| Dependency audit in CI | Pass (workflow) | `pnpm audit --audit-level=high` |
-| Observability (OTEL) / backup drill | **Not implemented** | Listed in plan; out of verified slice |
-| WAF | **Not implemented** | Infra-level |
+| Env separation (dev/staging/prod templates) | Scaffolded | `.env.*.example` |
+| Migration procedure | Scaffolded | `scripts/migrate.sh` — apply **Blocked** without DB |
+| Deploy + rollback docs | Scaffolded | `docs/DEPLOYMENT.md` |
+| Structured logging | Verified (local) | `@leadorbit/observability` |
+| Error monitoring / OTEL / alerts | Scaffolded | pending without DSN/endpoint/webhook |
+| Health checks (web deep + worker) | Verified (local) | `0.12.0`, `?deep=1`, worker `:43128/health` |
+| Queue monitoring API | Scaffolded | `/api/v1/ops/queue` |
+| Backup/DR docs | Scaffolded | No live restore drill |
+| Runbooks + cost/scaling notes | Scaffolded | `docs/OPERATIONS.md` |
+| Vercel config | Scaffolded / **Not deployed** | No `VERCEL_TOKEN` |
+| Supabase migrate/deploy | Scaffolded / **Not deployed** | No project credentials |
+| Worker Fly/Railway | Scaffolded / **Not deployed** | No platform auth |
+| Incident response | Scaffolded | `docs/INCIDENT_RESPONSE.md` |
+| DPDP/privacy ops notes | Scaffolded | **Not a compliance certification** |
+| Go/no-go checklist | Scaffolded | Staging/prod gates **No-Go** |
+| Commercial production readiness | **Not claimed** | |
 
-### CI quality gates
+### Ask Rohit (once) — unblock staging
 
-Workflow `.github/workflows/ci.yml` now runs: lint, typecheck, package tests, integration, security, audit high+, web build, Playwright e2e job.  
-Remote CI outcome on this branch is whatever GitHub Actions reports after push — not claimed green without that evidence.
+Provide via secure channel (**do not paste secrets into chat**):
 
----
-
-## Milestone 12
-
-Not implemented. Not claimed.
-
----
-
-## Blockers for Rohit
-
-1. Supabase project for live RLS verification  
-2. Stripe/Razorpay/LLM credentials for live provider paths  
-3. Playwright CDN or pinned browser cache in CI if channel chrome unavailable  
-4. Standard GitHub remote for durable PR workflow  
+1. **Vercel** — staging project access or deploy token  
+2. **Supabase** — staging project ref / org invite  
+3. **Worker host** — Fly or Railway access for `leadorbit-worker`  
+4. Optional: Sentry DSN, OTEL endpoint, alert webhook  
 
 ---
 
-## Known issues
+## Platform summary M1–M12
 
-1. Auth tenancy in-memory; domain data in SQLite.  
-2. Rate limit / CSRF edge map is per-isolate.  
-3. CSP is report-only only.  
-4. Privacy delete does not purge data automatically.
+| M | Theme | Status |
+|---|-------|--------|
+| 1 | Foundation, monorepo, CI, docs | Verified |
+| 2 | Auth & multi-tenancy | Verified local; Supabase live **Blocked** |
+| 3 | CRM core | Verified |
+| 4 | Marketing / forms / pages | Verified |
+| 5 | Ingestion & attribution | Verified |
+| 6 | Workflows & inbox | Verified |
+| 7 | AI & knowledge | Verified (LLM live **Blocked**) |
+| 8 | Calendar & voice | Verified (OAuth/telephony **Blocked**) |
+| 9 | Real estate vertical (optional) | Verified |
+| 10 | Analytics, billing, white-label | Verified (live payments **Blocked**) |
+| 11 | E2E, security, perf smoke | Verified locally; audit high **Fail** (transitive); live RLS **Blocked** |
+| 12 | Staging/prod ops configs | Scaffolded; **Not deployed** |
+
+### Cross-cutting blockers
+
+1. No Vercel / Supabase / worker platform credentials in agent env  
+2. Provider credentials unset → features stay `pending_configuration`  
+3. Dependency audit high/critical transitive advisories (Next/eslint)  
+4. `agent_temp` remote limits standard GitHub PR workflow  
+
+### Local runtime
+
+- Web: http://127.0.0.1:43127  
+- Worker health: http://127.0.0.1:43128/health  
+- SQLite: `.data/leadorbit.sqlite`  

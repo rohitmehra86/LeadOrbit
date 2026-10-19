@@ -41,6 +41,9 @@ importers:
       '@leadorbit/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@leadorbit/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@leadorbit/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -105,6 +108,9 @@ importers:
       '@leadorbit/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@leadorbit/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -147,6 +153,18 @@ importers:
         version: 5.9.3
 
   packages/domain:
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.15
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/observability:
     devDependencies:
       '@types/node':
         specifier: ^20

@@ -15,7 +15,8 @@
   "dependencies": {
     "@leadorbit/api-contracts": "workspace:*",
     "@leadorbit/domain": "workspace:*",
-    "@leadorbit/db": "workspace:*"
+    "@leadorbit/db": "workspace:*",
+    "@leadorbit/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

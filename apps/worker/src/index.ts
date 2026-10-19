@@ -9,12 +9,16 @@ import {
   VoiceStore,
   WorkflowStore,
 } from "@leadorbit/db";
+import { createLogger } from "@leadorbit/observability";
+import { startWorkerHealthServer } from "./health";
 
 /**
  * Durable worker process. Claims jobs from SQLite-backed queue and executes
  * workflow ticks, message sends, knowledge reindex, appointment reminders,
  * and voice post-processing. Must not run inside Vercel request handlers.
  */
+const log = createLogger("leadorbit-worker");
+startWorkerHealthServer();
 const db = getCrmDatabase();
 const tenancy = getLocalTenancyStore();
 const queue = new SqliteJobQueue(db);
@@ -88,8 +92,8 @@ async function drain(): Promise<void> {
   }
 }
 
-console.log(
-  "[worker] LeadOrbit durable worker started (SQLite job queue — set LEADORBIT_SQLITE_PATH to share with web)",
+log.info(
+  "LeadOrbit durable worker started (SQLite job queue — set LEADORBIT_SQLITE_PATH to share with web)",
 );
 
 const timer = setInterval(() => {

@@ -47,10 +47,10 @@ test.describe("LeadOrbit M11 e2e", () => {
     expect(blocking, blocking.map((v) => v.id).join(", ")).toEqual([]);
   });
 
-  test("health API version is 0.11.x", async ({ request }) => {
+  test("health API version is 0.12.x", async ({ request }) => {
     const res = await request.get("/api/v1/health");
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body.version).toMatch(/^0\.11\.0-/);
+    expect(body.version).toMatch(/^0\.12\.0-/);
   });
 });

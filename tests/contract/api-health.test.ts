@@ -34,7 +34,7 @@ test("live health contract when server available", async (t) => {
   };
   assert.equal(body.status, "ok");
   assert.equal(body.service, "leadorbit-web");
-  assert.match(body.version, /^0\.11\.0-/);
+  assert.match(body.version, /^0\.12\.0-/);
   assert.ok(body.authMode === "local" || body.authMode === "supabase");
 });
 
