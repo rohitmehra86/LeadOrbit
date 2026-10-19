@@ -34,11 +34,38 @@ tests/            e2e / contract / unit (growing)
 
 ## Local development
 
-Prerequisites: Node 22+, pnpm 10+.
+Prerequisites: **Node 22+** and **pnpm 10+**.
 
-**One command (web + worker):**
+### Install Node + pnpm (macOS)
+
+If `node -v` fails or is below 22, install Node first (pick one):
 
 ```bash
+# Option A — official installer: https://nodejs.org (LTS 22+)
+# Option B — Homebrew:
+brew install node@22
+```
+
+Then enable pnpm (Corepack ships with Node 22):
+
+```bash
+corepack enable
+corepack prepare pnpm@10.33.4 --activate
+pnpm -v   # should print 10.x
+```
+
+If Corepack is unavailable:
+
+```bash
+npm install -g pnpm@10.33.4
+```
+
+### Run LeadOrbit
+
+From the repo root:
+
+```bash
+pnpm install
 pnpm local:demo
 # → http://127.0.0.1:43127  (signup with any email/password)
 ```
