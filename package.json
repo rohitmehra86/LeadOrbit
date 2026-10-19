@@ -1,0 +1,28 @@
+{
+  "name": "leadorbit",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @leadorbit/web dev",
+    "dev:worker": "pnpm --filter @leadorbit/worker dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test && node --import tsx --test tests/contract/**/*.test.ts",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "unrs-resolver"]
+  }
+}

@@ -1,0 +1,143 @@
+openapi: 3.1.0
+info:
+  title: LeadOrbit API
+  version: 0.1.0
+  description: |
+    Contract-first public/BFF API for LeadOrbit (ai-lead-revenue-cloud).
+    Implemented today by Next.js Route Handlers; designed for a future Spring Boot extract.
+    See docs/MIGRATION_TO_JAVA.md.
+servers:
+  - url: /api/v1
+    description: Relative to the web application origin
+tags:
+  - name: Health
+  - name: Tenancy
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness and build metadata
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /orgs:
+    get:
+      tags: [Tenancy]
+      operationId: listOrgs
+      summary: List organizations for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Organizations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Tenancy]
+      operationId: createOrg
+      summary: Create an organization (stub until Milestone 2)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "501":
+          description: Not implemented until auth/tenancy milestone
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          example: leadorbit-web
+        version:
+          type: string
+          example: 0.1.0
+        timestamp:
+          type: string
+          format: date-time
+    Organization:
+      type: object
+      required: [id, name, slug, orgType]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        orgType:
+          type: string
+          enum: [agency, workspace]
+        parentOrgId:
+          type: string
+          format: uuid
+          nullable: true
+    CreateOrganizationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        orgType:
+          type: string
+          enum: [agency, workspace]
+          default: workspace
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string

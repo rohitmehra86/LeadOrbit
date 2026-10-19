@@ -1,0 +1,19 @@
+# Supabase local config placeholder.
+# Requires Supabase CLI + Docker (not available in the Milestone 1 agent VM).
+# Link a remote project after Rohit provides credentials:
+#   npx supabase login
+#   npx supabase link --project-ref <ref>
+
+project_id = "leadorbit"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323

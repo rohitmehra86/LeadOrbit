@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --lo-bg: #0f1c17;
+  --lo-fg: #eef6f1;
+  --lo-fg-muted: #9bb3a8;
+  --lo-accent: #3dd6a5;
+  --lo-accent-fg: #042016;
+  --lo-surface: #15261f;
+  --lo-surface-elevated: #1c3229;
+  --lo-border: #2a4639;
+  --lo-glow: rgba(61, 214, 165, 0.18);
+  --background: var(--lo-bg);
+  --foreground: var(--lo-fg);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, var(--lo-glow), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(90, 160, 255, 0.12), transparent 50%),
+    var(--lo-bg);
+  color: var(--lo-fg);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+@keyframes lo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lo-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.lo-rise {
+  animation: lo-rise 700ms ease-out both;
+}
+
+.lo-rise-delay {
+  animation: lo-rise 900ms ease-out 120ms both;
+}
+
+.lo-pulse-soft {
+  animation: lo-pulse-soft 2.8s ease-in-out infinite;
+}
