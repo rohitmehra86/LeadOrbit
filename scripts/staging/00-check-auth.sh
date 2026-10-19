@@ -9,11 +9,51 @@ blk() { echo "BLOCK $1 — $2"; }
 echo "LeadOrbit staging auth probe ($(date -u +%Y-%m-%dT%H:%MZ))"
 echo
 
-# GitHub
+# GitHub — prefer env, else agent-local token file (never printed)
+if [[ -z "${GH_TOKEN:-}" && -f "${HOME}/.config/leadorbit-staging/gh_token" ]]; then
+  GH_TOKEN="$(cat "${HOME}/.config/leadorbit-staging/gh_token")"
+  export GH_TOKEN
+fi
+if [[ -z "${GITHUB_TOKEN:-}" && -n "${GH_TOKEN:-}" ]]; then
+  export GITHUB_TOKEN="$GH_TOKEN"
+fi
+
+# Distinguish egress block (api.github.com) vs bad token vs missing
+if [[ -z "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]]; then
+  blk "GitHub token" "missing — need PAT or LEADORBIT_GITHUB_REPO_URL"
+else
+  ok "GitHub token" "present in env/file (value not shown)"
+fi
+
+if curl -sS -o /dev/null --max-time 8 -I https://api.github.com/ 2>/dev/null; then
+  API_OK=1
+else
+  API_OK=0
+fi
+
+if [[ "$API_OK" -eq 0 ]]; then
+  blk "GitHub API (api.github.com)" "egress/SSL blocked — gh repo create unavailable; git://github.com may still work"
+else
+  ok "GitHub API (api.github.com)" "reachable"
+fi
+
 if gh auth status >/dev/null 2>&1; then
   ok "GitHub (gh)" "authenticated"
 else
-  blk "GitHub (gh)" "GH_TOKEN invalid or missing — need PAT or repo URL from Rohit"
+  if [[ "$API_OK" -eq 0 ]]; then
+    blk "GitHub (gh)" "CLI needs api.github.com — provide empty private repo URL to push via git instead"
+  else
+    blk "GitHub (gh)" "token rejected by API — need a valid PAT (repo scope)"
+  fi
+fi
+
+# git HTTPS to github.com (allowlisted) — token validity smoke without printing secrets
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  if GIT_TERMINAL_PROMPT=0 git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/octocat/Hello-World.git" HEAD >/dev/null 2>&1; then
+    ok "GitHub git HTTPS" "token accepted for git operations on github.com"
+  else
+    blk "GitHub git HTTPS" "token not accepted for git (or github.com unreachable)"
+  fi
 fi
 
 # Origin remote (Cursor forge) — always present in this agent

@@ -46,7 +46,9 @@
 | Supabase MCP | **Authenticated** — org `paxaris`; projects visible; migrate blocked until Rohit confirms staging ref |
 | Supabase CLI | **Blocked** — no `SUPABASE_ACCESS_TOKEN` |
 | Vercel CLI | Installed, **logged out** |
-| GitHub `gh` | **Blocked** — `GH_TOKEN` invalid |
+| GitHub PAT | **Received** — stored agent-local only; **git HTTPS to github.com accepts token** (ls-remote evidence) |
+| GitHub `gh` / API | **Blocked** — `api.github.com` egress/SSL fail (allowlist has `github.com` but not `api.github.com`); cannot `gh repo create` |
+| GitHub private repo | **Blocked** — need empty repo URL (`LEADORBIT_GITHUB_REPO_URL`) **or** egress for `api.github.com` |
 | Fly | **Blocked** — CLI not installed |
 | Railway | Installed, **unauthorized** |
 | Local web/worker | **Verified** — `:43127` / `:43128` |

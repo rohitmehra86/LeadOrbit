@@ -20,7 +20,7 @@ Prefer a secure channel (password manager / vault). **Do not paste live secrets 
 
 | Item | Env / input | Notes |
 |------|-------------|-------|
-| GitHub | `GH_TOKEN` / `GITHUB_TOKEN` **or** `LEADORBIT_GITHUB_REPO_URL` | Private repo create needs `repo` scope; or push to an empty repo URL |
+| GitHub | `GH_TOKEN` / `GITHUB_TOKEN` **or** `LEADORBIT_GITHUB_REPO_URL` | PAT accepted for **git** on `github.com`. `gh`/`repo create` needs `api.github.com` (currently egress-blocked). Prefer: create empty private repo in UI → give `https://github.com/<owner>/<repo>.git` |
 | Supabase staging ref | `LEADORBIT_STAGING_SUPABASE_PROJECT_REF` | **Must confirm** — MCP can see org projects but must not assume which is staging |
 | Supabase CLI token | `SUPABASE_ACCESS_TOKEN` | Needed for CLI link/`db push`; MCP can apply if approved |
 | DB URL (optional alt) | `DATABASE_URL` | Staging Postgres only |
