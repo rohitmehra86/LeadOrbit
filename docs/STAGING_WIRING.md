@@ -65,13 +65,49 @@ export LEADORBIT_WORKER_HOST=fly           # or railway
 - Web: [http://127.0.0.1:43127](http://127.0.0.1:43127) — health `/api/v1/health`  
 - Worker: [http://127.0.0.1:43128/health](http://127.0.0.1:43128/health)
 
-## When credentials arrive
+## GitHub default branch
 
-Agent runs immediately:
+Repo https://github.com/rohitmehra86/LeadOrbit uses **`main`** (M12 code). Agent tracks `github/main`.
+
+## Connect Vercel + Supabase (what Rohit does)
+
+### A) Network allowlist (must approve in Cursor environment)
+
+Without these, tokens cannot be used from this agent:
+
+1. `vercel.com`
+2. `api.vercel.com`
+3. `api.supabase.com`
+4. `*.supabase.co` (DB / migrations)
+
+### B) Send these in chat or secrets UI
+
+1. **Vercel** — create token: https://vercel.com/account/tokens → paste as `VERCEL_TOKEN`  
+   Optional: team slug → `LEADORBIT_VERCEL_SCOPE`
+2. **Supabase staging project** — reply with one:
+   - `kqmuxocbmtydkxdvmypy` (rohitmehra86's Project)
+   - `ipxflpzfcqwtenodbxwc` (linkbook)
+   - or “create new `leadorbit-staging`”
+3. Optional CLI token: https://supabase.com/dashboard/account/tokens → `SUPABASE_ACCESS_TOKEN`  
+   (MCP is already authenticated; CLI token helps `supabase link` / `db push`)
+
+### C) Staging env values (for Vercel)
+
+Copy `.env.staging.example` → fill (do not commit):
+
+- `SESSION_SECRET`
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+- `AUTH_MODE=supabase`
+- `NEXT_PUBLIC_APP_URL` (Vercel URL once known)
+
+Agent can pull publishable keys via Supabase MCP after you confirm the project.
+
+## When credentials arrive
 
 ```bash
 # After exporting tokens / writing .env.staging.local (not committed):
+export LEADORBIT_SKIP_GITHUB=1   # already on github.com/rohitmehra86/LeadOrbit main
 bash scripts/staging/wire-all.sh
 ```
 
-Then verify with evidence (status codes / URLs / `vercel ls` / `fly status` / MCP `list_migrations`) before editing `IMPLEMENTATION_STATUS.md` to Verified.
+Then verify with evidence (status codes / URLs / `vercel ls` / MCP `list_migrations`) before marking Verified.

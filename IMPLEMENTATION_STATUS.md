@@ -48,7 +48,7 @@
 | Vercel CLI | Installed, **logged out** |
 | GitHub PAT | **Received** — stored agent-local only; git HTTPS accepted |
 | GitHub `gh` / API | **Blocked** — `api.github.com` still egress-blocked (create via UI used instead) |
-| GitHub private repo | **Verified push** — https://github.com/rohitmehra86/LeadOrbit (`main` + `cursor/leadorbit-milestone-12-b6fc` @ `29232f9`) |
+| GitHub repo | **Verified** — https://github.com/rohitmehra86/LeadOrbit — default branch is now **`main`** (renamed from M12 branch) @ `75b2e61` |
 | Fly | **Blocked** — CLI not installed |
 | Railway | Installed, **unauthorized** |
 | Local web/worker | **Verified** — `:43127` / `:43128` |
