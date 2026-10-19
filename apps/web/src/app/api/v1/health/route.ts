@@ -8,7 +8,7 @@ export async function GET() {
   const body: HealthResponse = {
     status: "ok",
     service: "leadorbit-web",
-    version: `0.2.0-${API_VERSION}`,
+    version: `0.3.0-${API_VERSION}`,
     timestamp: new Date().toISOString(),
     authMode: status.authMode,
     supabaseConfigured: status.supabaseConfigured,
