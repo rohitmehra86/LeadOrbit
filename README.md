@@ -36,6 +36,15 @@ tests/            e2e / contract / unit (growing)
 
 Prerequisites: Node 22+, pnpm 10+.
 
+**One command (web + worker):**
+
+```bash
+pnpm local:demo
+# → http://127.0.0.1:43127  (signup with any email/password)
+```
+
+Or start services separately:
+
 ```bash
 pnpm install
 pnpm dev:web      # http://127.0.0.1:43127
