@@ -6,7 +6,8 @@ export PATH="${HOME}/.local/bin:${PATH}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-PROJECT="${LEADORBIT_VERCEL_PROJECT:-leadorbit-web}"
+# Default matches Rohit's Vercel UI name; override with LEADORBIT_VERCEL_PROJECT if needed.
+PROJECT="${LEADORBIT_VERCEL_PROJECT:-leadorbit}"
 ENV_FILE="${LEADORBIT_VERCEL_ENV_FILE:-.env.staging.local}"
 SCOPE="${LEADORBIT_VERCEL_SCOPE:-}"
 TARGET_ENV="${LEADORBIT_VERCEL_TARGET:-preview}" # preview|production|development
