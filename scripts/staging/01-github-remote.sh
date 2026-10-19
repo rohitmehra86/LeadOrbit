@@ -57,9 +57,19 @@ if [[ -n "$TARGET_URL" ]]; then
   else
     git remote add "$REMOTE_NAME" "$CLEAN_URL"
   fi
-  git push -u "$PUSH_URL" "refs/heads/${BRANCH}:refs/heads/${BRANCH}"
-  git branch --set-upstream-to="$REMOTE_NAME/$BRANCH" "$BRANCH" 2>/dev/null || true
-  echo "[github] pushed $BRANCH → $REMOTE_NAME"
+  # Push via authed URL but never store the token in remotes/upstream
+  git push "$PUSH_URL" "refs/heads/${BRANCH}:refs/heads/${BRANCH}"
+  git config "branch.${BRANCH}.remote" "$REMOTE_NAME"
+  git config "branch.${BRANCH}.merge" "refs/heads/${BRANCH}"
+  # Belt-and-suspenders: scrub accidental token embeds from .git/config
+  if grep -qE 'x-access-token:|ghp_|gho_|github_pat_' .git/config 2>/dev/null; then
+    sed -i -E \
+      -e 's#https://x-access-token:[^@]+@github.com#https://github.com#g' \
+      -e 's#ghp_[A-Za-z0-9]+##g' \
+      .git/config
+    git remote set-url "$REMOTE_NAME" "$CLEAN_URL"
+  fi
+  echo "[github] pushed $BRANCH → $REMOTE_NAME ($CLEAN_URL)"
   exit 0
 fi
 
