@@ -28,6 +28,9 @@ export type Permission =
   | "forms:write"
   | "pages:read"
   | "pages:write"
+  | "integrations:read"
+  | "integrations:write"
+  | "ingestion:read"
   | "platform:admin";
 
 
@@ -42,6 +45,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "campaigns:read",
     "forms:read",
     "pages:read",
+    "integrations:read",
+    "ingestion:read",
   ],
   agent: [
     "org:read",
@@ -56,6 +61,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "forms:read",
     "forms:write",
     "pages:read",
+    "integrations:read",
+    "ingestion:read",
   ],
   manager: [
     "org:read",
@@ -77,6 +84,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "forms:write",
     "pages:read",
     "pages:write",
+    "integrations:read",
+    "integrations:write",
+    "ingestion:read",
   ],
   admin: [
     "org:read",
@@ -104,6 +114,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "forms:write",
     "pages:read",
     "pages:write",
+    "integrations:read",
+    "integrations:write",
+    "ingestion:read",
   ],
   owner: [
     "org:read",
@@ -131,6 +144,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "forms:write",
     "pages:read",
     "pages:write",
+    "integrations:read",
+    "integrations:write",
+    "ingestion:read",
   ],
 };
 

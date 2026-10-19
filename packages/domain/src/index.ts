@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./permissions";
 export * from "./crm";
 export * from "./campaigns";
+export * from "./ingestion";
 
 
 import type { MembershipRole } from "./types";

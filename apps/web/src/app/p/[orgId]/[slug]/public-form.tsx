@@ -8,6 +8,7 @@ import { Button } from "@leadorbit/ui";
 type Props = {
   orgId: string;
   formId: string;
+  pageId?: string | null;
   campaignId: string | null;
   thankYou: string;
   fields: FormField[];
@@ -17,6 +18,7 @@ type Props = {
 export function PublicForm({
   orgId,
   formId,
+  pageId,
   campaignId,
   thankYou,
   fields,
@@ -46,6 +48,7 @@ export function PublicForm({
         payload: values,
         honeypot: "",
         campaignId,
+        pageId: pageId ?? null,
         utm: {
           utmSource: new URLSearchParams(window.location.search).get("utm_source") ?? undefined,
           utmMedium: new URLSearchParams(window.location.search).get("utm_medium") ?? undefined,

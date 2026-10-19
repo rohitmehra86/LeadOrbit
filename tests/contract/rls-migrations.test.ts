@@ -37,3 +37,16 @@ test("marketing migration enables RLS on campaigns/forms/pages", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("ingestion migration enables RLS on webhooks and attribution", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00006_ingestion_attribution.sql"),
+    "utf8",
+  );
+  assert.match(sql, /webhook_endpoints/);
+  assert.match(sql, /ingestion_events/);
+  assert.match(sql, /attribution_touchpoints/);
+  assert.match(sql, /lead_attribution/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});

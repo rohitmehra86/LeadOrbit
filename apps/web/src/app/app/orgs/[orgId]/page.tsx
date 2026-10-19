@@ -65,6 +65,9 @@ export default async function OrgDetailPage({ params }: Props) {
           <Link href={`/app/orgs/${orgId}/marketing`}>
             <Button type="button">Marketing</Button>
           </Link>
+          <Link href={`/app/orgs/${orgId}/integrations`}>
+            <Button type="button">Integrations</Button>
+          </Link>
         </div>
       </div>
 

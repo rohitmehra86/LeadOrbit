@@ -386,6 +386,93 @@ create table if not exists ad_integrations (
   updated_at text not null,
   unique(org_id, network)
 );
+
+create table if not exists webhook_endpoints (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  secret text not null,
+  enabled integer not null default 1,
+  channel text not null default 'webhook',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists webhook_endpoints_org_idx on webhook_endpoints(org_id);
+
+create table if not exists webhook_deliveries (
+  id text primary key,
+  org_id text not null,
+  endpoint_id text,
+  direction text not null,
+  target_url text,
+  status text not null,
+  attempt_count integer not null default 0,
+  next_retry_at text,
+  last_status_code integer,
+  last_error text,
+  payload text not null default '{}',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists webhook_deliveries_org_idx on webhook_deliveries(org_id, status);
+
+create table if not exists ingestion_events (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  status text not null,
+  idempotency_key text,
+  external_event_id text,
+  lead_id text,
+  campaign_id text,
+  form_id text,
+  page_id text,
+  fingerprint text,
+  duplicate_of_event_id text,
+  payload text not null default '{}',
+  error text,
+  created_at text not null,
+  unique(org_id, idempotency_key)
+);
+create index if not exists ingestion_events_org_idx on ingestion_events(org_id, created_at);
+create index if not exists ingestion_events_fp_idx on ingestion_events(org_id, fingerprint);
+
+create table if not exists attribution_touchpoints (
+  id text primary key,
+  org_id text not null,
+  lead_id text,
+  opportunity_id text,
+  campaign_id text,
+  channel text not null,
+  utm text not null default '{}',
+  occurred_at text not null,
+  meta text not null default '{}'
+);
+create index if not exists attribution_tp_lead_idx on attribution_touchpoints(org_id, lead_id);
+
+create table if not exists channel_adapters (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  enabled integer not null default 1,
+  config text not null default '{}',
+  status text not null,
+  last_error text,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, channel)
+);
+
+create table if not exists lead_attribution (
+  lead_id text not null,
+  org_id text not null,
+  model text not null,
+  campaign_id text,
+  opportunity_id text,
+  weight_by_campaign text not null default '{}',
+  updated_at text not null,
+  primary key (lead_id, org_id)
+);
 `;
 
 export function defaultDbPath(): string {
@@ -411,6 +498,9 @@ const globalDb = globalThis as typeof globalThis & {
 export function getCrmDatabase(): DatabaseSync {
   if (!globalDb.__leadorbitSqlite) {
     globalDb.__leadorbitSqlite = openCrmDatabase();
+  } else {
+    // Re-apply idempotent DDL so milestone schema additions land on warm singletons.
+    globalDb.__leadorbitSqlite.exec(SCHEMA);
   }
   return globalDb.__leadorbitSqlite;
 }

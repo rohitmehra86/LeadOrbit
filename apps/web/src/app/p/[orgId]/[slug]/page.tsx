@@ -31,6 +31,7 @@ export default async function PublicLandingPage({ params }: Props) {
             <PublicForm
               orgId={orgId}
               formId={form.id}
+              pageId={page.id}
               campaignId={page.campaignId}
               thankYou={form.thankYouMessage}
               fields={form.fields}

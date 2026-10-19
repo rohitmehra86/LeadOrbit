@@ -1,11 +1,11 @@
 import { fromAuthError, jsonOk, jsonProblem } from "@/lib/api/http";
-import { getCrmStore } from "@/lib/tenancy/crm";
-import { getLocalTenancyStore, getAuthMode, AuthError } from "@leadorbit/db";
+import { getIngestionStore } from "@/lib/tenancy/ingestion";
+import { getAuthMode, AuthError } from "@leadorbit/db";
+import type { UtmParams } from "@leadorbit/domain";
 
 /**
- * Public capture endpoint. Requires X-Org-Id + X-Capture-Token headers.
- * Local mode: token must equal DEV_CAPTURE_TOKEN (default "dev-capture").
- * Idempotency-Key header supported.
+ * Public capture via ingestion pipeline.
+ * Requires X-Org-Id + X-Capture-Token. Idempotency-Key supported.
  */
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return jsonProblem(
         501,
         "Not Implemented",
-        "Public capture against Supabase form tokens lands with Milestone 3+ wiring.",
+        "Public capture against Supabase form tokens lands when Supabase is configured.",
       );
     }
     const orgId = request.headers.get("x-org-id");
@@ -27,38 +27,37 @@ export async function POST(request: Request) {
       email?: string;
       phone?: string;
       source?: string;
+      campaignId?: string | null;
+      utm?: Partial<UtmParams>;
     };
     const idempotencyKey =
       request.headers.get("idempotency-key") ||
       request.headers.get("Idempotency-Key") ||
       undefined;
 
-    // Act as org owner for capture writes
-    const tenancy = getLocalTenancyStore();
-    const members = await tenancy.listMembers(
-      {
-        id: "capture",
-        email: "capture@local",
-        fullName: null,
-        isPlatformAdmin: true,
-      },
+    const result = await getIngestionStore().ingestLead({
       orgId,
-    );
-    const owner = members.find((m) => m.role === "owner");
-    if (!owner) throw new AuthError("Organization not found", "not_found");
-    const actor = await tenancy.getUser(owner.userId);
-    if (!actor) throw new AuthError("Organization owner missing", "not_found");
-
-    getCrmStore().registerOrg(orgId, orgId);
-    const item = await getCrmStore().createLead(actor, orgId, {
+      channel: "public_capture",
       fullName: body.fullName ?? "Website lead",
       email: body.email,
       phone: body.phone,
-      source: body.source ?? "public_form",
+      source: body.source ?? "public_capture",
+      campaignId: body.campaignId,
+      utm: body.utm,
       idempotencyKey: idempotencyKey ?? null,
-      assignStrategy: "round_robin",
+      payload: body as Record<string, unknown>,
     });
-    return jsonOk({ id: item.id, status: item.status }, { status: 201 });
+
+    return jsonOk(
+      {
+        id: result.leadId,
+        status: result.event.status,
+        duplicate: result.duplicate,
+        campaignId: result.event.campaignId,
+        attribution: result.attribution,
+      },
+      { status: result.duplicate ? 200 : 201 },
+    );
   } catch (err) {
     return fromAuthError(err);
   }
