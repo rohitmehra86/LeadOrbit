@@ -31,21 +31,38 @@
 | Backup/DR docs | Scaffolded | No live restore drill |
 | Runbooks + cost/scaling notes | Scaffolded | `docs/OPERATIONS.md` |
 | Vercel config | Scaffolded / **Not deployed** | No `VERCEL_TOKEN` |
-| Supabase migrate/deploy | Scaffolded / **Not deployed** | No project credentials |
-| Worker Fly/Railway | Scaffolded / **Not deployed** | No platform auth |
+| Supabase migrate/deploy | Scaffolded / **Not deployed** | MCP auth OK; CLI token missing; staging ref **unconfirmed** |
+| Worker Fly/Railway | Scaffolded / **Not deployed** | Fly CLI missing; Railway unauthorized |
+| Staging wire scripts | Scaffolded | `scripts/staging/*` + `docs/STAGING_WIRING.md` |
 | Incident response | Scaffolded | `docs/INCIDENT_RESPONSE.md` |
 | DPDP/privacy ops notes | Scaffolded | **Not a compliance certification** |
 | Go/no-go checklist | Scaffolded | Staging/prod gates **No-Go** |
 | Commercial production readiness | **Not claimed** | |
 
+### Staging auth snapshot (prep — no deploys claimed)
+
+| Surface | State |
+|---------|-------|
+| Supabase MCP | **Authenticated** — org `paxaris`; projects visible; migrate blocked until Rohit confirms staging ref |
+| Supabase CLI | **Blocked** — no `SUPABASE_ACCESS_TOKEN` |
+| Vercel CLI | Installed, **logged out** |
+| GitHub `gh` | **Blocked** — `GH_TOKEN` invalid |
+| Fly | **Blocked** — CLI not installed |
+| Railway | Installed, **unauthorized** |
+| Local web/worker | **Verified** — `:43127` / `:43128` |
+
 ### Ask Rohit (once) — unblock staging
 
 Provide via secure channel (**do not paste secrets into chat**):
 
-1. **Vercel** — staging project access or deploy token  
-2. **Supabase** — staging project ref / org invite  
-3. **Worker host** — Fly or Railway access for `leadorbit-worker`  
-4. Optional: Sentry DSN, OTEL endpoint, alert webhook  
+1. **GitHub** — valid PAT (`repo`) **or** empty private repo URL → `LEADORBIT_GITHUB_REPO_URL`  
+2. **Supabase** — which project is staging (`LEADORBIT_STAGING_SUPABASE_PROJECT_REF`) + CLI token if MCP alone is not enough  
+3. **Vercel** — `VERCEL_TOKEN` / team scope  
+4. **Worker host** — Fly (`FLY_API_TOKEN` + flyctl) **or** Railway token/login  
+5. Staging secrets file → `.env.staging.local` (from `.env.staging.example`)  
+6. Optional: Sentry DSN, OTEL endpoint, alert webhook  
+
+When credentials arrive: `bash scripts/staging/wire-all.sh` (order: GitHub → Supabase → Vercel → worker).  
 
 ---
 

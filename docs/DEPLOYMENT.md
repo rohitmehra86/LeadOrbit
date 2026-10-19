@@ -68,11 +68,22 @@ fly deploy -c apps/worker/fly.toml
 3. **Migrations:** Prefer forward-fix. If a migration must reverse, apply a new numbered migration — do not edit applied files. Keep DB backup from pre-deploy.
 4. **Feature flags:** Disable risky flags via org flags / plan entitlements before hard rollback when possible.
 
+## Staging wiring scripts
+
+See **[STAGING_WIRING.md](./STAGING_WIRING.md)** and `scripts/staging/`:
+
+```bash
+bash scripts/staging/00-check-auth.sh   # probe only
+bash scripts/staging/wire-all.sh        # when Rohit credentials are in env
+```
+
 ## Current status (this agent environment)
 
 | Target | Status |
 |--------|--------|
 | Vercel deploy | **Blocked** — no `VERCEL_TOKEN` / project |
-| Supabase link + migrate | **Blocked** — no project credentials |
-| Fly/Railway worker deploy | **Blocked** — no platform auth |
+| Supabase link + migrate | **Blocked** for CLI; MCP authenticated but staging project **unconfirmed** |
+| Fly/Railway worker deploy | **Blocked** — Fly missing; Railway unauthorized |
+| GitHub (`gh`) private repo | **Blocked** — `GH_TOKEN` invalid |
 | Local web + worker | **Verified** — ports 43127 / 43128 |
+| Staging wire scripts/docs | **Scaffolded** — ready when credentials arrive |
