@@ -16,6 +16,9 @@ export { AiStore } from "./ai-store";
 export { CalendarStore } from "./calendar-store";
 export { VoiceStore } from "./voice-store";
 export { RealEstateStore } from "./real-estate-store";
+export { BillingStore } from "./billing-store";
+export { AnalyticsStore } from "./analytics-store";
+export { WhiteLabelStore } from "./white-label-store";
 export { SqliteJobQueue, getJobQueue } from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 

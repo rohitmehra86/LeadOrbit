@@ -1054,6 +1054,137 @@ create table if not exists re_enquiries (
   updated_at text not null
 );
 create index if not exists re_enquiries_org_idx on re_enquiries(org_id);
+
+-- Milestone 10: analytics, billing, white-label
+create table if not exists analytics_events (
+  id text primary key,
+  org_id text not null,
+  event_type text not null,
+  channel text,
+  campaign_id text,
+  entity_type text,
+  entity_id text,
+  actor_user_id text,
+  amount real,
+  currency text,
+  meta text not null default '{}',
+  occurred_at text not null,
+  created_at text not null
+);
+create index if not exists analytics_events_org_idx on analytics_events(org_id, occurred_at);
+create index if not exists analytics_events_type_idx on analytics_events(org_id, event_type);
+
+create table if not exists scheduled_reports (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  cadence text not null,
+  recipients text not null default '[]',
+  status text not null,
+  detail text not null default '',
+  created_at text not null
+);
+
+create table if not exists billing_plans (
+  id text primary key,
+  code text not null unique,
+  name text not null,
+  interval text not null,
+  price_cents integer not null,
+  currency text not null,
+  seats_included integer not null,
+  ai_credits_included integer not null,
+  features text not null default '{}',
+  active integer not null default 1
+);
+
+create table if not exists org_subscriptions (
+  id text primary key,
+  org_id text not null unique,
+  plan_code text not null,
+  status text not null,
+  interval text not null,
+  seats_included integer not null,
+  seats_used integer not null default 0,
+  ai_credits_included integer not null,
+  ai_credits_used integer not null default 0,
+  usage_quotas text not null default '{}',
+  features text not null default '{}',
+  trial_ends_at text,
+  current_period_start text not null,
+  current_period_end text not null,
+  cancel_at_period_end integer not null default 0,
+  grace_ends_at text,
+  provider text not null,
+  provider_customer_id text,
+  provider_subscription_id text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists billing_invoices (
+  id text primary key,
+  org_id text not null,
+  subscription_id text,
+  number text not null,
+  status text not null,
+  amount_cents integer not null,
+  currency text not null,
+  provider text not null,
+  provider_invoice_id text,
+  hosted_invoice_url text,
+  period_start text not null,
+  period_end text not null,
+  paid_at text,
+  created_at text not null
+);
+create index if not exists billing_invoices_org_idx on billing_invoices(org_id);
+
+create table if not exists billing_webhook_events (
+  id text primary key,
+  provider text not null,
+  event_id text not null,
+  event_type text not null,
+  org_id text,
+  processed integer not null default 0,
+  detail text not null default '',
+  created_at text not null,
+  unique(provider, event_id)
+);
+
+create table if not exists white_label_brands (
+  org_id text primary key,
+  logo_url text,
+  primary_color text,
+  accent_color text,
+  support_email text,
+  login_headline text,
+  email_from_name text,
+  email_footer text,
+  hide_leadorbit_branding integer not null default 0,
+  updated_at text not null
+);
+
+create table if not exists custom_domains (
+  id text primary key,
+  org_id text not null,
+  hostname text not null,
+  status text not null,
+  txt_challenge text,
+  detail text not null default '',
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, hostname)
+);
+
+create table if not exists agency_managed_orgs (
+  id text primary key,
+  agency_org_id text not null,
+  child_org_id text not null,
+  label text,
+  created_at text not null,
+  unique(agency_org_id, child_org_id)
+);
 `;
 
 export function defaultDbPath(): string {

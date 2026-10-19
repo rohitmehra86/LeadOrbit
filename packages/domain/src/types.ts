@@ -123,7 +123,8 @@ export type JobName =
   | "appointment.reminder"
   | "voice.process"
   | "payment.reconcile"
-  | "ads.sync";
+  | "ads.sync"
+  | "report.schedule";
 
 export type JobPayloadMap = {
   "lead.score": { orgId: string; leadId: string };
@@ -160,4 +161,5 @@ export type JobPayloadMap = {
   };
   "payment.reconcile": { orgId: string; paymentIntentId: string };
   "ads.sync": { orgId: string; connectionId: string };
+  "report.schedule": { orgId: string; reportId: string };
 };

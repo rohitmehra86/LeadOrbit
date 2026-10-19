@@ -106,3 +106,21 @@ test("real estate vertical migration enables RLS", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("analytics billing white-label migration enables RLS", () => {
+  const sql = readFileSync(
+    resolve(
+      process.cwd(),
+      "supabase/migrations/00011_analytics_billing_white_label.sql",
+    ),
+    "utf8",
+  );
+  assert.match(sql, /analytics_events/);
+  assert.match(sql, /org_subscriptions/);
+  assert.match(sql, /billing_webhook_events/);
+  assert.match(sql, /unique \(provider, event_id\)/);
+  assert.match(sql, /white_label_brands/);
+  assert.match(sql, /custom_domains/);
+  assert.match(sql, /agency_managed_orgs/);
+  assert.match(sql, /enable row level security/);
+});

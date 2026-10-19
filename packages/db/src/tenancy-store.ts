@@ -377,10 +377,20 @@ export class LocalTenancyStore {
     this.entitlements.set(orgId, {
       id: randomUUID(),
       orgId,
-      planCode: "free",
+      planCode: "trial",
       status: "trialing",
       seatsIncluded: 3,
-      features: { whatsapp: false, ai_assist: false, white_label: false },
+      features: {
+        crm: true,
+        campaigns: true,
+        workflows: true,
+        inbox: true,
+        ai: true,
+        analytics: true,
+        white_label: false,
+        real_estate: false,
+        voice: false,
+      },
       renewsAt: periodEnd.toISOString(),
     });
     for (const metric of ["leads_created", "ai_jobs", "messages_sent"] as const) {

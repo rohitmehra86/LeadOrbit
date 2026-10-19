@@ -12,6 +12,9 @@ export * from "./appointments";
 export * from "./voice";
 export * from "./real-estate";
 export * from "./industry-templates";
+export * from "./billing";
+export * from "./analytics";
+export * from "./white-label";
 
 
 import type { MembershipRole } from "./types";

@@ -67,6 +67,13 @@ async function drain(): Promise<void> {
         console.log(`[worker] ai.run_turn ack`, job.payload);
       } else if (job.name === "lead.score") {
         console.log(`[worker] lead.score stub`, job.payload);
+      } else if (job.name === "report.schedule") {
+        console.log(
+          `[worker] report.schedule scaffolded (email delivery pending_configuration)`,
+          job.payload,
+        );
+      } else if (job.name === "payment.reconcile") {
+        console.log(`[worker] payment.reconcile ack`, job.payload);
       } else {
         console.warn(`[worker] no handler for ${job.name}`);
       }

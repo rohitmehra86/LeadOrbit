@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 9 (Real estate vertical — optional)  
+**Current milestone focus:** Milestone 10 (Analytics, billing, white labeling)  
 **Honesty policy:** Status reflects verified reality only.
 
 ---
@@ -16,36 +16,45 @@
 
 ---
 
-## Milestone 1–8
+## Milestone 1–9
 
 | Area | Status |
 |------|--------|
-| Foundation through calendar/voice | Implemented/verified |
+| Foundation through real-estate vertical | Implemented/verified |
 | Live Supabase / providers | **Blocked** (no credentials) |
 
 ---
 
-## Milestone 9 — Real estate vertical (optional)
+## Milestone 10 — Analytics, billing, white labeling
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Optional module (not in core CRM) | Implemented/verified | `org_vertical_modules` |
-| Developers/projects/properties/towers/units/floor plans/amenities/pricing/status | Implemented/verified | |
-| Brokers / channel partners | Implemented/verified | |
-| Buyer preferences + property enquiries | Implemented/verified | |
-| Matching (budget/location/BHK) + inventory search | Implemented/verified | Unit + store tests |
-| Tenant isolation | Implemented/verified | Cross-tenant forbidden |
-| Site visits via calendar | Implemented/verified | |
-| Agent routing + broker tracking + enquiry analytics | Implemented/verified | |
-| Brochures path + inventory-aware AI (SQL prices) | Implemented/verified | When module enabled |
-| Industry templates (education/automotive/service scaffold) | Implemented/verified | Config only |
-| Migration `00010_real_estate_vertical.sql` | Implemented/verified (authored) | |
-| Full education/automotive/service verticals | **Not implemented** | Scaffold templates only |
+| Analytics from persisted events | Implemented/verified | `AnalyticsStore` + CRM/AI/voice/billing tables |
+| Unavailable vs zero | Implemented/verified | `MetricAvailability` |
+| Leads by channel/campaign, CPL/CPQL, funnels, pipeline | Implemented/verified | |
+| Revenue attribution, ROI, response time, agent productivity | Implemented/verified | |
+| Appointment conversion, lost reasons, AI performance | Implemented/verified | |
+| Communication costs, SaaS revenue, tenant usage, ops failures | Implemented/verified | |
+| CSV export, date filters, comparisons | Implemented/verified | |
+| Scheduled reports scaffolding | Implemented/verified | `report.schedule` job |
+| Trial / plans / seats / AI credits / quotas | Implemented/verified | `DEFAULT_PLANS` + `org_subscriptions` |
+| Upgrades/downgrades, invoices, cancel/grace | Implemented/verified | |
+| Entitlements + gates | Implemented/verified | Store tests |
+| Stripe/Razorpay adapters + webhook idempotency | Implemented/verified | HMAC + unique `(provider, event_id)` |
+| Never store cards / never client-only activate | Implemented/verified | Checkout → pending without credentials |
+| Super-admin billing controls | Implemented/verified | `POST /api/v1/platform/billing` |
+| White-label logo/colors/login/email | Implemented/verified | |
+| Custom domain verification scaffolding | Implemented/verified | TXT challenge, no live DNS |
+| Feature visibility by subscription | Implemented/verified | |
+| Agency management scaffolding | Implemented/verified | |
+| Migration `00011_analytics_billing_white_label.sql` | Implemented/verified (authored) | |
+| Live Stripe/Razorpay charges | **Blocked** | No credentials |
+| Live DNS / email report delivery | **Not implemented** | Scaffolded only |
 | Draft PR | **Blocked** | `agent_temp` remote |
 
 ---
 
-## Milestones 10–12
+## Milestones 11–12
 
 Not implemented. Not claimed.
 
@@ -53,8 +62,8 @@ Not implemented. Not claimed.
 
 ## Blockers for Rohit
 
-1. Supabase (migrations through 00010)  
-2. Provider credentials from prior milestones  
+1. Supabase (migrations through 00011)  
+2. Stripe / Razorpay secrets for live billing  
 3. Standard GitHub remote for PRs  
 
 ---
@@ -63,4 +72,4 @@ Not implemented. Not claimed.
 
 1. Auth tenancy in-memory; domain data in SQLite.  
 2. Web + worker must share `LEADORBIT_SQLITE_PATH`.  
-3. Real estate module must be enabled per org before inventory APIs work.
+3. White-label writes require Growth+ entitlement (or platform admin plan set).

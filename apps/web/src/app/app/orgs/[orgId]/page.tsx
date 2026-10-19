@@ -83,6 +83,15 @@ export default async function OrgDetailPage({ params }: Props) {
           <Link href={`/app/orgs/${orgId}/real-estate`}>
             <Button type="button">Real estate</Button>
           </Link>
+          <Link href={`/app/orgs/${orgId}/analytics`}>
+            <Button type="button">Analytics</Button>
+          </Link>
+          <Link href={`/app/orgs/${orgId}/billing`}>
+            <Button type="button">Billing</Button>
+          </Link>
+          <Link href={`/app/orgs/${orgId}/white-label`}>
+            <Button type="button">White label</Button>
+          </Link>
         </div>
       </div>
 
@@ -133,7 +142,8 @@ export default async function OrgDetailPage({ params }: Props) {
             {JSON.stringify(billing, null, 2)}
           </pre>
           <p className="mt-2 text-xs text-[var(--lo-fg-muted)]">
-            Payment provider wiring is Milestone 8 — stubs only.
+            Full billing, analytics, and white-label live under their own pages
+            (Milestone 10).
           </p>
         </div>
       </section>
