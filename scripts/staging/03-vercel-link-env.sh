@@ -11,7 +11,14 @@ ENV_FILE="${LEADORBIT_VERCEL_ENV_FILE:-.env.staging.local}"
 SCOPE="${LEADORBIT_VERCEL_SCOPE:-}"
 TARGET_ENV="${LEADORBIT_VERCEL_TARGET:-preview}" # preview|production|development
 
-echo "[vercel] project=$PROJECT target=$TARGET_ENV"
+# Refuse accidental link to Linkbook Vercel project names
+if [[ "$PROJECT" =~ [Ll]inkbook ]] && [[ "${LEADORBIT_ALLOW_LINKBOOK_VERCEL:-0}" != "1" ]]; then
+  echo "[vercel] BLOCKED: project name '$PROJECT' looks like Linkbook (other session)." >&2
+  echo "[vercel] Use LEADORBIT_VERCEL_PROJECT=leadorbit-web (or another LeadOrbit-only name)." >&2
+  exit 2
+fi
+
+echo "[vercel] LeadOrbit project=$PROJECT target=$TARGET_ENV (isolated from Linkbook)"
 
 if ! command -v vercel >/dev/null 2>&1; then
   echo "[vercel] BLOCKED: vercel CLI not installed" >&2

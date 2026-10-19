@@ -2,12 +2,23 @@
 
 **Honesty:** This document prepares wiring. It is **not** evidence that staging is live. Do not mark deploys Verified without HTTP/CLI proof.
 
+## Multi-project isolation (mandatory)
+
+Rohit runs **two** products in parallel. This agent/session is **LeadOrbit only**.
+
+| Product | GitHub | Supabase | Vercel |
+|---------|--------|----------|--------|
+| **LeadOrbit** (this repo) | https://github.com/rohitmehra86/LeadOrbit (`main`) | **Dedicated** LeadOrbit staging project (create new or confirm non-Linkbook) | **Dedicated** project e.g. `leadorbit-web` |
+| **Linkbook** (other session) | Linkbook’s own repo | `ipxflpzfcqwtenodbxwc` (“linkbook”) — **DO NOT TOUCH** | Linkbook’s existing Vercel project — **DO NOT TOUCH** |
+
+Never migrate LeadOrbit SQL into Linkbook. Never link/deploy LeadOrbit onto Linkbook’s Vercel project. Shared org (`paxaris`) is fine; shared *project* is not.
+
 ## Dependency order
 
-1. **GitHub** — private repo or push URL Rohit provides  
-2. **Supabase** — confirm staging project ref → link → apply migrations  
-3. **Vercel** — link/create project → set env vars → deploy web  
-4. **Worker** — Fly **or** Railway → secrets → deploy → `/health`  
+1. **GitHub** — LeadOrbit repo only (`rohitmehra86/LeadOrbit`)  
+2. **Supabase** — LeadOrbit staging project (not Linkbook) → migrations  
+3. **Vercel** — create/link **`leadorbit-web`** (or name Rohit gives) — not Linkbook’s project  
+4. **Worker** — Fly **or** Railway app `leadorbit-worker`  
 5. Update `IMPLEMENTATION_STATUS.md` with evidence only  
 
 Orchestrator: `bash scripts/staging/wire-all.sh`
@@ -28,14 +39,14 @@ Prefer a secure channel (password manager / vault). **Do not paste live secrets 
 | Vercel | `VERCEL_TOKEN` (+ optional `LEADORBIT_VERCEL_SCOPE`) | Or interactive `vercel login` |
 | Worker host | `LEADORBIT_WORKER_HOST=fly\|railway` | Plus `FLY_API_TOKEN` or Railway login/token |
 
-### Supabase projects visible via MCP (not assumed staging)
+### Supabase projects visible via MCP
 
 Org `paxaris` currently lists:
 
-- `kqmuxocbmtydkxdvmypy` — “rohitmehra86's Project” (`ap-northeast-1`)
-- `ipxflpzfcqwtenodbxwc` — “linkbook” (`ap-southeast-1`)
+- `kqmuxocbmtydkxdvmypy` — “rohitmehra86's Project” (`ap-northeast-1`) — candidate only if Rohit confirms it is **for LeadOrbit**
+- `ipxflpzfcqwtenodbxwc` — “linkbook” — **reserved for the other session; forbidden for LeadOrbit wiring**
 
-**Do not migrate until Rohit names the staging project** (or asks to create a new one).
+**Preferred:** create a new project `leadorbit-staging` in org `paxaris`.
 
 ## Scripts
 
@@ -84,12 +95,13 @@ Without these, tokens cannot be used from this agent:
 
 1. **Vercel** — create token: https://vercel.com/account/tokens → paste as `VERCEL_TOKEN`  
    Optional: team slug → `LEADORBIT_VERCEL_SCOPE`
-2. **Supabase staging project** — reply with one:
-   - `kqmuxocbmtydkxdvmypy` (rohitmehra86's Project)
-   - `ipxflpzfcqwtenodbxwc` (linkbook)
-   - or “create new `leadorbit-staging`”
+2. **Supabase for LeadOrbit** — reply with one:
+   - “create new `leadorbit-staging`” (**preferred** — keeps Linkbook untouched)
+   - or confirm `kqmuxocbmtydkxdvmypy` is LeadOrbit-only (not Linkbook)
+   - **Do not** point LeadOrbit at `ipxflpzfcqwtenodbxwc` (Linkbook)
 3. Optional CLI token: https://supabase.com/dashboard/account/tokens → `SUPABASE_ACCESS_TOKEN`  
    (MCP is already authenticated; CLI token helps `supabase link` / `db push`)
+4. **Vercel** — same account as Linkbook is OK; agent will use a **separate** project name (`leadorbit-web` by default)
 
 ### C) Staging env values (for Vercel)
 

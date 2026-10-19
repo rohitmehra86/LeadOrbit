@@ -53,18 +53,21 @@
 | Railway | Installed, **unauthorized** |
 | Local web/worker | **Verified** — `:43127` / `:43128` |
 
-### Ask Rohit (once) — unblock staging
+### Multi-project isolation
 
-Provide via secure channel (**do not paste secrets into chat**):
+| Product | This agent |
+|---------|------------|
+| **LeadOrbit** | In scope — GitHub `rohitmehra86/LeadOrbit`, dedicated Supabase + Vercel |
+| **Linkbook** (other session) | **Out of scope** — do not migrate/deploy to Supabase `ipxflpzfcqwtenodbxwc` or Linkbook’s Vercel project |
 
-1. **GitHub** — valid PAT (`repo`) **or** empty private repo URL → `LEADORBIT_GITHUB_REPO_URL`  
-2. **Supabase** — which project is staging (`LEADORBIT_STAGING_SUPABASE_PROJECT_REF`) + CLI token if MCP alone is not enough  
-3. **Vercel** — `VERCEL_TOKEN` / team scope  
-4. **Worker host** — Fly (`FLY_API_TOKEN` + flyctl) **or** Railway token/login  
-5. Staging secrets file → `.env.staging.local` (from `.env.staging.example`)  
-6. Optional: Sentry DSN, OTEL endpoint, alert webhook  
+### Ask Rohit — unblock LeadOrbit staging (Linkbook stays untouched)
 
-When credentials arrive: `bash scripts/staging/wire-all.sh` (order: GitHub → Supabase → Vercel → worker).  
+1. **Egress** — `vercel.com`, `api.vercel.com`, `api.supabase.com`, `*.supabase.co`  
+2. **Vercel** — `VERCEL_TOKEN` (same account as Linkbook OK); agent creates/links **`leadorbit-web`**, not Linkbook  
+3. **Supabase** — prefer “create new `leadorbit-staging`”; or confirm a LeadOrbit-only ref. **Not** Linkbook (`ipxflpzfcqwtenodbxwc`)  
+4. Optional: `SUPABASE_ACCESS_TOKEN`, worker host, Sentry/OTEL  
+
+GitHub LeadOrbit `main` is already wired. When tokens arrive: `LEADORBIT_SKIP_GITHUB=1 bash scripts/staging/wire-all.sh`  
 
 ---
 

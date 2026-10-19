@@ -8,16 +8,28 @@ cd "$ROOT"
 
 REF="${LEADORBIT_STAGING_SUPABASE_PROJECT_REF:-}"
 DB_URL="${DATABASE_URL:-}"
+# Linkbook project in the same org — used by Rohit's other session. Never wire LeadOrbit here.
+LINKBOOK_REF="ipxflpzfcqwtenodbxwc"
 
-echo "[supabase] staging link + migrate"
+echo "[supabase] LeadOrbit staging link + migrate (isolated from Linkbook)"
+
+if [[ -n "$REF" && "$REF" == "$LINKBOOK_REF" && "${LEADORBIT_ALLOW_LINKBOOK_PROJECT:-0}" != "1" ]]; then
+  cat >&2 <<EOF
+[supabase] BLOCKED: ref $LINKBOOK_REF is the Linkbook project (other session).
+  LeadOrbit must use a dedicated Supabase project.
+  Prefer: create leadorbit-staging, or set LEADORBIT_STAGING_SUPABASE_PROJECT_REF to a LeadOrbit-only ref.
+EOF
+  exit 2
+fi
 
 if [[ -z "$REF" && -z "$DB_URL" ]]; then
   cat >&2 <<'EOF'
 [supabase] BLOCKED: set one of:
-  LEADORBIT_STAGING_SUPABASE_PROJECT_REF=<project-ref>
-  DATABASE_URL=postgresql://...   (staging only)
+  LEADORBIT_STAGING_SUPABASE_PROJECT_REF=<LeadOrbit project-ref>
+  DATABASE_URL=postgresql://...   (LeadOrbit staging only)
 
-Do not assume an existing MCP-visible project is staging until Rohit confirms.
+Do NOT use the Linkbook project (ipxflpzfcqwtenodbxwc).
+Preferred: create a new project named leadorbit-staging.
 EOF
   exit 2
 fi
