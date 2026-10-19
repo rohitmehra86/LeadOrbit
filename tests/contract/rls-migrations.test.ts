@@ -25,3 +25,15 @@ test("flags/entitlements/audit migration enables RLS", () => {
   assert.match(sql, /audit_logs/);
   assert.match(sql, /enable row level security/);
 });
+
+test("marketing migration enables RLS on campaigns/forms/pages", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00005_marketing_campaigns.sql"),
+    "utf8",
+  );
+  assert.match(sql, /create table if not exists public\.campaigns/);
+  assert.match(sql, /create table if not exists public\.forms/);
+  assert.match(sql, /create table if not exists public\.landing_pages/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});

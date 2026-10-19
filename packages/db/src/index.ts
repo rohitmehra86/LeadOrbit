@@ -7,6 +7,7 @@ export {
 
 export { isSupabaseConfigured, getAuthMode } from "./config";
 export { CrmStore } from "./crm-store";
+export { CampaignStore } from "./campaign-store";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 
 

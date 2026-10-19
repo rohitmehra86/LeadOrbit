@@ -22,6 +22,12 @@ export type Permission =
   | "crm:assign"
   | "crm:import"
   | "crm:merge"
+  | "campaigns:read"
+  | "campaigns:write"
+  | "forms:read"
+  | "forms:write"
+  | "pages:read"
+  | "pages:write"
   | "platform:admin";
 
 
@@ -33,6 +39,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "flags:read",
     "leads:read",
     "crm:read",
+    "campaigns:read",
+    "forms:read",
+    "pages:read",
   ],
   agent: [
     "org:read",
@@ -43,6 +52,10 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "leads:write",
     "crm:read",
     "crm:write",
+    "campaigns:read",
+    "forms:read",
+    "forms:write",
+    "pages:read",
   ],
   manager: [
     "org:read",
@@ -58,6 +71,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "crm:assign",
     "crm:import",
     "crm:merge",
+    "campaigns:read",
+    "campaigns:write",
+    "forms:read",
+    "forms:write",
+    "pages:read",
+    "pages:write",
   ],
   admin: [
     "org:read",
@@ -79,6 +98,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "crm:assign",
     "crm:import",
     "crm:merge",
+    "campaigns:read",
+    "campaigns:write",
+    "forms:read",
+    "forms:write",
+    "pages:read",
+    "pages:write",
   ],
   owner: [
     "org:read",
@@ -100,6 +125,12 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "crm:assign",
     "crm:import",
     "crm:merge",
+    "campaigns:read",
+    "campaigns:write",
+    "forms:read",
+    "forms:write",
+    "pages:read",
+    "pages:write",
   ],
 };
 

@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 3 (CRM)  
+**Current milestone focus:** Milestone 4 (Campaigns, forms, landing pages)  
 **Honesty policy:** Status reflects verified reality only.
 
 ---
@@ -16,55 +16,58 @@
 
 ---
 
-## Milestone 1–2
+## Milestone 1–3
 
 | Area | Status |
 |------|--------|
 | Foundation monorepo + docs | Implemented/verified |
 | Local auth, orgs, invites, permissions, platform admin skeleton | Implemented/verified |
+| CRM (leads, pipelines, Kanban, assignment, SLA, merge, import) | Implemented/verified |
 | Live Supabase Auth / Postgres RLS | **Blocked** (no credentials) |
 
 ---
 
-## Milestone 3 — CRM
+## Milestone 4 — Campaigns, forms, landing pages & funnels
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Domain CRM model + assignment strategies | Implemented/verified | Unit tests |
-| SQLite persistence (`node:sqlite`) | Implemented/verified | `.data/leadorbit.sqlite` |
-| Supabase CRM migration `00004_crm_core.sql` | Implemented/verified (authored) | Not applied to remote DB |
-| Leads/contacts/companies/opportunities | Implemented/verified | APIs + SQLite |
-| Pipelines/stages, Kanban + table UI | Implemented/verified | `/app/orgs/:id/crm` |
-| Tasks, notes, activity timeline | Implemented/verified | |
-| Attachments metadata, tags, custom fields, saved views, segments | Implemented/verified | Scaffolding APIs |
-| Import/export CSV + public capture idempotency | Implemented/verified | HTTP smoke: same Idempotency-Key → same id |
-| Duplicate detection + merge | Implemented/verified | Unit test |
-| Assignment strategies + ownership history | Implemented/verified | Unit + store tests |
-| SLA timers + escalation | Implemented/verified | API `/sla/escalate` |
-| Follow-up reminders | Implemented/verified | |
-| Cross-tenant CRM denial | Implemented/verified | HTTP 403 on leads list |
-| `pnpm typecheck` / `lint` / `test` | Implemented/verified | Pass |
-| Postgres RLS CRM isolation | **Blocked** | No Supabase project |
+| Domain model + UTM + safe page sanitize | Implemented/verified | Unit tests |
+| SQLite persistence (shared DB file) | Implemented/verified | Tables in `sqlite.ts` |
+| Supabase migration `00005_marketing_campaigns.sql` | Implemented/verified (authored) | Not applied remotely |
+| Campaign CRUD, budget, schedule, status, A/B scaffold, duplicate, templates | Implemented/verified | `/app/orgs/:id/marketing` |
+| Creative asset library scaffolding | Implemented/verified | Metadata paths only |
+| AI suggestion hooks | Implemented/verified | `unverified` without `LLM_API_KEY` |
+| Meta/Google Ads adapters | Implemented/verified | `pending_configuration` without creds |
+| Performance from persisted events | Implemented/verified | page_view / form_submit / conversion |
+| Form builder (drag, multi-step, CRM map, honeypot, duplicates, embed, versions) | Implemented/verified | `/marketing/forms` |
+| Landing page builder (blocks, SEO, publish, versions, mobile preview, RE template) | Implemented/verified | `/marketing/pages` |
+| Funnels scaffolding | Implemented/verified | |
+| Public page + form submit → tenant + CRM lead | Implemented/verified | `/p/:orgId/:slug` |
+| Cross-tenant marketing denial | Implemented/verified | Unit + HTTP |
+| Postgres RLS marketing isolation | **Blocked** | No Supabase project |
+| Live ad network sync / live LLM | **Blocked** | No credentials — not faked |
 | Draft PR | **Blocked** | `agent_temp` remote |
 
 ---
 
-## Milestones 4–12
+## Milestones 5–12
 
-Not implemented (M4 pipeline UI overlap intentionally folded into M3 Kanban; remaining M4+ items not claimed).
+Not implemented. Not claimed.
 
 ---
 
 ## Blockers for Rohit
 
-1. Supabase project (apply migrations 00002–00004; verify RLS)  
-2. GitHub auth / standard repo for PRs  
-3. Vercel deploy token  
+1. Supabase project (apply migrations 00002–00005; verify RLS)  
+2. Optional: `LLM_API_KEY`, `META_ADS_ACCESS_TOKEN`, `GOOGLE_ADS_DEVELOPER_TOKEN`  
+3. GitHub auth / standard repo for PRs  
+4. Vercel deploy token  
 
 ---
 
 ## Known issues
 
-1. Auth tenancy store is still in-memory; CRM is SQLite — after process restart, re-create orgs/sessions; CRM rows may orphan until org ids rematch.  
-2. Attachment storage is metadata-only (local path string).  
-3. CSV import runs in-request (not durable worker).
+1. Auth tenancy store is still in-memory; CRM/marketing are SQLite — after process restart, re-create orgs/sessions.  
+2. Creative/attachment storage is metadata-only.  
+3. Form webhooks are scaffolding (URL stored; delivery not claimed).  
+4. IMPLEMENTATION_PLAN.md still lists an older “M4 pipelines” label; product M4 delivered here is marketing assets (pipelines shipped in M3).

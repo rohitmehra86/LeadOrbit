@@ -241,6 +241,151 @@ create table if not exists agent_availability (
   territories text not null default '[]',
   primary key (org_id, user_id)
 );
+
+create table if not exists campaigns (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  objective text not null,
+  status text not null,
+  audience text not null default '{}',
+  ad_copy text not null default '',
+  landing_page_id text,
+  form_id text,
+  utm text not null default '{}',
+  budget text not null default '{}',
+  schedule_start text,
+  schedule_end text,
+  template_key text,
+  ab_test_enabled integer not null default 0,
+  ab_variants text not null default '[]',
+  attribution_model text not null default 'last_touch',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists campaigns_org_idx on campaigns(org_id);
+
+create table if not exists creative_assets (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  content_type text not null,
+  storage_path text not null,
+  width integer,
+  height integer,
+  tags text not null default '[]',
+  created_at text not null
+);
+create index if not exists creatives_org_idx on creative_assets(org_id);
+
+create table if not exists forms (
+  id text primary key,
+  org_id text not null,
+  campaign_id text,
+  name text not null,
+  status text not null,
+  fields text not null default '[]',
+  multi_step integer not null default 0,
+  spam_honeypot_enabled integer not null default 1,
+  duplicate_detection integer not null default 1,
+  consent_text text,
+  webhook_url text,
+  embed_enabled integer not null default 1,
+  version integer not null default 1,
+  template_key text,
+  thank_you_message text not null default 'Thank you',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists forms_org_idx on forms(org_id);
+
+create table if not exists form_versions (
+  id text primary key,
+  org_id text not null,
+  form_id text not null,
+  version integer not null,
+  fields text not null,
+  created_at text not null,
+  note text
+);
+
+create table if not exists form_submissions (
+  id text primary key,
+  org_id text not null,
+  form_id text not null,
+  campaign_id text,
+  lead_id text,
+  payload text not null default '{}',
+  utm text not null default '{}',
+  fingerprint text not null,
+  duplicate_of_id text,
+  created_at text not null
+);
+create index if not exists form_submissions_org_idx on form_submissions(org_id, form_id);
+create index if not exists form_submissions_fp_idx on form_submissions(org_id, fingerprint);
+
+create table if not exists landing_pages (
+  id text primary key,
+  org_id text not null,
+  campaign_id text,
+  form_id text,
+  name text not null,
+  slug text not null,
+  status text not null,
+  document text not null,
+  template_key text,
+  version integer not null default 1,
+  published_at text,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, slug)
+);
+create index if not exists landing_pages_org_idx on landing_pages(org_id);
+
+create table if not exists page_versions (
+  id text primary key,
+  org_id text not null,
+  page_id text not null,
+  version integer not null,
+  document text not null,
+  created_at text not null,
+  note text
+);
+
+create table if not exists funnels (
+  id text primary key,
+  org_id text not null,
+  campaign_id text,
+  name text not null,
+  status text not null,
+  steps text not null default '[]',
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists marketing_events (
+  id text primary key,
+  org_id text not null,
+  campaign_id text,
+  page_id text,
+  form_id text,
+  event_type text not null,
+  meta text not null default '{}',
+  created_at text not null
+);
+create index if not exists marketing_events_org_idx on marketing_events(org_id, campaign_id, event_type);
+
+create table if not exists ad_integrations (
+  id text primary key,
+  org_id text not null,
+  network text not null,
+  status text not null,
+  external_account_id text,
+  last_error text,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, network)
+);
 `;
 
 export function defaultDbPath(): string {

@@ -58,9 +58,14 @@ export default async function OrgDetailPage({ params }: Props) {
             {org.slug} · {org.timezone} · {org.locale} · {org.currency}
           </p>
         </div>
-        <Link href={`/app/orgs/${orgId}/crm`}>
-          <Button type="button">Open CRM</Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/app/orgs/${orgId}/crm`}>
+            <Button type="button">Open CRM</Button>
+          </Link>
+          <Link href={`/app/orgs/${orgId}/marketing`}>
+            <Button type="button">Marketing</Button>
+          </Link>
+        </div>
       </div>
 
 
