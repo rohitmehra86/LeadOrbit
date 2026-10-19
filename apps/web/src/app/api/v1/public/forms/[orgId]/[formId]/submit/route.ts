@@ -1,6 +1,7 @@
 import { fromAuthError, jsonOk } from "@/lib/api/http";
 import { getCampaignStore } from "@/lib/tenancy/campaigns";
 import { getIngestionStore } from "@/lib/tenancy/ingestion";
+import { getWorkflowStore } from "@/lib/tenancy/workflows";
 import type { UtmParams } from "@leadorbit/domain";
 
 type Ctx = { params: Promise<{ orgId: string; formId: string }> };
@@ -36,6 +37,22 @@ export async function POST(request: Request, ctx: Ctx) {
         payload: item.payload,
         duplicate: Boolean(item.duplicateOfId),
       });
+      if (!item.duplicateOfId) {
+        await getWorkflowStore().dispatchTrigger({
+          orgId,
+          trigger: "form_submitted",
+          leadId: item.leadId,
+          context: { formId, campaignId: item.campaignId },
+          idempotencyPrefix: `formsub:${item.id}`,
+        });
+        await getWorkflowStore().dispatchTrigger({
+          orgId,
+          trigger: "lead_created",
+          leadId: item.leadId,
+          context: { source: "form" },
+          idempotencyPrefix: `leadcreate:${item.leadId}`,
+        });
+      }
     }
     return jsonOk({ item }, { status: 201 });
   } catch (err) {

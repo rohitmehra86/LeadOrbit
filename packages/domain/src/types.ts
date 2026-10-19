@@ -113,9 +113,9 @@ export interface AuditLogEntry {
 }
 
 export type JobName =
-
   | "lead.score"
   | "workflow.run_step"
+  | "workflow.tick"
   | "message.send"
   | "embedding.upsert"
   | "payment.reconcile"
@@ -127,6 +127,10 @@ export type JobPayloadMap = {
     orgId: string;
     enrollmentId: string;
     stepId: string;
+  };
+  "workflow.tick": {
+    orgId: string;
+    enrollmentId: string;
   };
   "message.send": { orgId: string; messageId: string };
   "embedding.upsert": {

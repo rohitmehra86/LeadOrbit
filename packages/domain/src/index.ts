@@ -3,6 +3,8 @@ export * from "./permissions";
 export * from "./crm";
 export * from "./campaigns";
 export * from "./ingestion";
+export * from "./workflows";
+export * from "./inbox";
 
 
 import type { MembershipRole } from "./types";

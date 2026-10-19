@@ -473,13 +473,173 @@ create table if not exists lead_attribution (
   updated_at text not null,
   primary key (lead_id, org_id)
 );
+
+create table if not exists durable_jobs (
+  id text primary key,
+  name text not null,
+  payload text not null,
+  status text not null,
+  attempts integer not null default 0,
+  run_at text not null,
+  locked_at text,
+  idempotency_key text,
+  last_error text,
+  created_at text not null,
+  updated_at text not null,
+  unique(idempotency_key)
+);
+create index if not exists durable_jobs_due_idx on durable_jobs(status, run_at);
+
+create table if not exists workflows (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  status text not null,
+  graph text not null,
+  version integer not null default 1,
+  test_mode integer not null default 0,
+  published_at text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists workflows_org_idx on workflows(org_id);
+
+create table if not exists workflow_versions (
+  id text primary key,
+  org_id text not null,
+  workflow_id text not null,
+  version integer not null,
+  graph text not null,
+  note text,
+  created_at text not null
+);
+
+create table if not exists workflow_enrollments (
+  id text primary key,
+  org_id text not null,
+  workflow_id text not null,
+  workflow_version integer not null,
+  lead_id text,
+  conversation_id text,
+  status text not null,
+  current_node_id text,
+  context text not null default '{}',
+  idempotency_key text,
+  test_mode integer not null default 0,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, idempotency_key)
+);
+create index if not exists workflow_enrollments_org_idx on workflow_enrollments(org_id, status);
+
+create table if not exists workflow_step_runs (
+  id text primary key,
+  org_id text not null,
+  enrollment_id text not null,
+  node_id text not null,
+  attempt integer not null,
+  status text not null,
+  input text not null default '{}',
+  output text not null default '{}',
+  error text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists workflow_audit (
+  id text primary key,
+  org_id text not null,
+  workflow_id text,
+  enrollment_id text,
+  action text not null,
+  actor_user_id text,
+  detail text not null default '{}',
+  created_at text not null
+);
+
+create table if not exists conversations (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  subject text,
+  status text not null,
+  assignee_user_id text,
+  lead_id text,
+  contact_address text,
+  unread_count integer not null default 0,
+  tags text not null default '[]',
+  sla_due_at text,
+  last_message_at text,
+  consent_ok integer not null default 1,
+  opted_out integer not null default 0,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists conversations_org_idx on conversations(org_id, status);
+
+create table if not exists inbox_messages (
+  id text primary key,
+  org_id text not null,
+  conversation_id text not null,
+  direction text not null,
+  channel text not null,
+  body text not null,
+  html_body text,
+  template_key text,
+  attachment_paths text not null default '[]',
+  delivery_status text not null,
+  provider_message_id text,
+  sender_user_id text,
+  is_internal_note integer not null default 0,
+  error text,
+  created_at text not null
+);
+create index if not exists inbox_messages_conv_idx on inbox_messages(org_id, conversation_id, created_at);
+
+create table if not exists message_templates (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  key text not null,
+  name text not null,
+  body text not null,
+  created_at text not null,
+  unique(org_id, channel, key)
+);
+
+create table if not exists channel_connections (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  status text not null,
+  webhook_secret text,
+  config text not null default '{}',
+  last_error text,
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, channel)
+);
+
+create table if not exists opt_outs (
+  id text primary key,
+  org_id text not null,
+  channel text not null,
+  address text not null,
+  created_at text not null,
+  unique(org_id, channel, address)
+);
 `;
 
 export function defaultDbPath(): string {
-  return (
-    process.env.LEADORBIT_SQLITE_PATH ||
-    join(process.cwd(), ".data", "leadorbit.sqlite")
-  );
+  if (process.env.LEADORBIT_SQLITE_PATH) {
+    return process.env.LEADORBIT_SQLITE_PATH;
+  }
+  // Share one DB across apps/web and apps/worker (repo-root .data).
+  const cwd = process.cwd();
+  if (cwd.endsWith(`${"/"}apps/web`) || cwd.endsWith(`${"/"}apps/worker`)) {
+    return join(cwd, "..", "..", ".data", "leadorbit.sqlite");
+  }
+  return join(cwd, ".data", "leadorbit.sqlite");
 }
 
 export function openCrmDatabase(path = defaultDbPath()): DatabaseSync {

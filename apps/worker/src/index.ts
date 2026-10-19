@@ -1,27 +1,73 @@
-import { InMemoryJobQueue } from "./queue";
+import {
+  getCrmDatabase,
+  getLocalTenancyStore,
+  CrmStore,
+  InboxStore,
+  SqliteJobQueue,
+  WorkflowStore,
+} from "@leadorbit/db";
 
-const queue = new InMemoryJobQueue();
+/**
+ * Durable worker process. Claims jobs from SQLite-backed queue and executes
+ * workflow ticks + message sends. Must not run inside Vercel request handlers.
+ */
+const db = getCrmDatabase();
+const tenancy = getLocalTenancyStore();
+const queue = new SqliteJobQueue(db);
+const crm = new CrmStore(tenancy, db);
+const workflows = new WorkflowStore(tenancy, db, queue, crm);
+const inbox = new InboxStore(tenancy, db, queue);
 
-queue.register("lead.score", async (payload) => {
-  // Milestone 7 will call scoring services. M1 only proves the port wiring.
-  console.log(`[worker] lead.score org=${payload.orgId} lead=${payload.leadId}`);
-});
+const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
 
-queue.register("workflow.run_step", async (payload) => {
-  console.log(
-    `[worker] workflow.run_step org=${payload.orgId} enrollment=${payload.enrollmentId}`,
-  );
-});
+async function drain(): Promise<void> {
+  const jobs = queue.claimDue(20);
+  for (const job of jobs) {
+    try {
+      if (job.name === "workflow.tick") {
+        const p = job.payload as { orgId: string; enrollmentId: string };
+        await workflows.processTick(p.orgId, p.enrollmentId);
+      } else if (job.name === "message.send") {
+        const p = job.payload as { orgId: string; messageId: string };
+        inbox.processMessageSend(p.orgId, p.messageId);
+      } else if (job.name === "workflow.run_step") {
+        const p = job.payload as {
+          orgId: string;
+          enrollmentId: string;
+          stepId: string;
+        };
+        await workflows.processTick(p.orgId, p.enrollmentId);
+        void p.stepId;
+      } else if (job.name === "lead.score") {
+        console.log(`[worker] lead.score stub`, job.payload);
+      } else {
+        console.warn(`[worker] no handler for ${job.name}`);
+      }
+      queue.complete(job.id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "job failed";
+      console.error(`[worker] job ${job.id} failed`, message);
+      const retry =
+        job.attempts >= 3 ? { deadLetter: true as const } : { retryDelayMs: 5_000 };
+      queue.fail(job.id, message, retry);
+    }
+  }
+}
 
-await queue.start();
-console.log("[worker] LeadOrbit worker listening (in-memory queue — not production durable)");
+console.log(
+  "[worker] LeadOrbit durable worker started (SQLite job queue — set LEADORBIT_SQLITE_PATH to share with web)",
+);
 
-const shutdown = async () => {
-  await queue.stop();
+const timer = setInterval(() => {
+  void drain();
+}, POLL_MS);
+
+const shutdown = () => {
+  clearInterval(timer);
+  console.log("[worker] stopped");
   process.exit(0);
 };
-process.on("SIGINT", () => void shutdown());
-process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
-// Keep process alive
 await new Promise(() => {});

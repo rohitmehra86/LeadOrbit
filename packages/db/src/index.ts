@@ -9,6 +9,9 @@ export { isSupabaseConfigured, getAuthMode } from "./config";
 export { CrmStore } from "./crm-store";
 export { CampaignStore } from "./campaign-store";
 export { IngestionStore } from "./ingestion-store";
+export { WorkflowStore } from "./workflow-store";
+export { InboxStore } from "./inbox-store";
+export { SqliteJobQueue, getJobQueue } from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 
 

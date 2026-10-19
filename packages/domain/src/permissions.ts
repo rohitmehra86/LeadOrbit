@@ -31,6 +31,10 @@ export type Permission =
   | "integrations:read"
   | "integrations:write"
   | "ingestion:read"
+  | "workflows:read"
+  | "workflows:write"
+  | "inbox:read"
+  | "inbox:write"
   | "platform:admin";
 
 
@@ -47,6 +51,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "pages:read",
     "integrations:read",
     "ingestion:read",
+    "workflows:read",
+    "inbox:read",
   ],
   agent: [
     "org:read",
@@ -63,6 +69,9 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "pages:read",
     "integrations:read",
     "ingestion:read",
+    "workflows:read",
+    "inbox:read",
+    "inbox:write",
   ],
   manager: [
     "org:read",
@@ -87,6 +96,10 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "integrations:read",
     "integrations:write",
     "ingestion:read",
+    "workflows:read",
+    "workflows:write",
+    "inbox:read",
+    "inbox:write",
   ],
   admin: [
     "org:read",
@@ -117,6 +130,10 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "integrations:read",
     "integrations:write",
     "ingestion:read",
+    "workflows:read",
+    "workflows:write",
+    "inbox:read",
+    "inbox:write",
   ],
   owner: [
     "org:read",
@@ -147,6 +164,10 @@ const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
     "integrations:read",
     "integrations:write",
     "ingestion:read",
+    "workflows:read",
+    "workflows:write",
+    "inbox:read",
+    "inbox:write",
   ],
 };
 

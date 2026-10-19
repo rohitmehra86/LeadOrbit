@@ -39,7 +39,7 @@ Prerequisites: Node 22+, pnpm 10+.
 ```bash
 pnpm install
 pnpm dev:web      # http://127.0.0.1:43127
-pnpm dev:worker  # in-memory queue (not production durable)
+pnpm dev:worker  # durable SQLite job consumer (share LEADORBIT_SQLITE_PATH)
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -59,13 +59,19 @@ Set Supabase URL/anon key (and apply `supabase/migrations`) for production Auth 
 - `GET|POST /api/v1/orgs`, `GET|PATCH /api/v1/orgs/:id`  
 - Members, invites, flags, billing stubs, audit, `GET /api/v1/platform/orgs`  
 
-UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, `/app/orgs/:id/crm`, `/app/orgs/:id/marketing`, `/app/orgs/:id/integrations`, `/platform`
+UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, CRM, Marketing, Integrations, Workflows, Inbox, `/platform`
 
-CRM / Marketing / Ingestion persist to local SQLite (`.data/`).  
-See [`docs/MILESTONE_3_CRM.md`](./docs/MILESTONE_3_CRM.md), [`docs/MILESTONE_4_MARKETING.md`](./docs/MILESTONE_4_MARKETING.md), [`docs/MILESTONE_5_INGESTION.md`](./docs/MILESTONE_5_INGESTION.md).
+Domain data persists to shared SQLite at repo-root `.data/leadorbit.sqlite` (override `LEADORBIT_SQLITE_PATH`).  
+Docs: [`MILESTONE_3_CRM`](./docs/MILESTONE_3_CRM.md) · [`MILESTONE_4_MARKETING`](./docs/MILESTONE_4_MARKETING.md) · [`MILESTONE_5_INGESTION`](./docs/MILESTONE_5_INGESTION.md) · [`MILESTONE_6_AUTOMATION`](./docs/MILESTONE_6_AUTOMATION.md).
 
-Public landing pages: `/p/:orgId/:slug` (published only).  
-Signed webhooks: `POST /api/v1/public/webhooks/:orgId/:endpointId`.
+```bash
+pnpm dev:web     # http://127.0.0.1:43127
+pnpm dev:worker  # durable workflow/message consumer
+```
+
+Public landing pages: `/p/:orgId/:slug`.  
+Signed lead webhooks: `POST /api/v1/public/webhooks/:orgId/:endpointId`.  
+Signed messaging webhooks: `POST /api/v1/public/messaging/:orgId/:channel`.
 
 ## License
 

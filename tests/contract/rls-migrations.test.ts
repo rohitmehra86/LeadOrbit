@@ -50,3 +50,16 @@ test("ingestion migration enables RLS on webhooks and attribution", () => {
   assert.match(sql, /private\.is_org_member/);
   assert.match(sql, /enable row level security/);
 });
+
+test("workflows/inbox migration enables RLS", () => {
+  const sql = readFileSync(
+    resolve(process.cwd(), "supabase/migrations/00007_workflows_inbox.sql"),
+    "utf8",
+  );
+  assert.match(sql, /durable_jobs/);
+  assert.match(sql, /workflows/);
+  assert.match(sql, /conversations/);
+  assert.match(sql, /inbox_messages/);
+  assert.match(sql, /private\.is_org_member/);
+  assert.match(sql, /enable row level security/);
+});
