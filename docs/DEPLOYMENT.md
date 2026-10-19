@@ -42,7 +42,12 @@ pnpm dlx vercel env pull   # verify vars — do not print secrets
 pnpm dlx vercel --prod     # only after staging soak
 ```
 
-Root `vercel.json` points build at `@leadorbit/web`.
+Root `vercel.json` builds `@leadorbit/web`. For the Vercel project UI:
+
+- **Preferred Root Directory:** `apps/web` (uses `apps/web/vercel.json`, finds `next` in that package)
+- **Also supported:** Root Directory `./` — root `package.json` declares `next` so Vercel’s detector succeeds; build still runs `pnpm --filter @leadorbit/web build`
+
+Do not attach LeadOrbit to LinkBooks Vercel projects.
 
 ### Supabase
 

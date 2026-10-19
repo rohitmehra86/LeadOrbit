@@ -24,6 +24,11 @@
     "deploy:check": "bash scripts/deploy-check.sh",
     "format": "prettier --write ."
   },
+  "dependencies": {
+    "next": "15.5.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.55.0",
