@@ -43,10 +43,12 @@
 
 | Surface | State |
 |---------|-------|
-| Supabase MCP | **Authenticated** — org `paxaris`; projects visible; migrate blocked until Rohit confirms staging ref |
+| Supabase MCP | **Authenticated** — LeadOrbit project migrated via MCP |
 | Supabase CLI | **Blocked** — no `SUPABASE_ACCESS_TOKEN` |
 | Vercel token | **Received** — stored agent-local; CLI **blocked** by `api.vercel.com` / `vercel.com` egress |
-| Vercel project `leadorbit` | Created in UI (paxaris); agent cannot verify deploy via API until egress |
+| Vercel project `leadorbit` | Created in UI; **API egress still blocks** agent deploy/env; Root Directory must be `apps/web` |
+| Supabase LeadOrbit project | **Verified** — `kqmuxocbmtydkxdvmypy`; **11 migrations applied**; ~84 public tables RLS on |
+| Linkbook Supabase | Untouched (`ipxflpzfcqwtenodbxwc`) |
 | GitHub PAT | **Received** — stored agent-local only; git HTTPS accepted |
 | GitHub `gh` / API | **Blocked** — `api.github.com` still egress-blocked (create via UI used instead) |
 | GitHub repo | **Verified** — https://github.com/rohitmehra86/LeadOrbit — default branch is now **`main`** (renamed from M12 branch) @ `75b2e61` |
@@ -61,14 +63,16 @@
 | **LeadOrbit** | In scope — GitHub `rohitmehra86/LeadOrbit`, dedicated Supabase + Vercel |
 | **Linkbook** (other session) | **Out of scope** — do not migrate/deploy to Supabase `ipxflpzfcqwtenodbxwc` or Linkbook’s Vercel project |
 
-### Ask Rohit — unblock LeadOrbit staging (Linkbook stays untouched)
+### Ask Rohit — finish Vercel (Supabase DB done)
 
-1. **Egress** — `vercel.com`, `api.vercel.com`, `api.supabase.com`, `*.supabase.co`  
-2. **Vercel** — `VERCEL_TOKEN` (same account as Linkbook OK); agent creates/links **`leadorbit-web`**, not Linkbook  
-3. **Supabase** — prefer “create new `leadorbit-staging`”; or confirm a LeadOrbit-only ref. **Not** Linkbook (`ipxflpzfcqwtenodbxwc`)  
-4. Optional: `SUPABASE_ACCESS_TOKEN`, worker host, Sentry/OTEL  
+Supabase LeadOrbit (`kqmuxocbmtydkxdvmypy`) migrations are **applied**. Vercel token is stored but **API egress blocks** agent from setting env / reading deploy URL.
 
-GitHub LeadOrbit `main` is already wired. When tokens arrive: `LEADORBIT_SKIP_GITHUB=1 bash scripts/staging/wire-all.sh`  
+1. Vercel UI: Root Directory = `apps/web`  
+2. Paste env vars from `docs/VERCEL_ENV_SETUP.md` + store doc (include `SUPABASE_SERVICE_ROLE_KEY` from Supabase API settings)  
+3. Redeploy `main` → send Ready URL  
+4. Approve egress `vercel.com` + `api.vercel.com` so agent can manage env/deploys next time  
+
+See also: `/cursor/stores/.../docs/leadorbit-vercel-env-values.md`  
 
 ---
 
