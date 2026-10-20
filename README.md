@@ -8,8 +8,11 @@ Stack: Next.js App Router · TypeScript · Tailwind · Supabase · Vercel · dur
 
 | Document | Path |
 |----------|------|
+| Competitor feature matrix (AI-first) | [`docs/product/COMPETITOR_FEATURE_MATRIX.md`](./docs/product/COMPETITOR_FEATURE_MATRIX.md) |
+| Competitive differentiation | [`docs/product/COMPETITIVE_DIFFERENTIATION.md`](./docs/product/COMPETITIVE_DIFFERENTIATION.md) |
+| Feature superiority roadmap | [`docs/product/FEATURE_SUPERIORITY_ROADMAP.md`](./docs/product/FEATURE_SUPERIORITY_ROADMAP.md) |
 | Product requirements | [`PRODUCT_REQUIREMENTS.md`](./PRODUCT_REQUIREMENTS.md) |
-| Competitor feature matrix | [`COMPETITOR_FEATURE_MATRIX.md`](./COMPETITOR_FEATURE_MATRIX.md) |
+| Competitor feature matrix (legacy root) | [`COMPETITOR_FEATURE_MATRIX.md`](./COMPETITOR_FEATURE_MATRIX.md) |
 | Architecture | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | Database design | [`DATABASE_DESIGN.md`](./DATABASE_DESIGN.md) |
 | Implementation plan | [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) |
