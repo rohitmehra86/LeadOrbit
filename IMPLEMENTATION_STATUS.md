@@ -1,8 +1,15 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Wave 6 — ecosystem (partner webhooks, OpenAPI, marketplace)  
+**Current focus:** Wave 6 shipped; Vercel production build fix for `node:dns/promises` client graph  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
+
+### Vercel production build (2026-10-20)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Local `pnpm --filter @leadorbit/web build` | **Verified** | Was failing: `UnhandledSchemeError: node:dns/promises` via `@leadorbit/domain` → client `public-form.tsx`. Fixed by moving live DNS to `@leadorbit/domain/server`. |
+| Vercel Production redeploy after fix | **Not verified here** | Agent cannot call Vercel API — Rohit must Redeploy `main` |
 
 ---
 

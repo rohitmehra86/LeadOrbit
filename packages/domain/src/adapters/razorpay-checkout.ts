@@ -83,7 +83,8 @@ export async function createRazorpayCheckoutSession(input: {
 
   const keyId = process.env.RAZORPAY_KEY_ID!;
   const keySecret = process.env.RAZORPAY_KEY_SECRET!;
-  const authHeader = `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`;
+  // Avoid Buffer so this adapter stays safe if pulled into a Next client graph.
+  const authHeader = `Basic ${btoa(`${keyId}:${keySecret}`)}`;
   const currency = (input.currency || "INR").toUpperCase();
   // Razorpay amounts are in the smallest currency unit.
   const payload = {

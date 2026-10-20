@@ -11,6 +11,7 @@ import {
   type DnsTxtLookup,
   type WhiteLabelBrand,
 } from "@leadorbit/domain";
+import { defaultDnsTxtLookup } from "@leadorbit/domain/server";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
 import type { BillingStore } from "./billing-store";
@@ -293,7 +294,7 @@ export class WhiteLabelStore {
     const result = await verifyDomainTxtChallenge({
       hostname: row.hostname,
       expectedToken: row.txt_challenge ?? "",
-      lookup,
+      lookup: lookup ?? defaultDnsTxtLookup,
     });
     const now = nowIso();
     this.db

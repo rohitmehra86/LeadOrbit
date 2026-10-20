@@ -54,7 +54,12 @@ export function startDomainVerification(hostname: string): {
       detail: "Invalid hostname",
     };
   }
-  const token = `leadorbit-verify=${Buffer.from(normalized).toString("base64url").slice(0, 24)}`;
+  // Client-safe base64url (no Buffer / node: deps in the domain barrel).
+  const b64 = btoa(normalized)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  const token = `leadorbit-verify=${b64.slice(0, 24)}`;
   return {
     status: "pending",
     txtChallenge: token,

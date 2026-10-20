@@ -1,6 +1,7 @@
 /**
  * Custom domain DNS TXT verification scaffold.
- * Live lookup uses Node dns when available; injectable for tests.
+ * Pure helpers only — no node: imports (client-safe via @leadorbit/domain barrel).
+ * Live Node DNS lookup lives in @leadorbit/domain/server (`defaultDnsTxtLookup`).
  * Never marks verified without a matching TXT record.
  */
 
@@ -14,21 +15,10 @@ export type DomainVerifyResult = {
   recordsFound: string[];
 };
 
-/** Default lookup — Node dns/promises when present; otherwise empty (scaffolded). */
-export async function defaultDnsTxtLookup(hostname: string): Promise<string[]> {
-  try {
-    const dns = await import("node:dns/promises");
-    const records = await dns.resolveTxt(hostname);
-    return records.map((parts) => parts.join(""));
-  } catch {
-    return [];
-  }
-}
-
 /**
  * Verify that hostname publishes the expected TXT challenge.
- * Pass `lookup` in tests. When lookup yields no records and was the default
- * failure path, status stays `pending` (not verified).
+ * Pass `lookup` from server (`defaultDnsTxtLookup`) or tests.
+ * Without a lookup, stays `pending` — never invents verified.
  */
 export async function verifyDomainTxtChallenge(input: {
   hostname: string;
@@ -44,10 +34,18 @@ export async function verifyDomainTxtChallenge(input: {
     };
   }
 
-  const lookup = input.lookup ?? defaultDnsTxtLookup;
+  if (!input.lookup) {
+    return {
+      status: "pending",
+      detail:
+        "DNS lookup requires server runtime — pass defaultDnsTxtLookup from @leadorbit/domain/server",
+      recordsFound: [],
+    };
+  }
+
   let records: string[];
   try {
-    records = await lookup(hostname);
+    records = await input.lookup(hostname);
   } catch (err) {
     return {
       status: "pending",

@@ -1,9 +1,10 @@
 /**
- * Server-only domain helpers (Node crypto).
+ * Server-only domain helpers (Node crypto / dns).
  * Do NOT import from client components or edge middleware.
  * Use: import { ... } from "@leadorbit/domain/server"
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { resolveTxt } from "node:dns/promises";
 
 const SIG_PREFIX = "sha256=";
 
@@ -133,6 +134,16 @@ export function verifyStripeWebhook(input: {
 
 export function signRazorpayWebhook(rawBody: string, secret: string): string {
   return createHmac("sha256", secret).update(rawBody).digest("hex");
+}
+
+/** Live DNS TXT lookup for custom-domain verification (Node only). */
+export async function defaultDnsTxtLookup(hostname: string): Promise<string[]> {
+  try {
+    const records = await resolveTxt(hostname);
+    return records.map((parts) => parts.join(""));
+  } catch {
+    return [];
+  }
 }
 
 export function verifyRazorpayWebhook(input: {
