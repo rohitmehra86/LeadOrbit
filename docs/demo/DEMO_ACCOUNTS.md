@@ -22,6 +22,10 @@ Orgs are **independent** — friends do not see each other’s leads.
 
 Re-run the durable seed SQL in Supabase SQL editor (LeadOrbit project), or ask the agent to re-apply `scripts/seed-vercel-demo-orgs.sql`. Fixed org IDs above are replaced on re-seed.
 
+## Seeing the old UI?
+
+Hard-refresh or use **incognito**. If still old, Redeploy Production from GitHub `main` (`736b12e`+ pro UI). Forwardable card: [`FRIEND_ACCESS.md`](./FRIEND_ACCESS.md).
+
 ## Vercel env checklist (Rohit)
 
 Production project **leadorbit** (`leadorbit-delta.vercel.app`), Root Directory = `apps/web`:

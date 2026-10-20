@@ -18,7 +18,11 @@
 | Screenshots before/after | **Verified** | `/cursor/stores/self/media/pro-ui-*.png` |
 | Optimizer login reference fetch | **Blocked** | Cloudflare/egress from VM; see `media/BLOCKER-optimizer-ui-reference.md` — polish used GHL/HubSpot-class bar instead |
 | Handoff | **Verified** | `/cursor/stores/self/internal/pro-ui-polish-handoff.md` |
-| Vercel production UI after push | **Not verified here** | Redeploy `main`; Root=`apps/web` + Supabase env still required if host unreachable |
+| GitHub `main` tip | **Verified** | `736b12e` includes pro UI |
+| Vercel API / production HTTPS from agent | **Blocked** | Egress denies `api.vercel.com` + `*.vercel.app` — Rohit must Redeploy |
+| LeadOrbit Supabase migrations through `00016` | **Verified** (MCP) | Project `kqmuxocbmtydkxdvmypy` only |
+| Friend demo re-seed (marketing + broker) | **Verified** (MCP) | Password `DemoFriend-Vercel-2026!`; see `/cursor/stores/self/docs/friend-access.md` |
+| Production shows NEW UI | **Not verified here** | Waiting on Rohit Redeploy + hard-refresh |
 
 ### Friend demos — Vercel (2026-10-20)
 

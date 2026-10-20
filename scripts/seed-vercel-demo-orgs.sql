@@ -55,8 +55,11 @@ begin
    jsonb_build_object('sub', v_bro_user::text, 'email', 'broker.friend@test.com', 'email_verified', true),
    'email', now(), now(), now());
 
-  update public.profiles set full_name = 'Marketing Friend', email = 'marketing.friend@test.com' where id = v_mkt_user;
-  update public.profiles set full_name = 'Broker Friend', email = 'broker.friend@test.com' where id = v_bro_user;
+  insert into public.profiles (id, email, full_name)
+  values
+  (v_mkt_user, 'marketing.friend@test.com', 'Marketing Friend'),
+  (v_bro_user, 'broker.friend@test.com', 'Broker Friend')
+  on conflict (id) do update set email = excluded.email, full_name = excluded.full_name;
 
   insert into public.organizations (id, name, slug, org_type, timezone, locale, currency, branding)
   values

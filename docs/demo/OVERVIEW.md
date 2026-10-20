@@ -22,12 +22,15 @@ Pre-seeded accounts (share one path per friend): see [`DEMO_ACCOUNTS.md`](./DEMO
 
 | Area | What it does |
 |------|----------------|
+| **Home** | KPI snapshot, next actions, recent audit |
 | **AI Assistant** | Chat to create campaigns, leads, appointments |
-| **Leads** | People who inquired; stages & follow-up |
+| **Leads** | Inbox with filters, ownership, next action |
 | **Marketing** | Campaigns, forms, public pages, Launch Pack |
 | **Sales & Appointments** | Follow-ups, hot leads, link to calendar |
 | **Results** | Funnel / performance (ad spend needs Meta/Google) |
-| **Settings** | Org basics |
+| **Settings** | Brand, team, honest integrations status |
+
+Forward credentials: [`FRIEND_ACCESS.md`](./FRIEND_ACCESS.md) / store `friend-access.md`.
 
 **Advanced / Expert** (toggle at bottom of sidebar)
 
