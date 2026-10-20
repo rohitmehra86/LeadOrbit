@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Wave 5 — agency scale (billing, white-label, platform admin, metering)  
+**Current focus:** Wave 6 — ecosystem (partner webhooks, OpenAPI, marketplace)  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
 ---
@@ -17,46 +17,40 @@
 
 ---
 
-## Wave 5 — Agency scale (2026-10-20)
+## Wave 6 — Ecosystem (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Stripe Checkout adapter | **Partial** | `createStripeCheckoutSession` — pending without keys; scaffolded without price ids; live session via HTTP when price + secret set. **Never activates from client success** |
-| Razorpay payment-link adapter | **Partial** | Same honesty; webhook + notes.orgId activate only |
-| Webhook idempotency | **Verified** (unit) | Duplicate `event_id` accepted once; bad signatures rejected |
-| White-label brand + branded login | **Verified** (local) | `/p/[orgId]/login` + public branding API; host map scaffold |
-| Domain DNS verify | **Partial** | TXT challenge + `verifyDomain` / dns-verify adapter; live DNS needs public records |
-| Platform admin (tenants/usage/flags/audit) | **Verified** (local) | `/platform` tabs + restricted APIs; audited flag writes |
-| Usage metering + entitlements gates | **Verified** (unit) | `consumeQuota` / `consumeAiCredits`; AI assistant + inbox outbound gated |
-| Live Stripe/Razorpay charge in prod | **Blocked** | Needs real keys + price/plan ids + webhook endpoints on Vercel |
-| Live custom-domain TLS / email send | **Blocked** | DNS + email provider wiring |
-
-### Mode split
-
-| Surface | `local` | `supabase` |
-|---------|---------|------------|
-| Billing store | SQLite | Still SQLite billing store (Supabase billing tables exist; app path not switched) |
-| White-label | SQLite + branded login | Brand tables in `00011`; local store used today |
-| Platform flags/audit | In-memory tenancy audit | Needs platform RLS APIs for full parity |
-| Metering gates | BillingStore + tenancy mirror | Same when AUTH_MODE=local; AI/inbox gates on local stores |
+| Outbound partner webhooks (Zapier/n8n) | **Verified** (unit) | Signed HMAC delivery; `delivered` only on HTTP 2xx; retries → dead_letter; idempotent `(subscription, event_id)` |
+| Inbound partner webhooks | **Verified** (unit) | Signature required; idempotent `(partner, event_id)` |
+| Event catalog + Developers UI | **Verified** (local) | `/app/orgs/{orgId}/developers` |
+| OpenAPI partner surface | **Verified** (contract test) | `packages/api-contracts/openapi/openapi.yaml` v0.6 + `docs/PARTNER_API.md` |
+| Launch Pack marketplace | **Verified** (unit + local install path) | Industry packs install real draft Launch Packs; optional publish |
+| Postgres mirror migration `00016` | **Scaffolded** | Tables + RLS select; app store still SQLite |
+| Live Zapier/n8n production hooks | **Blocked** | Needs deployed URL + real Catch Hook endpoints |
+| Supabase-backed partner store | **Blocked** | Await AUTH_MODE=supabase adapter wiring |
 
 ---
 
-## Wave 4 — Demand + messaging (still current)
+## Wave 5 — Agency scale (still current)
 
 | Item | Status |
 |------|--------|
-| Lead ads / messaging / calendar / ad spend / public/leads | Verified unit + partial durable; live HTTP **Blocked** on credentials |
+| Stripe/Razorpay checkout adapters + webhook idempotency | Partial / verified unit — live charge **Blocked** on keys |
+| White-label branded login + DNS verify | Partial |
+| Platform admin usage/flags/audit | Verified local |
+| AI/messaging metering gates | Verified unit |
 
 ---
 
-## Credentials still needed
+## Credentials still needed (pause recommendation)
+
+**Recommend pause for Rohit’s Vercel redeploy + provider keys before Wave 7** unless product wants pure local scaffolds only.
 
 1. Vercel Redeploy `main` with `AUTH_MODE=supabase` + Supabase URL/anon/`SUPABASE_SERVICE_ROLE_KEY`  
-2. Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`  
-3. Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`  
-4. Meta/Google/WhatsApp/Email/SMS/Calendar keys (Wave 4)  
-5. Optional LLM keys  
+2. Stripe / Razorpay keys + price ids + webhook URLs  
+3. Meta / Google / WhatsApp / Email / SMS / Calendar (Wave 4)  
+4. Optional: real Zapier/n8n Catch Hooks against the deployed host  
 
 Linkbook: **untouched**.
 
@@ -64,16 +58,16 @@ Linkbook: **untouched**.
 
 - Web: http://127.0.0.1:43127  
 
-### Tests (Wave 5)
+### Tests (Wave 6)
 
-- Domain adapters (Wave 4 + Wave 5) — pass  
-- Billing store (webhook idempotency, consumeQuota, checkout honesty) — pass  
-- White-label domain verify — pass  
-- Convert-loop assistant (entitlement-gated) — pass  
-- Typecheck domain/db/web — clean  
+- Domain partner-webhooks + marketplace — pass  
+- DB partner-webhook-store + marketplace-store — pass  
+- OpenAPI contract — pass  
+- Typecheck — clean  
 
-### Next (Wave 6)
+### Next (Wave 7 candidates — after redeploy)
 
-- Zapier/n8n outbound webhooks + event catalog  
-- Public OpenAPI completeness for partners  
-- Marketplace of Launch Pack templates (vertical packs)  
+- Production webhook endpoints + partner OAuth apps  
+- Supabase adapters for partner webhooks / marketplace installs  
+- Rate-limit / partner API keys  
+- Optional: public developer portal page  

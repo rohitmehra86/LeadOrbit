@@ -1185,6 +1185,76 @@ create table if not exists agency_managed_orgs (
   created_at text not null,
   unique(agency_org_id, child_org_id)
 );
+
+create table if not exists partner_outbound_subscriptions (
+  id text primary key,
+  org_id text not null,
+  name text not null,
+  target_url text not null,
+  secret text not null,
+  event_types text not null default '[]',
+  enabled integer not null default 1,
+  description text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists partner_outbound_subs_org_idx
+  on partner_outbound_subscriptions(org_id);
+
+create table if not exists partner_outbound_deliveries (
+  id text primary key,
+  org_id text not null,
+  subscription_id text not null,
+  event_type text not null,
+  event_id text not null,
+  status text not null,
+  attempt_count integer not null default 0,
+  next_retry_at text,
+  last_status_code integer,
+  last_error text,
+  payload text not null default '{}',
+  created_at text not null,
+  updated_at text not null,
+  unique(org_id, subscription_id, event_id)
+);
+create index if not exists partner_outbound_del_org_idx
+  on partner_outbound_deliveries(org_id, status);
+
+create table if not exists partner_inbound_events (
+  id text primary key,
+  org_id text not null,
+  partner text not null,
+  event_id text not null,
+  event_type text not null,
+  status text not null,
+  detail text not null,
+  payload text not null default '{}',
+  created_at text not null,
+  unique(org_id, partner, event_id)
+);
+create index if not exists partner_inbound_org_idx
+  on partner_inbound_events(org_id, created_at);
+
+create table if not exists partner_inbound_secrets (
+  org_id text primary key,
+  secret text not null,
+  updated_at text not null
+);
+
+create table if not exists marketplace_installs (
+  id text primary key,
+  org_id text not null,
+  pack_id text not null,
+  pack_slug text not null,
+  campaign_id text,
+  form_id text,
+  page_id text,
+  page_slug text,
+  detail text not null,
+  created_at text not null
+);
+create index if not exists marketplace_installs_org_idx
+  on marketplace_installs(org_id, created_at);
 `;
 
 export function defaultDbPath(): string {

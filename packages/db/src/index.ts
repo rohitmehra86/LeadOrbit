@@ -19,6 +19,8 @@ export { RealEstateStore } from "./real-estate-store";
 export { BillingStore } from "./billing-store";
 export { AnalyticsStore } from "./analytics-store";
 export { WhiteLabelStore } from "./white-label-store";
+export { PartnerWebhookStore } from "./partner-webhook-store";
+export { MarketplaceStore } from "./marketplace-store";
 export { SqliteJobQueue, getJobQueue } from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 

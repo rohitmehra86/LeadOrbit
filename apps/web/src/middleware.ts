@@ -92,6 +92,7 @@ export async function middleware(request: NextRequest) {
     const isWebhook =
       path.includes("/webhooks/") ||
       path.includes("/billing/webhooks/") ||
+      path.includes("/public/partners/") ||
       path.includes("/public/messaging/") ||
       path.includes("/public/forms/") ||
       path.includes("/public/leads");

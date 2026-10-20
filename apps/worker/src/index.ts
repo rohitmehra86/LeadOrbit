@@ -5,6 +5,7 @@ import {
   CrmStore,
   InboxStore,
   KnowledgeStore,
+  PartnerWebhookStore,
   SqliteJobQueue,
   VoiceStore,
   WorkflowStore,
@@ -28,6 +29,7 @@ const inbox = new InboxStore(tenancy, db, queue);
 const knowledge = new KnowledgeStore(tenancy, db, queue);
 const calendar = new CalendarStore(tenancy, db, queue);
 const voice = new VoiceStore(tenancy, db, queue, calendar);
+const partnerWebhooks = new PartnerWebhookStore(tenancy, db, queue);
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
 
@@ -78,6 +80,9 @@ async function drain(): Promise<void> {
         );
       } else if (job.name === "payment.reconcile") {
         console.log(`[worker] payment.reconcile ack`, job.payload);
+      } else if (job.name === "partner.webhook.deliver") {
+        const p = job.payload as { orgId: string; deliveryId: string };
+        await partnerWebhooks.processDelivery(p.orgId, p.deliveryId);
       } else {
         console.warn(`[worker] no handler for ${job.name}`);
       }

@@ -1,22 +1,34 @@
 openapi: 3.1.0
 info:
-  title: LeadOrbit API
-  version: 0.2.0
+  title: LeadOrbit Partner API
+  version: 0.6.0
   description: |
-    Contract-first API for LeadOrbit. Milestone 2 adds auth session, orgs, invites,
-    flags, entitlements stubs, audit, and platform admin listing.
+    Contract-first public API for LeadOrbit partners (Zapier/n8n, agencies, integrators).
+
+    **Honesty rules**
+    - Outbound webhooks are marked `delivered` only after remote HTTP 2xx.
+    - Inbound partner webhooks require HMAC signature verification.
+    - Billing activation never happens from client-only success callbacks.
+    - Provider integrations without credentials stay `pending_configuration`.
+
+    Auth: session cookie (browser) or Bearer JWT when Supabase auth is configured.
 servers:
   - url: /api/v1
+    description: Relative to the LeadOrbit deployment
 tags:
   - name: Health
   - name: Auth
   - name: Tenancy
+  - name: PartnerWebhooks
+  - name: Marketplace
   - name: Platform
+  - name: Billing
 paths:
   /health:
     get:
       tags: [Health]
       operationId: getHealth
+      summary: Liveness probe
       responses:
         "200":
           description: Service is up
@@ -135,13 +147,22 @@ paths:
           description: Flag upserted
   /orgs/{orgId}/billing:
     get:
-      tags: [Tenancy]
-      operationId: getBillingScaffold
+      tags: [Billing]
+      operationId: getBilling
       parameters:
         - $ref: "#/components/parameters/orgId"
       responses:
         "200":
-          description: Entitlements + quotas stubs
+          description: Subscription, invoices, provider status
+    post:
+      tags: [Billing]
+      operationId: billingAction
+      summary: checkout | change_plan | cancel — never activates from client success
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Checkout scaffolded/created or plan updated
   /orgs/{orgId}/audit:
     get:
       tags: [Tenancy]
@@ -151,6 +172,134 @@ paths:
       responses:
         "200":
           description: Audit trail
+  /orgs/{orgId}/partner-webhooks:
+    get:
+      tags: [PartnerWebhooks]
+      operationId: listPartnerWebhooks
+      summary: Event catalog, outbound subscriptions, deliveries, inbound log
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Partner webhook state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhooksState"
+    post:
+      tags: [PartnerWebhooks]
+      operationId: partnerWebhookAction
+      summary: create_subscription | set_enabled | emit_test | ensure_inbound_secret
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - create_subscription
+                    - set_enabled
+                    - emit_test
+                    - ensure_inbound_secret
+                name:
+                  type: string
+                targetUrl:
+                  type: string
+                  format: uri
+                eventTypes:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PartnerEventType"
+                subscriptionId:
+                  type: string
+                  format: uuid
+                enabled:
+                  type: boolean
+                rotate:
+                  type: boolean
+      responses:
+        "200":
+          description: Action result
+        "400":
+          description: Validation error
+  /public/partners/{orgId}/webhooks:
+    post:
+      tags: [PartnerWebhooks]
+      operationId: inboundPartnerWebhook
+      summary: Inbound partner event (Zapier/n8n → LeadOrbit)
+      description: |
+        Requires headers:
+        - `X-LeadOrbit-Timestamp` — unix seconds
+        - `X-LeadOrbit-Signature` — `sha256=` HMAC of `{timestamp}.{rawBody}`
+        - `X-LeadOrbit-Event-Id` — idempotency key (or JSON `id`)
+        - `X-LeadOrbit-Partner` — partner name (optional)
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Accepted (or duplicate)
+        "400":
+          description: Signature/validation failure
+  /orgs/{orgId}/marketplace:
+    get:
+      tags: [Marketplace]
+      operationId: listMarketplace
+      summary: Launch Pack template catalog + install history
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Catalog and installs
+    post:
+      tags: [Marketplace]
+      operationId: installMarketplacePack
+      summary: Install a marketplace Launch Pack into the org
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, packId]
+              properties:
+                action:
+                  type: string
+                  enum: [install]
+                packId:
+                  type: string
+                  description: Pack id or slug
+                publish:
+                  type: boolean
+                  default: false
+                  description: When true, publishes form+page after install
+      responses:
+        "200":
+          description: Install recorded with Launch Pack assets
+        "404":
+          description: Pack not found
   /platform/orgs:
     get:
       tags: [Platform]
@@ -160,6 +309,33 @@ paths:
           description: All tenants (platform admin)
         "403":
           description: Not a platform admin
+  /platform/usage:
+    get:
+      tags: [Platform]
+      operationId: platformUsage
+      responses:
+        "200":
+          description: Cross-tenant usage snapshot
+  /platform/flags:
+    get:
+      tags: [Platform]
+      operationId: platformFlags
+      responses:
+        "200":
+          description: Flags across tenants
+    post:
+      tags: [Platform]
+      operationId: platformSetFlag
+      responses:
+        "200":
+          description: Flag upserted (audited)
+  /platform/audit:
+    get:
+      tags: [Platform]
+      operationId: platformAudit
+      responses:
+        "200":
+          description: Cross-tenant audit browser
 components:
   securitySchemes:
     bearerAuth:
@@ -174,3 +350,43 @@ components:
       schema:
         type: string
         format: uuid
+  schemas:
+    PartnerEventType:
+      type: string
+      enum:
+        - lead.created
+        - lead.updated
+        - lead.qualified
+        - appointment.booked
+        - campaign.published
+        - message.received
+        - billing.subscription_updated
+        - partner.test
+    PartnerWebhooksState:
+      type: object
+      properties:
+        catalog:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                $ref: "#/components/schemas/PartnerEventType"
+              description:
+                type: string
+              zapierHint:
+                type: string
+        subscriptions:
+          type: array
+          items:
+            type: object
+        deliveries:
+          type: array
+          items:
+            type: object
+        inbound:
+          type: array
+          items:
+            type: object
+        inboundPath:
+          type: string

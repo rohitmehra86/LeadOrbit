@@ -17,6 +17,8 @@ export * from "./analytics";
 export * from "./white-label";
 export * from "./security";
 export * from "./assistant";
+export * from "./partner-webhooks";
+export * from "./marketplace";
 export * from "./adapters";
 
 

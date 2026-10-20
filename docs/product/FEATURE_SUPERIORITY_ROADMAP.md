@@ -47,11 +47,20 @@
 - [x] Usage metering (`consumeQuota` / AI credits) with entitlements gates on AI + messaging  
 - [ ] Live Stripe/Razorpay + custom-domain TLS/email in production (**blocked** on credentials / DNS)
 
-### Wave 6 — Ecosystem
+### Wave 6 — Ecosystem ✅ (local verified; prod hooks blocked)
 
-- Zapier/n8n outbound webhooks + trigger catalog  
-- Public OpenAPI completeness for partners  
-- Marketplace of Launch Pack templates (vertical packs)  
+- [x] Zapier/n8n outbound webhooks + event catalog (HMAC, retries, idempotency; delivered only on HTTP 2xx)  
+- [x] Inbound partner webhooks with signature verification + event_id idempotency  
+- [x] OpenAPI partner surface + `docs/PARTNER_API.md`  
+- [x] Launch Pack marketplace / industry packs with install into org  
+- [ ] Live Zapier/n8n against production host + Supabase-backed partner store (**blocked** on redeploy)
+
+### Wave 7 — Production partners (recommended after Vercel redeploy + keys)
+
+- Partner API keys / OAuth apps  
+- Supabase adapters for partner webhooks + marketplace  
+- Public developer portal polish  
+- Optional CRM→outbound emit wiring on lead.created in prod path  
 
 ### Explicit non-goals (near term)
 

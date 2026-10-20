@@ -19,7 +19,8 @@ Stack: Next.js App Router · TypeScript · Tailwind · Supabase · Vercel · dur
 | Implementation status (honest) | [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) |
 | Java migration starter | [`docs/MIGRATION_TO_JAVA.md`](./docs/MIGRATION_TO_JAVA.md) |
 | Package boundaries | [`docs/PACKAGE_BOUNDARIES.md`](./docs/PACKAGE_BOUNDARIES.md) |
-| OpenAPI stub | [`packages/api-contracts/openapi/openapi.yaml`](./packages/api-contracts/openapi/openapi.yaml) |
+| OpenAPI partner surface | [`packages/api-contracts/openapi/openapi.yaml`](./packages/api-contracts/openapi/openapi.yaml) |
+| Partner API (Zapier/n8n) | [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) |
 
 ## Monorepo
 

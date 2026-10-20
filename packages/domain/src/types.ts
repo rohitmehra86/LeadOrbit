@@ -124,7 +124,8 @@ export type JobName =
   | "voice.process"
   | "payment.reconcile"
   | "ads.sync"
-  | "report.schedule";
+  | "report.schedule"
+  | "partner.webhook.deliver";
 
 export type JobPayloadMap = {
   "lead.score": { orgId: string; leadId: string };
@@ -162,4 +163,5 @@ export type JobPayloadMap = {
   "payment.reconcile": { orgId: string; paymentIntentId: string };
   "ads.sync": { orgId: string; connectionId: string };
   "report.schedule": { orgId: string; reportId: string };
+  "partner.webhook.deliver": { orgId: string; deliveryId: string };
 };
