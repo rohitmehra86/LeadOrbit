@@ -1191,6 +1191,10 @@ export function defaultDbPath(): string {
   if (process.env.LEADORBIT_SQLITE_PATH) {
     return process.env.LEADORBIT_SQLITE_PATH;
   }
+  // Vercel / serverless: filesystem is ephemeral — use /tmp so modules don't crash.
+  if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return join("/tmp", "leadorbit.sqlite");
+  }
   // Share one DB across apps/web and apps/worker (repo-root .data).
   const cwd = process.cwd();
   if (cwd.endsWith(`${"/"}apps/web`) || cwd.endsWith(`${"/"}apps/worker`)) {

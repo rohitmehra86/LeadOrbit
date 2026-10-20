@@ -91,6 +91,17 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user?.email) return null;
+
+  let isPlatformAdmin = Boolean(data.user.app_metadata?.platform_admin);
+  if (!isPlatformAdmin) {
+    const { data: adminRow } = await supabase
+      .from("platform_admins")
+      .select("user_id")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+    isPlatformAdmin = Boolean(adminRow);
+  }
+
   return {
     id: data.user.id,
     email: data.user.email,
@@ -98,7 +109,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       (data.user.user_metadata?.full_name as string | undefined) ??
       (data.user.user_metadata?.name as string | undefined) ??
       null,
-    isPlatformAdmin: Boolean(data.user.app_metadata?.platform_admin),
+    isPlatformAdmin,
   };
 }
 

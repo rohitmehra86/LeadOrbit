@@ -5,26 +5,39 @@ import {
   type LocalTenancyStore,
   type SessionUser,
 } from "@leadorbit/db";
+import {
+  getSupabaseTenancyStore,
+  type SupabaseTenancyStore,
+} from "@/lib/tenancy/supabase-store";
+
+export type TenancyStore = LocalTenancyStore | SupabaseTenancyStore;
 
 /**
- * Tenancy operations. Local mode uses in-process store with permission checks.
- * Supabase mode requires applied migrations + repository adapters (blocked until
- * credentials + project link). Do not pretend Supabase path works without config.
+ * Tenancy operations.
+ * - local: in-process LocalTenancyStore
+ * - supabase: Postgres + RLS via SupabaseTenancyStore (Vercel staging/prod)
  */
-export function getTenancyStore(): LocalTenancyStore {
-  if (getAuthMode() !== "local") {
-    throw new AuthError(
-      "Supabase tenancy repositories are not wired yet. Apply migrations and set credentials, or use AUTH_MODE=local for development.",
-      "validation",
-    );
+export function getTenancyStore(): TenancyStore {
+  if (getAuthMode() === "local") {
+    return getLocalTenancyStore();
   }
-  return getLocalTenancyStore();
+  return getSupabaseTenancyStore();
 }
 
 export async function withTenancy<T>(
   actor: SessionUser,
-  fn: (store: LocalTenancyStore, actor: SessionUser) => Promise<T>,
+  fn: (store: TenancyStore, actor: SessionUser) => Promise<T>,
 ): Promise<T> {
   const store = getTenancyStore();
   return fn(store, actor);
+}
+
+export function assertLocalTenancy(): LocalTenancyStore {
+  if (getAuthMode() !== "local") {
+    throw new AuthError(
+      "This operation is only available in AUTH_MODE=local",
+      "validation",
+    );
+  }
+  return getLocalTenancyStore();
 }
