@@ -42,72 +42,56 @@ export function SettingsForm({ org }: { org: OrganizationDto }) {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid gap-3 rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4 text-sm"
+      className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4 text-sm"
     >
-      <label>
+      <label className="lo-field">
         Name
-        <input
-          name="name"
-          defaultValue={org.name}
-          className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-        />
+        <input name="name" defaultValue={org.name} />
       </label>
       <div className="grid grid-cols-3 gap-2">
-        <label>
+        <label className="lo-field">
           Timezone
-          <input
-            name="timezone"
-            defaultValue={org.timezone}
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="timezone" defaultValue={org.timezone} />
         </label>
-        <label>
+        <label className="lo-field">
           Locale
-          <input
-            name="locale"
-            defaultValue={org.locale}
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="locale" defaultValue={org.locale} />
         </label>
-        <label>
+        <label className="lo-field">
           Currency
-          <input
-            name="currency"
-            defaultValue={org.currency}
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="currency" defaultValue={org.currency} />
         </label>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <label>
+        <label className="lo-field">
           Primary color
           <input
             name="primaryColor"
             defaultValue={org.branding.primaryColor ?? ""}
-            placeholder="#3dd6a5"
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
+            placeholder="#3b82f6"
           />
         </label>
-        <label>
+        <label className="lo-field">
           Accent
           <input
             name="accentColor"
             defaultValue={org.branding.accentColor ?? ""}
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
+            placeholder="#93c5fd"
           />
         </label>
-        <label>
+        <label className="lo-field">
           Support email
           <input
             name="supportEmail"
+            type="email"
             defaultValue={org.branding.supportEmail ?? ""}
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
+            placeholder="support@example.com"
           />
         </label>
       </div>
-      {error ? <p className="text-red-300">{error}</p> : null}
-      {ok ? <p className="text-[var(--lo-accent)]">Saved.</p> : null}
-      <Button type="submit">Save settings</Button>
+      {error ? <p className="lo-error">{error}</p> : null}
+      {ok ? <p className="text-sm text-[var(--lo-success)]">Saved.</p> : null}
+      <Button type="submit">Save brand settings</Button>
     </form>
   );
 }

@@ -1,8 +1,23 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Friend-demo docs + dual-org seed (`docs/demo/`); Wave 6 shipped  
+**Current focus:** Professional UI polish (enterprise SaaS chrome) + prior friend-demo / Wave 6 work  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
+
+### Professional UI polish (2026-10-20)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Design tokens (IBM Plex + Source Serif, slate + steel blue) | **Verified** (local) | Landing/login/shell/app pages; no Inter/purple/cream clichés |
+| Footer / social links | **Verified** | Real GitHub, mailto, Privacy; Capabilities → `/#capabilities` |
+| Login / signup polish | **Verified** (local) | Split auth shell; LeadOrbit brand clear |
+| Org home KPIs (zero vs unavailable) | **Verified** (local) | Real CRM/campaign reads; audit + next actions |
+| Leads inbox (filters, owner, next action) | **Verified** (local) | Empty/error states are professional copy |
+| Marketing campaign list | **Verified** (local) | Table density; ad status stays honest |
+| Settings (brand, team, integrations status) | **Verified** (local) | No fake Meta/WhatsApp connected |
+| Screenshots before/after | **Verified** | `/cursor/stores/self/media/pro-ui-*.png` |
+| Handoff | **Verified** | `/cursor/stores/self/internal/pro-ui-polish-handoff.md` |
+| Vercel production UI after push | **Not verified here** | Redeploy `main`; Root=`apps/web` + Supabase env still required if host unreachable |
 
 ### Friend demos — Vercel (2026-10-20)
 

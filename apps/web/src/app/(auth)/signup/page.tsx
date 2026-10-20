@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Button } from "@leadorbit/ui";
 import { clientSignUp } from "@/lib/auth/client-auth";
+import { SiteFooter } from "@/components/site/site-footer";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -31,49 +32,63 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Create account</h1>
-      <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
-        Create your account to open a workspace. First staging user becomes platform admin.
-      </p>
-      <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Full name
-          <input
-            name="fullName"
-            className="rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input
-            name="email"
-            type="email"
-            required
-            className="rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            className="rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] px-3 py-2"
-          />
-        </label>
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-        <Button type="submit" disabled={loading}>
-          {loading ? "Creating…" : "Create account"}
-        </Button>
-      </form>
-      <p className="mt-6 text-sm text-[var(--lo-fg-muted)]">
-        Already have an account?{" "}
-        <Link className="text-[var(--lo-accent)] underline" href="/login">
-          Sign in
-        </Link>
-      </p>
-    </main>
+    <div className="lo-auth-shell">
+      <aside className="lo-auth-aside">
+        <div>
+          <Link href="/" className="lo-mark text-2xl text-[var(--lo-fg)]">
+            LeadOrbit
+          </Link>
+          <p className="mt-6 max-w-sm text-sm leading-relaxed text-[var(--lo-fg-muted)]">
+            Create an account, then spin up a workspace. First local/staging
+            user becomes platform admin for ops tooling.
+          </p>
+        </div>
+        <p className="text-sm text-[var(--lo-fg-muted)]">
+          Already running demos?{" "}
+          <Link href="/login" className="text-[var(--lo-accent-soft)] underline">
+            Sign in instead
+          </Link>
+        </p>
+      </aside>
+      <div className="lo-auth-main">
+        <h1 className="text-2xl">Create account</h1>
+        <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
+          Password must be at least 8 characters.
+        </p>
+        <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
+          <label className="lo-field">
+            Full name
+            <input name="fullName" autoComplete="name" />
+          </label>
+          <label className="lo-field">
+            Email
+            <input name="email" type="email" required autoComplete="email" />
+          </label>
+          <label className="lo-field">
+            Password
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </label>
+          {error ? <p className="lo-error">{error}</p> : null}
+          <Button type="submit" disabled={loading}>
+            {loading ? "Creating…" : "Create account"}
+          </Button>
+        </form>
+        <p className="mt-6 text-sm text-[var(--lo-fg-muted)]">
+          Already have an account?{" "}
+          <Link className="text-[var(--lo-accent-soft)] underline" href="/login">
+            Sign in
+          </Link>
+        </p>
+        <div className="mt-12">
+          <SiteFooter />
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,16 +1,22 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { getTenancyStore } from "@/lib/tenancy/service";
+import { getDomainCrm } from "@/lib/tenancy/crm";
+import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 import { AuthError } from "@leadorbit/db";
 import Link from "next/link";
-import { InviteForm } from "./invite-form";
-import { SettingsForm } from "./settings-form";
 import { Badge, Button } from "@leadorbit/ui";
-
 
 type Props = { params: Promise<{ orgId: string }> };
 
-export default async function OrgDetailPage({ params }: Props) {
+type Kpi = {
+  label: string;
+  value: string;
+  tone?: "unavailable";
+  hint?: string;
+};
+
+export default async function OrgDashboardPage({ params }: Props) {
   const { orgId } = await params;
   const user = await getSessionUser();
   if (!user) redirect("/login");
@@ -22,7 +28,7 @@ export default async function OrgDetailPage({ params }: Props) {
   } catch (e) {
     if (e instanceof AuthError && e.code === "forbidden") {
       return (
-        <p className="text-red-300">
+        <p className="text-[var(--lo-danger)]">
           Cross-tenant access denied. You are not a member of this organization.
         </p>
       );
@@ -33,130 +39,237 @@ export default async function OrgDetailPage({ params }: Props) {
 
   const membership = await store.getMembership(user.id, orgId);
   const members = await store.listMembers(user, orgId);
-  const flags = await store.listFlags(user, orgId);
-  const billing = {
-    entitlement: await store.getEntitlements(user, orgId),
-    quotas: await store.listQuotas(user, orgId),
-  };
+
+  let leadsOk = true;
+  let leads: Awaited<ReturnType<ReturnType<typeof getDomainCrm>["listLeads"]>> =
+    [];
+  try {
+    leads = await getDomainCrm().listLeads(user, orgId);
+  } catch {
+    leadsOk = false;
+  }
+
+  let campaignsOk = true;
+  let campaigns: Awaited<
+    ReturnType<ReturnType<typeof getDomainCampaigns>["listCampaigns"]>
+  > = [];
+  let pages: Awaited<
+    ReturnType<ReturnType<typeof getDomainCampaigns>["listPages"]>
+  > = [];
+  try {
+    const c = getDomainCampaigns();
+    campaigns = await c.listCampaigns(user, orgId);
+    pages = await c.listPages(user, orgId);
+  } catch {
+    campaignsOk = false;
+  }
+
   let audit: Awaited<ReturnType<typeof store.listAudit>> = [];
+  let auditOk = true;
   try {
     audit = await store.listAudit(user, orgId);
   } catch {
-    audit = [];
+    auditOk = false;
   }
 
+  const newLeads = leads.filter((l) => l.status === "new").length;
+  const needsOwner = leads.filter((l) => !l.ownerUserId).length;
+  const mediumPlus = leads.filter((l) => (l.score ?? 0) >= 45).length;
+  const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
+  const livePages = pages.filter((p) => p.status === "published").length;
+
+  const kpis: Kpi[] = [
+    leadsOk
+      ? { label: "Leads", value: String(leads.length) }
+      : {
+          label: "Leads",
+          value: "Unavailable",
+          tone: "unavailable",
+          hint: "CRM store error",
+        },
+    leadsOk
+      ? { label: "New / unworked", value: String(newLeads) }
+      : { label: "New / unworked", value: "—", tone: "unavailable" },
+    leadsOk
+      ? { label: "Medium+ score", value: String(mediumPlus) }
+      : { label: "Medium+ score", value: "—", tone: "unavailable" },
+    campaignsOk
+      ? { label: "Active campaigns", value: String(activeCampaigns) }
+      : {
+          label: "Active campaigns",
+          value: "Unavailable",
+          tone: "unavailable",
+          hint: "Campaign store error",
+        },
+  ];
+
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="flex flex-col gap-8">
+      <header className="lo-panel-head lo-panel-head-row">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">{org.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1>{org.name}</h1>
             <Badge>{org.orgType}</Badge>
             {membership ? <Badge>{membership.role}</Badge> : null}
           </div>
-          <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
+          <p>
             {org.slug} · {org.timezone} · {org.locale} · {org.currency}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="lo-card-actions" style={{ marginTop: 0 }}>
           <Link href={`/app/orgs/${orgId}/assistant`}>
             <Button type="button">AI Assistant</Button>
           </Link>
           <Link href={`/app/orgs/${orgId}/leads`}>
-            <Button type="button">Leads</Button>
+            <Button type="button" variant="secondary">
+              Leads
+            </Button>
           </Link>
           <Link href={`/app/orgs/${orgId}/results`}>
-            <Button type="button">Results</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/marketplace`}>
             <Button type="button" variant="secondary">
-              Marketplace
-            </Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/developers`}>
-            <Button type="button" variant="secondary">
-              Developers
+              Results
             </Button>
           </Link>
         </div>
-      </div>
-
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-lg font-medium">Settings & branding</h2>
-          <SettingsForm org={org} />
-        </div>
-        <div>
-          <h2 className="mb-3 text-lg font-medium">Invite teammate</h2>
-          <InviteForm orgId={org.id} />
-        </div>
-      </section>
+      </header>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium">Members</h2>
-        <ul className="divide-y divide-[var(--lo-border)] rounded-md border border-[var(--lo-border)] text-sm">
-          {members.map((m) => (
-            <li key={m.id} className="flex justify-between px-4 py-2">
-              <span className="font-mono text-xs">{m.userId}</span>
-              <span>
-                {m.role} · {m.status}
+        <div className="lo-stat-grid">
+          {kpis.map((k) => (
+            <div key={k.label} className="lo-stat" title={k.hint}>
+              <span className="lo-stat-value" data-tone={k.tone}>
+                {k.value}
               </span>
-            </li>
+              <span className="lo-stat-label">{k.label}</span>
+            </div>
           ))}
-        </ul>
+        </div>
+        <p className="lo-muted text-xs">
+          Zero means no records. “Unavailable” means the store could not be
+          read — not the same as empty.
+          {campaignsOk
+            ? ` · ${livePages} published page${livePages === 1 ? "" : "s"} · ${needsOwner} lead${needsOwner === 1 ? "" : "s"} without owner`
+            : null}
+        </p>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-lg font-medium">Feature flags</h2>
-          <ul className="space-y-2 text-sm">
-            {flags.map((f) => (
-              <li
-                key={f.id}
-                className="flex justify-between rounded-md border border-[var(--lo-border)] px-3 py-2"
+        <div className="lo-section">
+          <h2>Next actions</h2>
+          <ul className="lo-link-list mt-3 text-sm">
+            {leadsOk && newLeads > 0 ? (
+              <li>
+                <Link
+                  href={`/app/orgs/${orgId}/leads?status=new`}
+                  className="text-[var(--lo-accent-soft)] underline"
+                >
+                  Review {newLeads} new lead{newLeads === 1 ? "" : "s"}
+                </Link>
+              </li>
+            ) : null}
+            {leadsOk && needsOwner > 0 ? (
+              <li>
+                <Link
+                  href={`/app/orgs/${orgId}/leads?owner=unassigned`}
+                  className="text-[var(--lo-accent-soft)] underline"
+                >
+                  Assign ownership ({needsOwner})
+                </Link>
+              </li>
+            ) : null}
+            {campaignsOk && campaigns.length === 0 ? (
+              <li>
+                <Link
+                  href={`/app/orgs/${orgId}/marketing`}
+                  className="text-[var(--lo-accent-soft)] underline"
+                >
+                  Create first campaign
+                </Link>
+              </li>
+            ) : null}
+            <li>
+              <Link
+                href={`/app/orgs/${orgId}/assistant`}
+                className="text-[var(--lo-accent-soft)] underline"
               >
-                <span>{f.key}</span>
-                <span>{f.enabled ? "on" : "off"}</span>
+                Launch capture via AI Assistant
+              </Link>
+            </li>
+            <li>
+              <Link
+                href={`/app/orgs/${orgId}/settings`}
+                className="text-[var(--lo-accent-soft)] underline"
+              >
+                Brand, team & integrations
+              </Link>
+            </li>
+          </ul>
+        </div>
+        <div className="lo-section">
+          <h2>Team</h2>
+          <p className="lo-muted mb-3 text-sm">
+            {members.length} member{members.length === 1 ? "" : "s"}
+          </p>
+          <ul className="divide-y divide-[var(--lo-border)] rounded-[var(--radius-lg)] border border-[var(--lo-border)] text-sm">
+            {members.slice(0, 6).map((m) => (
+              <li key={m.id} className="flex justify-between gap-3 px-3 py-2">
+                <span className="truncate font-mono text-xs">{m.userId}</span>
+                <span className="shrink-0 text-[var(--lo-fg-muted)]">
+                  {m.role} · {m.status}
+                </span>
               </li>
             ))}
           </ul>
-        </div>
-        <div>
-          <h2 className="mb-3 text-lg font-medium">Entitlements & quotas</h2>
-          <pre className="overflow-auto rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] p-3 text-xs">
-            {JSON.stringify(billing, null, 2)}
-          </pre>
-          <p className="mt-2 text-xs text-[var(--lo-fg-muted)]">
-            Full billing, analytics, and white-label live under their own pages
-            (Milestone 10).
-          </p>
+          <div className="lo-card-actions">
+            <Link href={`/app/orgs/${orgId}/settings`}>
+              <Button type="button" variant="secondary">
+                Manage settings
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Audit trail</h2>
-        {audit.length === 0 ? (
-          <p className="text-sm text-[var(--lo-fg-muted)]">
-            No readable audit events (requires manager+).
+      <section className="lo-section">
+        <h2>Recent activity</h2>
+        {!auditOk ? (
+          <p className="lo-muted mt-2">
+            Audit trail unavailable (insufficient role or store error).
           </p>
+        ) : audit.length === 0 ? (
+          <div className="lo-empty mt-3">
+            <p className="lo-muted">
+              No audit events yet. Creates, invites, and settings changes appear
+              here when recorded.
+            </p>
+          </div>
         ) : (
-          <ul className="space-y-2 text-sm">
-            {audit
-              .slice()
-              .reverse()
-              .map((a) => (
-                <li
-                  key={a.id}
-                  className="rounded-md border border-[var(--lo-border)] px-3 py-2"
-                >
-                  <span className="font-medium">{a.action}</span>{" "}
-                  <span className="text-[var(--lo-fg-muted)]">
-                    {a.entityType} · {a.createdAt}
-                  </span>
-                </li>
-              ))}
-          </ul>
+          <div className="lo-table-wrap mt-3">
+            <table className="lo-table">
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audit
+                  .slice()
+                  .reverse()
+                  .slice(0, 12)
+                  .map((a) => (
+                    <tr key={a.id}>
+                      <td className="font-medium">{a.action}</td>
+                      <td className="lo-muted">{a.entityType}</td>
+                      <td className="lo-muted whitespace-nowrap">
+                        {new Date(a.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

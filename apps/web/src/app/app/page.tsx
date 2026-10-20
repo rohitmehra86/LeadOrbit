@@ -20,56 +20,74 @@ export default async function AppHomePage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Your workspaces</h1>
-        <p className="mt-2 text-[var(--lo-fg-muted)]">
-          Create a workspace, then use the AI Assistant to launch capture and see Results.
+      <header className="lo-panel-head">
+        <h1>Workspaces</h1>
+        <p>
+          Select an organization or create one. Each workspace isolates leads,
+          campaigns, and team membership.
         </p>
         {user.isPlatformAdmin ? (
-          <p className="mt-2">
+          <p className="mt-3">
             <Badge>Platform admin</Badge>
           </p>
         ) : null}
-      </div>
+      </header>
 
       {error ? (
-        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm">
+        <p className="rounded-md border border-[var(--lo-danger)]/40 bg-[var(--lo-danger)]/10 px-4 py-3 text-sm text-[var(--lo-danger)]">
           {error}
         </p>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Organizations</h2>
+      <section className="lo-section">
+        <h2>Organizations</h2>
         {orgs.length === 0 ? (
-          <p className="text-sm text-[var(--lo-fg-muted)]">
-            No organizations yet. Create one to start.
-          </p>
+          <div className="lo-empty mt-3">
+            <p className="lo-muted">
+              No organizations yet. Create a workspace to open the AI Assistant
+              and Launch Pack flow.
+            </p>
+          </div>
         ) : (
-          <ul className="divide-y divide-[var(--lo-border)] rounded-md border border-[var(--lo-border)]">
-            {orgs.map((org) => (
-              <li key={org.id}>
-                <Link
-                  href={`/app/orgs/${org.id}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-[var(--lo-surface-elevated)]"
-                >
-                  <span>
-                    <span className="font-medium">{org.name}</span>
-                    <span className="ml-2 text-sm text-[var(--lo-fg-muted)]">
-                      {org.slug}
-                    </span>
-                  </span>
-                  <span className="text-xs uppercase tracking-wide text-[var(--lo-fg-muted)]">
-                    {org.orgType}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="lo-table-wrap mt-3">
+            <table className="lo-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Slug</th>
+                  <th>Type</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {orgs.map((org) => (
+                  <tr key={org.id}>
+                    <td className="font-medium">{org.name}</td>
+                    <td className="lo-muted">{org.slug}</td>
+                    <td className="uppercase tracking-wide text-xs text-[var(--lo-fg-muted)]">
+                      {org.orgType}
+                    </td>
+                    <td>
+                      <Link
+                        href={`/app/orgs/${org.id}/assistant`}
+                        className="text-[var(--lo-accent-soft)] underline"
+                      >
+                        Open
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Create organization</h2>
+      <section className="lo-section">
+        <h2>Create organization</h2>
+        <p className="mb-3 text-sm text-[var(--lo-fg-muted)]">
+          Name the workspace, then you land in the AI Assistant to launch capture.
+        </p>
         <CreateOrgForm />
       </section>
     </div>

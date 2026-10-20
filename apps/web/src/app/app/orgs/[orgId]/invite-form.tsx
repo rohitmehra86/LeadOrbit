@@ -32,37 +32,28 @@ export function InviteForm({ orgId }: { orgId: string }) {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid gap-3 rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4 text-sm"
+      className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4 text-sm"
     >
-      <label>
+      <label className="lo-field">
         Email
-        <input
-          name="email"
-          type="email"
-          required
-          className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-        />
+        <input name="email" type="email" required autoComplete="email" />
       </label>
-      <label>
+      <label className="lo-field">
         Role
-        <select
-          name="role"
-          defaultValue="agent"
-          className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-        >
+        <select name="role" defaultValue="agent">
           <option value="admin">Admin</option>
           <option value="manager">Manager</option>
           <option value="agent">Agent</option>
           <option value="viewer">Viewer</option>
         </select>
       </label>
-      {error ? <p className="text-red-300">{error}</p> : null}
+      {error ? <p className="lo-error">{error}</p> : null}
       {token ? (
-        <p className="break-all text-xs text-[var(--lo-accent)]">
+        <p className="break-all text-xs text-[var(--lo-accent-soft)]">
           Invite token (share out-of-band): {token}
         </p>
       ) : null}
-      <Button type="submit">Send invite</Button>
+      <Button type="submit">Create invite</Button>
     </form>
   );
 }

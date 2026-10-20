@@ -244,59 +244,100 @@ export function MarketingConsole(props: Props) {
         <div className="space-y-3">
           <h2 className="text-lg font-medium">Campaigns</h2>
           {props.campaigns.length === 0 ? (
-            <p className="text-sm text-[var(--lo-fg-muted)]">
-              No campaigns yet. Create one to generate UTMs and track events.
-            </p>
+            <div className="lo-empty">
+              <p className="lo-muted">
+                No campaigns yet. Create one to generate UTMs and track events,
+                or launch a pack from the AI Assistant.
+              </p>
+            </div>
           ) : (
-            props.campaigns.map((c) => {
-              const perf = perfMap.get(c.id);
-              const landing =
-                props.pages.find((p) => p.id === c.landingPageId) ??
-                props.pages[0];
-              const utmUrl = landing
-                ? appendUtmToUrl(`/p/${props.orgId}/${landing.slug}`, c.utm)
-                : appendUtmToUrl(`/p/${props.orgId}/preview`, c.utm);
-              return (
-                <div
-                  key={c.id}
-                  className="rounded-md border border-[var(--lo-border)] px-4 py-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-[var(--lo-fg-muted)]">
-                        {c.objective} · {c.utm.utmSource}/{c.utm.utmMedium}/
-                        {c.utm.utmCampaign}
-                      </p>
-                    </div>
-                    <Badge>{c.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
-                    {c.adCopy || "No ad copy yet"}
-                  </p>
-                  <p className="mt-2 font-mono text-xs text-[var(--lo-fg-muted)]">
-                    {utmUrl}
-                  </p>
-                  <p className="mt-2 text-xs text-[var(--lo-fg-muted)]">
-                    Views {perf?.pageViews ?? 0} · Submits{" "}
-                    {perf?.formSubmits ?? 0} · Conversions{" "}
-                    {perf?.conversions ?? 0}
-                    {c.abTestEnabled ? " · A/B on" : ""}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button type="button" onClick={() => setStatus(c.id, "active")}>
-                      Activate
-                    </Button>
-                    <Button type="button" onClick={() => setStatus(c.id, "paused")}>
-                      Pause
-                    </Button>
-                    <Button type="button" onClick={() => duplicate(c.id)}>
-                      Duplicate
-                    </Button>
-                  </div>
-                </div>
-              );
-            })
+            <div className="lo-table-wrap">
+              <table className="lo-table">
+                <thead>
+                  <tr>
+                    <th>Campaign</th>
+                    <th>Status</th>
+                    <th>Performance</th>
+                    <th>Landing</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {props.campaigns.map((c) => {
+                    const perf = perfMap.get(c.id);
+                    const landing =
+                      props.pages.find((p) => p.id === c.landingPageId) ??
+                      props.pages[0];
+                    const utmUrl = landing
+                      ? appendUtmToUrl(
+                          `/p/${props.orgId}/${landing.slug}`,
+                          c.utm,
+                        )
+                      : appendUtmToUrl(`/p/${props.orgId}/preview`, c.utm);
+                    return (
+                      <tr key={c.id}>
+                        <td>
+                          <strong>{c.name}</strong>
+                          <div className="lo-muted text-xs">
+                            {c.objective} · {c.utm.utmSource}/
+                            {c.utm.utmMedium}
+                            {c.abTestEnabled ? " · A/B" : ""}
+                          </div>
+                          {c.adCopy ? (
+                            <div className="mt-1 line-clamp-2 text-xs text-[var(--lo-fg-muted)]">
+                              {c.adCopy}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>
+                          <Badge>{c.status}</Badge>
+                        </td>
+                        <td className="lo-muted whitespace-nowrap text-xs">
+                          Views {perf?.pageViews ?? 0}
+                          <br />
+                          Submits {perf?.formSubmits ?? 0}
+                          <br />
+                          Conv {perf?.conversions ?? 0}
+                        </td>
+                        <td>
+                          <code className="break-all text-[0.65rem] text-[var(--lo-fg-muted)]">
+                            {utmUrl}
+                          </code>
+                        </td>
+                        <td>
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="!px-2 !py-1 text-xs"
+                              onClick={() => setStatus(c.id, "active")}
+                            >
+                              Activate
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="!px-2 !py-1 text-xs"
+                              onClick={() => setStatus(c.id, "paused")}
+                            >
+                              Pause
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="!px-2 !py-1 text-xs"
+                              onClick={() => duplicate(c.id)}
+                            >
+                              Duplicate
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </section>

@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Source_Serif_4, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const ibmPlex = IBM_Plex_Sans({
+  variable: "--font-ibm-plex",
   subsets: ["latin"],
-  axes: ["SOFT", "opsz"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
   subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fraunces.variable} ${manrope.variable} ${geistMono.variable} antialiased`}
+        className={`${ibmPlex.variable} ${sourceSerif.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

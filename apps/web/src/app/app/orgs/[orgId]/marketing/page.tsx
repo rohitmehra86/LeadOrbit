@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
 import { getCampaignStore } from "@/lib/tenancy/campaigns";
 import { getTenancyStore } from "@/lib/tenancy/service";
-import { Badge, Button } from "@leadorbit/ui";
+import { Button } from "@leadorbit/ui";
 import { MarketingConsole } from "./marketing-console";
 
 type Props = { params: Promise<{ orgId: string }> };
@@ -31,35 +31,45 @@ export default async function MarketingPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <header className="lo-panel-head lo-panel-head-row">
         <div>
-          <p className="text-sm text-[var(--lo-fg-muted)]">Marketing</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Campaigns & funnels
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-[var(--lo-fg-muted)]">
-            Create campaigns, forms, and landing pages. Ad networks stay
-            pending until credentials are configured — never faked as live.
+          <h1>Marketing</h1>
+          <p>
+            Campaigns, forms, and landing pages. Ad networks stay pending until
+            credentials are configured — never faked as live.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/app/orgs/${orgId}/marketing/forms`}>
-            <Button type="button">Form builder</Button>
+            <Button type="button" variant="secondary">
+              Form builder
+            </Button>
           </Link>
           <Link href={`/app/orgs/${orgId}/marketing/pages`}>
-            <Button type="button">Page builder</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/crm`}>
-            <Button type="button">CRM</Button>
+            <Button type="button" variant="secondary">
+              Page builder
+            </Button>
           </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="flex flex-wrap gap-2">
-        <Badge>{campaigns.length} campaigns</Badge>
-        <Badge>{forms.length} forms</Badge>
-        <Badge>{pages.length} pages</Badge>
-        <Badge>{funnels.length} funnels</Badge>
+      <div className="lo-stat-grid">
+        <div className="lo-stat">
+          <span className="lo-stat-value">{campaigns.length}</span>
+          <span className="lo-stat-label">Campaigns</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{forms.length}</span>
+          <span className="lo-stat-label">Forms</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{pages.length}</span>
+          <span className="lo-stat-label">Pages</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{funnels.length}</span>
+          <span className="lo-stat-label">Funnels</span>
+        </div>
       </div>
 
       <MarketingConsole

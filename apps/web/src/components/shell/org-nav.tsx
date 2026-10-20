@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ModeSwitcher, useUxMode } from "./ux-mode";
 
 const PRIMARY = [
+  { key: "home", label: "Home", href: (id: string) => `/app/orgs/${id}` },
   { key: "assistant", label: "AI Assistant", href: (id: string) => `/app/orgs/${id}/assistant` },
   { key: "leads", label: "Leads", href: (id: string) => `/app/orgs/${id}/leads` },
   { key: "marketing", label: "Marketing", href: (id: string) => `/app/orgs/${id}/marketing` },
@@ -50,7 +51,10 @@ export function OrgNav({
         <ul>
           {PRIMARY.map((item) => {
             const href = item.href(orgId);
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+            const active =
+              item.key === "home"
+                ? pathname === href
+                : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <li key={item.key}>
                 <Link href={href} className={active ? "is-active" : undefined}>

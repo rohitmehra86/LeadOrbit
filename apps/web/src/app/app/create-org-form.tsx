@@ -39,57 +39,38 @@ export function CreateOrgForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid max-w-xl gap-3 rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4"
+      className="grid max-w-xl gap-3 rounded-[var(--radius-lg)] border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4"
     >
-      <label className="text-sm">
-        Name
-        <input
-          name="name"
-          required
-          className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-        />
+      <label className="lo-field">
+        Workspace name
+        <input name="name" required placeholder="Acme Growth" />
       </label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="text-sm">
+        <label className="lo-field">
           Type
-          <select
-            name="orgType"
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          >
+          <select name="orgType">
             <option value="workspace">Workspace</option>
             <option value="agency">Agency</option>
           </select>
         </label>
-        <label className="text-sm">
+        <label className="lo-field">
           Currency
-          <input
-            name="currency"
-            defaultValue="USD"
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="currency" defaultValue="USD" />
         </label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="text-sm">
+        <label className="lo-field">
           Timezone
-          <input
-            name="timezone"
-            defaultValue="UTC"
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="timezone" defaultValue="UTC" />
         </label>
-        <label className="text-sm">
+        <label className="lo-field">
           Locale
-          <input
-            name="locale"
-            defaultValue="en-US"
-            className="mt-1 w-full rounded-md border border-[var(--lo-border)] bg-[var(--lo-bg)] px-3 py-2"
-          />
+          <input name="locale" defaultValue="en-US" />
         </label>
       </div>
-      {error ? <p className="text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="lo-error">{error}</p> : null}
       <Button type="submit" disabled={loading}>
-        {loading ? "Creating…" : "Create organization"}
+        {loading ? "Creating…" : "Create workspace"}
       </Button>
     </form>
   );

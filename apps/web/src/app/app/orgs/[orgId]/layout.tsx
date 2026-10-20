@@ -4,6 +4,7 @@ import { getTenancyStore } from "@/lib/tenancy/service";
 import { AuthError } from "@leadorbit/db";
 import { OrgNav } from "@/components/shell/org-nav";
 import { UxModeProvider } from "@/components/shell/ux-mode";
+import { ShellChrome } from "@/components/shell/shell-chrome";
 
 type Props = {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export default async function OrgShellLayout({ children, params }: Props) {
     if (e instanceof AuthError && e.code === "not_found") notFound();
     if (e instanceof AuthError && e.code === "forbidden") {
       return (
-        <p className="p-8 text-red-300">
+        <p className="p-8 text-[var(--lo-danger)]">
           Cross-tenant access denied. You are not a member of this organization.
         </p>
       );
@@ -35,6 +36,7 @@ export default async function OrgShellLayout({ children, params }: Props) {
   return (
     <UxModeProvider>
       <div className="lo-shell">
+        <ShellChrome email={user.email} orgName={orgName} orgId={orgId} />
         <OrgNav orgId={orgId} orgName={orgName} email={user.email} />
         <main className="lo-shell-main">{children}</main>
       </div>
