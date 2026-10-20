@@ -6,22 +6,24 @@ export default function HomePage() {
   const status = authStatus();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-10">
-      <header className="flex items-center justify-between gap-4">
-        <div className="text-lg font-semibold tracking-tight">LeadOrbit</div>
-        <Badge>Milestone 2 · Auth & tenancy</Badge>
+    <main className="lo-hero-landing mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
+      <header className="relative z-10 flex items-center justify-between gap-4">
+        <div className="lo-mark text-2xl font-semibold tracking-tight text-[var(--lo-accent-soft)]">
+          LeadOrbit
+        </div>
+        <Badge>AI-first revenue cloud</Badge>
       </header>
 
-      <section className="lo-rise mt-24 flex flex-1 flex-col justify-center gap-6 pb-24">
-        <p className="lo-pulse-soft text-sm font-medium uppercase tracking-[0.2em] text-[var(--lo-accent)]">
-          AI Lead & Revenue Cloud
+      <section className="lo-rise relative z-10 mt-20 flex flex-1 flex-col justify-center gap-6 pb-24">
+        <p className="lo-pulse-soft text-sm font-medium uppercase tracking-[0.22em] text-[var(--lo-accent)]">
+          Marketing · Sales · Revenue
         </p>
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
+        <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
           LeadOrbit
         </h1>
-        <p className="lo-rise-delay max-w-2xl text-lg text-[var(--lo-fg-muted)] md:text-xl">
-          Multi-tenant auth, organizations, roles, invites, and SaaS admin — with RLS
-          migrations ready for Supabase.
+        <p className="lo-rise-delay max-w-xl text-lg text-[var(--lo-fg-muted)] md:text-xl">
+          Tell the Assistant your goal. It launches capture, qualifies leads, and shows Results —
+          without a consultant-shaped UI.
         </p>
         <div className="flex flex-wrap gap-3 pt-2">
           <Link href="/signup">
@@ -32,18 +34,11 @@ export default function HomePage() {
               Sign in
             </Button>
           </Link>
-          <Link href="/api/v1/health">
-            <Button type="button" variant="ghost">
-              Health
-            </Button>
-          </Link>
         </div>
         <p className="text-sm text-[var(--lo-fg-muted)]">
           Auth mode: <code>{status.authMode}</code>
           {" · "}
-          Supabase configured: <code>{String(status.supabaseConfigured)}</code>
-          {" · "}
-          See <code>IMPLEMENTATION_STATUS.md</code> for blockers.
+          Supabase: <code>{String(status.supabaseConfigured)}</code>
         </p>
       </section>
     </main>

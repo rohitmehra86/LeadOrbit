@@ -59,38 +59,14 @@ export default async function OrgDetailPage({ params }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/app/orgs/${orgId}/crm`}>
-            <Button type="button">Open CRM</Button>
+          <Link href={`/app/orgs/${orgId}/assistant`}>
+            <Button type="button">AI Assistant</Button>
           </Link>
-          <Link href={`/app/orgs/${orgId}/marketing`}>
-            <Button type="button">Marketing</Button>
+          <Link href={`/app/orgs/${orgId}/leads`}>
+            <Button type="button">Leads</Button>
           </Link>
-          <Link href={`/app/orgs/${orgId}/integrations`}>
-            <Button type="button">Integrations</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/workflows`}>
-            <Button type="button">Workflows</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/inbox`}>
-            <Button type="button">Inbox</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/ai`}>
-            <Button type="button">AI & knowledge</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/calendar`}>
-            <Button type="button">Calendar & voice</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/real-estate`}>
-            <Button type="button">Real estate</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/analytics`}>
-            <Button type="button">Analytics</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/billing`}>
-            <Button type="button">Billing</Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/white-label`}>
-            <Button type="button">White label</Button>
+          <Link href={`/app/orgs/${orgId}/results`}>
+            <Button type="button">Results</Button>
           </Link>
         </div>
       </div>

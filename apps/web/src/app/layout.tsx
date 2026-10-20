@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["SOFT", "opsz"],
+});
+
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -15,7 +21,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LeadOrbit — AI Lead & Revenue Cloud",
   description:
-    "Multi-tenant AI Lead & Revenue Cloud for agencies and growth teams.",
+    "AI-first marketing, sales, and revenue workspace for agencies and growth teams.",
 };
 
 export default function RootLayout({
@@ -25,7 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${fraunces.variable} ${manrope.variable} ${geistMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

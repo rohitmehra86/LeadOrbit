@@ -16,6 +16,8 @@ export * from "./billing";
 export * from "./analytics";
 export * from "./white-label";
 export * from "./security";
+export * from "./assistant";
+
 
 
 import type { MembershipRole } from "./types";

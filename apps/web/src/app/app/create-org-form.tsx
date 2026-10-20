@@ -32,7 +32,7 @@ export function CreateOrgForm() {
       return;
     }
     const data = (await res.json()) as { item: { id: string } };
-    router.push(`/app/orgs/${data.item.id}`);
+    router.push(`/app/orgs/${data.item.id}/assistant`);
     router.refresh();
   }
 

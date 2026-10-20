@@ -1,8 +1,8 @@
 # LeadOrbit — Implementation Status
 
-**Last updated:** 2026-10-19  
-**Current milestone focus:** Milestone 12 (Launch readiness / ops)  
-**Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated live deploys. **Not commercially production-ready.**
+**Last updated:** 2026-10-20  
+**Current focus:** AI-first shell + Launch Pack E2E (Wave 1)  
+**Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
 ---
 
@@ -12,96 +12,64 @@
 |--------|---------|
 | **Verified** | Exercised here with evidence |
 | **Blocked** | Needs credentials / vendor / network |
+| **Partial** | Real code path; incomplete or non-durable on staging |
 | **Scaffolded** | Config/docs/code ready; not live-verified |
-| **Not deployed** | No successful staging/prod deploy performed |
+| **UI-only / stub** | Not claimed complete |
 
 ---
 
-## Milestone 12 — Ops & deploy readiness
+## Wave 1 — AI-first shell (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Env separation (dev/staging/prod templates) | Scaffolded | `.env.*.example` |
-| Migration procedure | Scaffolded | `scripts/migrate.sh` — apply **Blocked** without DB |
-| Deploy + rollback docs | Scaffolded | `docs/DEPLOYMENT.md` |
-| Structured logging | Verified (local) | `@leadorbit/observability` |
-| Error monitoring / OTEL / alerts | Scaffolded | pending without DSN/endpoint/webhook |
-| Health checks (web deep + worker) | Verified (local) | `0.12.0`, `?deep=1`, worker `:43128/health` |
-| Queue monitoring API | Scaffolded | `/api/v1/ops/queue` |
-| Backup/DR docs | Scaffolded | No live restore drill |
-| Runbooks + cost/scaling notes | Scaffolded | `docs/OPERATIONS.md` |
-| Vercel config | Scaffolded / **Not deployed** | No `VERCEL_TOKEN` |
-| Supabase migrate/deploy | Scaffolded / **Not deployed** | MCP auth OK; CLI token missing; staging ref **unconfirmed** |
-| Worker Fly/Railway | Scaffolded / **Not deployed** | Fly CLI missing; Railway unauthorized |
-| Staging wire scripts | Scaffolded | `scripts/staging/*` + `docs/STAGING_WIRING.md` |
-| Incident response | Scaffolded | `docs/INCIDENT_RESPONSE.md` |
-| DPDP/privacy ops notes | Scaffolded | **Not a compliance certification** |
-| Go/no-go checklist | Scaffolded | Staging/prod gates **No-Go** |
-| Commercial production readiness | **Not claimed** | |
+| Product docs (`docs/product/*`) | Verified | Matrix, differentiation, roadmap |
+| Org shell nav (6 primary) | Verified (local) | Assistant · Leads · Marketing · Sales · Results · Settings |
+| Simple / Advanced / Expert modes | Verified (local) | Cookie `lo_ux_mode` |
+| NL Assistant (typed tools + approval) | Verified (local) | `POST .../assistant/chat`; publish requires approval |
+| Launch Pack (campaign+form+page) | Verified (local) | `POST .../launch` + assistant tools; test `launch-pack.test.ts` |
+| Capture → CRM lead | Verified (local) | Public form submit |
+| Results signals | Verified (local) | Lead/campaign/page counts |
+| Visual refresh | Verified (local) | Fraunces + Manrope; ink/saffron system |
+| Live LLM copy/qualify | **Blocked** | Gateway pending keys |
+| Durable Supabase domain data | **Partial** | Auth/org OK; CRM/marketing still SQLite adapters |
+| Meta/Google/WhatsApp/Stripe | **Blocked** | Stubs / pending_configuration |
 
-### Staging auth snapshot (prep — no deploys claimed)
+### Verify locally
 
-| Surface | State |
-|---------|-------|
-| Supabase MCP | **Authenticated** — LeadOrbit project migrated via MCP |
-| Supabase CLI | **Blocked** — no `SUPABASE_ACCESS_TOKEN` |
-| Vercel token | **Received** — stored agent-local; CLI **blocked** by `api.vercel.com` / `vercel.com` egress |
-| Vercel project `leadorbit` | Created in UI; **API egress still blocks** agent deploy/env; Root Directory must be `apps/web` |
-| Supabase LeadOrbit project | **Verified** — `kqmuxocbmtydkxdvmypy`; **11 migrations applied**; ~84 public tables RLS on |
-| Linkbook Supabase | Untouched (`ipxflpzfcqwtenodbxwc`) |
-| GitHub PAT | **Received** — stored agent-local only; git HTTPS accepted |
-| GitHub `gh` / API | **Blocked** — `api.github.com` still egress-blocked (create via UI used instead) |
-| GitHub repo | **Verified** — https://github.com/rohitmehra86/LeadOrbit — default branch is now **`main`** (renamed from M12 branch) @ `75b2e61` |
-| Fly | **Blocked** — CLI not installed |
-| Railway | Installed, **unauthorized** |
-| Local web/worker | **Verified** — `:43127` / `:43128` |
-
-### Multi-project isolation
-
-| Product | This agent |
-|---------|------------|
-| **LeadOrbit** | In scope — GitHub `rohitmehra86/LeadOrbit`, dedicated Supabase + Vercel |
-| **Linkbook** (other session) | **Out of scope** — do not migrate/deploy to Supabase `ipxflpzfcqwtenodbxwc` or Linkbook’s Vercel project |
-
-### Ask Rohit — finish Vercel (Supabase DB done)
-
-Supabase LeadOrbit (`kqmuxocbmtydkxdvmypy`) migrations are **applied**. Vercel token is stored but **API egress blocks** agent from setting env / reading deploy URL.
-
-1. Vercel UI: Root Directory = `apps/web`  
-2. Paste env vars from `docs/VERCEL_ENV_SETUP.md` + store doc (include `SUPABASE_SERVICE_ROLE_KEY` from Supabase API settings)  
-3. Redeploy `main` → send Ready URL  
-4. Approve egress `vercel.com` + `api.vercel.com` so agent can manage env/deploys next time  
-
-See also: `/cursor/stores/.../docs/leadorbit-vercel-env-values.md`  
+```bash
+pnpm local:demo
+# signup → create workspace → Assistant:
+# “Launch a campaign for condo leads in Bangalore” → Approve
+# open publicPath → submit form → Leads / Results
+```
 
 ---
 
-## Platform summary M1–M12
+## Platform summary M1–M12 + Wave 1
 
-| M | Theme | Status |
-|---|-------|--------|
-| 1 | Foundation, monorepo, CI, docs | Verified |
-| 2 | Auth & multi-tenancy | Verified local; Supabase live **Blocked** |
-| 3 | CRM core | Verified |
-| 4 | Marketing / forms / pages | Verified |
-| 5 | Ingestion & attribution | Verified |
-| 6 | Workflows & inbox | Verified |
-| 7 | AI & knowledge | Verified (LLM live **Blocked**) |
-| 8 | Calendar & voice | Verified (OAuth/telephony **Blocked**) |
-| 9 | Real estate vertical (optional) | Verified |
-| 10 | Analytics, billing, white-label | Verified (live payments **Blocked**) |
-| 11 | E2E, security, perf smoke | Verified locally; audit high **Fail** (transitive); live RLS **Blocked** |
-| 12 | Staging/prod ops configs | Scaffolded; **Not deployed** |
+| Area | Status |
+|------|--------|
+| Auth local | Verified |
+| Auth Supabase signup/session | Partial (code on `main`; Redeploy + `SUPABASE_SERVICE_ROLE_KEY` required on Vercel) |
+| CRM / marketing / workflows / RE (local SQLite) | Verified |
+| Inbox send / ads / calendar OAuth / voice / payments | Blocked (creds) |
+| AI deterministic qualify | Verified |
+| AI assistant tools | Verified (local) |
+| Worker queue | Verified (local) |
+| Vercel `leadorbit-delta` | Partial — keep only project `leadorbit`; Redeploy `main` |
+| Linkbook | **Out of scope** — untouched |
 
 ### Cross-cutting blockers
 
-1. No Vercel / Supabase / worker platform credentials in agent env  
-2. Provider credentials unset → features stay `pending_configuration`  
-3. Dependency audit high/critical transitive advisories (Next/eslint)  
-4. `agent_temp` remote limits standard GitHub PR workflow  
+1. Domain stores not on Supabase → staging product data non-durable  
+2. Provider credentials unset  
+3. Agent egress blocks Vercel API / some competitor sites  
+4. Dependency audit high advisories (transitive)
 
 ### Local runtime
 
 - Web: http://127.0.0.1:43127  
-- Worker health: http://127.0.0.1:43128/health  
-- SQLite: `.data/leadorbit.sqlite`  
+- Worker: http://127.0.0.1:43128/health  
+- SQLite: `.data/leadorbit.sqlite`
+
+See also: `docs/product/FEATURE_SUPERIORITY_ROADMAP.md`, inventory handoff in agent store.

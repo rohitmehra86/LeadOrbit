@@ -19,12 +19,11 @@ export default async function AppHomePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Your workspaces</h1>
         <p className="mt-2 text-[var(--lo-fg-muted)]">
-          Multi-org membership with role-based permissions. Auth mode is local until
-          Supabase credentials are provided.
+          Create a workspace, then use the AI Assistant to launch capture and see Results.
         </p>
         {user.isPlatformAdmin ? (
           <p className="mt-2">

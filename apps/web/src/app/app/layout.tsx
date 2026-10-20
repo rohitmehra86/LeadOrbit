@@ -17,11 +17,11 @@ export default async function AppLayout({
       <header className="border-b border-[var(--lo-border)] bg-[var(--lo-surface)]/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div className="flex flex-wrap items-center gap-4">
-            <Link href="/app" className="font-semibold tracking-tight">
+            <Link href="/app" className="lo-mark text-lg font-semibold tracking-tight text-[var(--lo-accent-soft)]">
               LeadOrbit
             </Link>
             <nav className="flex flex-wrap gap-3 text-sm text-[var(--lo-fg-muted)]">
-              <Link href="/app">Workspace</Link>
+              <Link href="/app">Workspaces</Link>
               <Link href="/app/accept-invite">Accept invite</Link>
               {user.isPlatformAdmin ? (
                 <Link href="/platform">Platform admin</Link>
@@ -38,7 +38,7 @@ export default async function AppLayout({
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
+      <div className="mx-auto w-full">{children}</div>
     </div>
   );
 }
