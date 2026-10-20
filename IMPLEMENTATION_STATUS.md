@@ -23,6 +23,7 @@
 | LeadOrbit Supabase migrations through `00016` | **Verified** (MCP) | Project `kqmuxocbmtydkxdvmypy` only |
 | Friend demo re-seed (marketing + broker) | **Verified** (MCP) | Password `DemoFriend-Vercel-2026!`; see `/cursor/stores/self/docs/friend-access.md` |
 | Production shows NEW UI | **Not verified here** | Waiting on Rohit Redeploy + hard-refresh |
+| Marketing Simple redesign (Launch Pack / clean links) | **Verified** (local) | Ad stubs only in Advanced; screenshots `media/marketing-ui-*.png` |
 
 ### Friend demos — Vercel (2026-10-20)
 

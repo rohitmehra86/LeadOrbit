@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   AdIntegration,
@@ -11,8 +12,8 @@ import type {
   Funnel,
   LandingPage,
 } from "@leadorbit/domain";
-import { appendUtmToUrl } from "@leadorbit/domain";
 import { Badge, Button } from "@leadorbit/ui";
+import { useUxMode } from "@/components/shell/ux-mode";
 
 type Props = {
   orgId: string;
@@ -25,11 +26,160 @@ type Props = {
   performance: CampaignPerformance[];
 };
 
+function landingForCampaign(
+  orgId: string,
+  campaign: Campaign,
+  pages: LandingPage[],
+): { slug: string; label: string; path: string; published: boolean } | null {
+  const page =
+    pages.find((p) => p.id === campaign.landingPageId) ??
+    pages.find((p) => p.campaignId === campaign.id);
+  if (!page) return null;
+  return {
+    slug: page.slug,
+    label: page.name || page.slug,
+    path: `/p/${orgId}/${page.slug}`,
+    published: page.status === "published",
+  };
+}
+
+function CopyLinkButton({ path, label }: { path: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    const absolute =
+      typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+    try {
+      await navigator.clipboard.writeText(absolute);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* ignore */
+    }
+  }
+  return (
+    <div className="lo-landing-link">
+      <span className="text-sm text-[var(--lo-fg)]">{label}</span>
+      <a
+        href={path}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="lo-landing-label"
+      >
+        Open
+      </a>
+      <button type="button" className="lo-copy-btn" onClick={copy}>
+        {copied ? "Copied" : "Copy link"}
+      </button>
+    </div>
+  );
+}
+
+function AdChannelCard({
+  title,
+  network,
+  integration,
+  onRegisterInterest,
+}: {
+  title: string;
+  network: "meta" | "google_ads";
+  integration?: AdIntegration;
+  onRegisterInterest: (network: "meta" | "google_ads") => void;
+}) {
+  const status = integration?.status ?? "not_connected";
+  const fullyConnected = status === "connected";
+  const stubReady = status === "authorized_stub";
+  const label = fullyConnected
+    ? "Connected"
+    : stubReady
+      ? "Waiting on live credentials"
+      : "Credentials required";
+  return (
+    <div className="lo-channel-card">
+      <div className="lo-channel-card-head">
+        <strong>{title}</strong>
+        <span className="lo-channel-status">
+          <span
+            className={`lo-status-dot ${fullyConnected ? "is-ok" : "is-warn"}`}
+            aria-hidden
+          />
+          {label}
+        </span>
+      </div>
+      <p className="lo-muted text-xs">
+        {fullyConnected
+          ? "Account linked. Campaign push uses your configured credentials."
+          : "Connect when Meta/Google credentials are ready. Never shown as live without keys."}
+      </p>
+      {!fullyConnected ? (
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3"
+          onClick={() => onRegisterInterest(network)}
+        >
+          Register connect intent
+        </Button>
+      ) : null}
+      {integration?.lastError ? (
+        <p className="lo-muted mt-2 text-xs">{integration.lastError}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function MarketingConsole(props: Props) {
   const router = useRouter();
+  const { mode } = useUxMode();
+  const isSimple = mode === "simple";
+  const showAdvanced = mode === "advanced" || mode === "expert";
+  const showExpert = mode === "expert";
+
   const [error, setError] = useState<string | null>(null);
+  const [launchNote, setLaunchNote] = useState<string | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
-  const perfMap = new Map(props.performance.map((p) => [p.campaignId, p]));
+
+  const perfMap = useMemo(
+    () => new Map(props.performance.map((p) => [p.campaignId, p])),
+    [props.performance],
+  );
+
+  const publishedPages = props.pages.filter((p) => p.status === "published").length;
+  const activeCampaigns = props.campaigns.filter((c) => c.status === "active").length;
+
+  async function launchPack(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLaunchNote(null);
+    setLaunching(true);
+    const fd = new FormData(e.currentTarget);
+    const res = await fetch(`/api/v1/orgs/${props.orgId}/launch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        goal: fd.get("goal"),
+        location: fd.get("location") || null,
+        offer: fd.get("offer") || null,
+        publish: true,
+      }),
+    });
+    setLaunching(false);
+    if (!res.ok) {
+      setError((await res.text()) || "Launch Pack failed");
+      return;
+    }
+    const data = (await res.json()) as {
+      pack: { name: string; pageSlug: string; publicPath: string; published: boolean };
+    };
+    setLaunchNote(
+      data.pack.published
+        ? `Published “${data.pack.name}”. Landing: ${data.pack.pageSlug}`
+        : `Draft “${data.pack.name}” created.`,
+    );
+    e.currentTarget.reset();
+    router.refresh();
+  }
 
   async function createCampaign(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -59,13 +209,7 @@ export function MarketingConsole(props: Props) {
       return;
     }
     e.currentTarget.reset();
-    router.refresh();
-  }
-
-  async function duplicate(id: string) {
-    await fetch(`/api/v1/orgs/${props.orgId}/campaigns/${id}/duplicate`, {
-      method: "POST",
-    });
+    setShowNewCampaign(false);
     router.refresh();
   }
 
@@ -78,11 +222,18 @@ export function MarketingConsole(props: Props) {
     router.refresh();
   }
 
+  async function duplicate(id: string) {
+    await fetch(`/api/v1/orgs/${props.orgId}/campaigns/${id}/duplicate`, {
+      method: "POST",
+    });
+    router.refresh();
+  }
+
   async function suggestCopy() {
     const res = await fetch(`/api/v1/orgs/${props.orgId}/campaigns/ai-suggest`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: "Lead gen ad for local real estate" }),
+      body: JSON.stringify({ prompt: "Lead gen ad for local growth" }),
     });
     const data = (await res.json()) as {
       item: { status: string; reason: string; suggestions: string[] };
@@ -165,282 +316,369 @@ export function MarketingConsole(props: Props) {
     router.refresh();
   }
 
+  const meta = props.integrations.find((i) => i.network === "meta");
+  const google = props.integrations.find((i) => i.network === "google_ads");
+
   return (
-    <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-      <section className="space-y-6">
-        <form
-          onSubmit={createCampaign}
-          className="grid gap-3 rounded-md border border-[var(--lo-border)] bg-[var(--lo-surface)] p-4"
-        >
-          <h2 className="text-lg font-medium">New campaign</h2>
-          <input
-            name="name"
-            required
-            placeholder="Campaign name"
-            className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-          />
-          <select
-            name="objective"
-            className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-          >
-            <option value="lead_gen">Lead gen</option>
-            <option value="traffic">Traffic</option>
-            <option value="conversions">Conversions</option>
-            <option value="brand_awareness">Brand awareness</option>
-            <option value="engagement">Engagement</option>
-          </select>
-          <textarea
-            name="adCopy"
-            placeholder="Ad copy"
-            rows={3}
-            className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              name="utmSource"
-              placeholder="UTM source"
-              defaultValue="meta"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <input
-              name="utmMedium"
-              placeholder="UTM medium"
-              defaultValue="cpc"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
+    <div className="lo-marketing">
+      <div className="lo-stat-grid lo-stat-grid-compact">
+        <div className="lo-stat">
+          <span className="lo-stat-value">{props.campaigns.length}</span>
+          <span className="lo-stat-label">Campaigns</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{activeCampaigns}</span>
+          <span className="lo-stat-label">Active</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{publishedPages}</span>
+          <span className="lo-stat-label">Live pages</span>
+        </div>
+        <div className="lo-stat">
+          <span className="lo-stat-value">{props.forms.length}</span>
+          <span className="lo-stat-label">Forms</span>
+        </div>
+      </div>
+
+      <section className="lo-section lo-launch-panel">
+        <div className="lo-panel-head-row" style={{ marginBottom: "0.75rem" }}>
+          <div>
+            <h2>Launch Pack</h2>
+            <p className="lo-muted text-sm">
+              Describe a goal. LeadOrbit creates campaign, form, and landing page,
+              then publishes so you can share a capture link.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <Link href={`/app/orgs/${props.orgId}/assistant`}>
+            <Button type="button" variant="ghost">
+              Open AI Assistant
+            </Button>
+          </Link>
+        </div>
+        <form onSubmit={launchPack} className="lo-launch-form">
+          <label className="lo-field" style={{ gridColumn: "1 / -1" }}>
+            Goal
             <input
-              name="dailyBudget"
-              type="number"
-              min={0}
-              placeholder="Daily budget USD"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
+              name="goal"
+              required
+              minLength={4}
+              placeholder="Generate qualified inbound leads in Bangalore"
             />
-            <select
-              name="templateKey"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            >
-              <option value="">No template</option>
-              <option value="real_estate">Real estate</option>
-              <option value="lead_gen">Lead gen</option>
-            </select>
-          </div>
-          <label className="flex items-center gap-2 text-sm text-[var(--lo-fg-muted)]">
-            <input name="abTest" type="checkbox" /> A/B testing scaffold
           </label>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit">Create campaign</Button>
-            <Button type="button" onClick={suggestCopy}>
-              AI copy hook
+          <label className="lo-field">
+            Location (optional)
+            <input name="location" placeholder="Bangalore" />
+          </label>
+          <label className="lo-field">
+            Offer line (optional)
+            <input name="offer" placeholder="Book a consult this week" />
+          </label>
+          <div className="lo-launch-actions">
+            <Button type="submit" disabled={launching}>
+              {launching ? "Publishing…" : "Launch & publish"}
             </Button>
           </div>
-          {aiNote ? (
-            <p className="text-xs text-[var(--lo-fg-muted)]">{aiNote}</p>
-          ) : null}
-          {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </form>
-
-        <div className="space-y-3">
-          <h2 className="text-lg font-medium">Campaigns</h2>
-          {props.campaigns.length === 0 ? (
-            <div className="lo-empty">
-              <p className="lo-muted">
-                No campaigns yet. Create one to generate UTMs and track events,
-                or launch a pack from the AI Assistant.
-              </p>
-            </div>
-          ) : (
-            <div className="lo-table-wrap">
-              <table className="lo-table">
-                <thead>
-                  <tr>
-                    <th>Campaign</th>
-                    <th>Status</th>
-                    <th>Performance</th>
-                    <th>Landing</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {props.campaigns.map((c) => {
-                    const perf = perfMap.get(c.id);
-                    const landing =
-                      props.pages.find((p) => p.id === c.landingPageId) ??
-                      props.pages[0];
-                    const utmUrl = landing
-                      ? appendUtmToUrl(
-                          `/p/${props.orgId}/${landing.slug}`,
-                          c.utm,
-                        )
-                      : appendUtmToUrl(`/p/${props.orgId}/preview`, c.utm);
-                    return (
-                      <tr key={c.id}>
-                        <td>
-                          <strong>{c.name}</strong>
-                          <div className="lo-muted text-xs">
-                            {c.objective} · {c.utm.utmSource}/
-                            {c.utm.utmMedium}
-                            {c.abTestEnabled ? " · A/B" : ""}
-                          </div>
-                          {c.adCopy ? (
-                            <div className="mt-1 line-clamp-2 text-xs text-[var(--lo-fg-muted)]">
-                              {c.adCopy}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>
-                          <Badge>{c.status}</Badge>
-                        </td>
-                        <td className="lo-muted whitespace-nowrap text-xs">
-                          Views {perf?.pageViews ?? 0}
-                          <br />
-                          Submits {perf?.formSubmits ?? 0}
-                          <br />
-                          Conv {perf?.conversions ?? 0}
-                        </td>
-                        <td>
-                          <code className="break-all text-[0.65rem] text-[var(--lo-fg-muted)]">
-                            {utmUrl}
-                          </code>
-                        </td>
-                        <td>
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="!px-2 !py-1 text-xs"
-                              onClick={() => setStatus(c.id, "active")}
-                            >
-                              Activate
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="!px-2 !py-1 text-xs"
-                              onClick={() => setStatus(c.id, "paused")}
-                            >
-                              Pause
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="!px-2 !py-1 text-xs"
-                              onClick={() => duplicate(c.id)}
-                            >
-                              Duplicate
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {launchNote ? (
+          <p className="mt-3 text-sm text-[var(--lo-success)]">{launchNote}</p>
+        ) : null}
+        {error ? <p className="lo-error mt-3">{error}</p> : null}
       </section>
 
-      <aside className="space-y-8">
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Ad integrations</h2>
-          <p className="text-xs text-[var(--lo-fg-muted)]">
-            Meta / Google adapters are authorize-flow stubs. Without credentials
-            status stays <code>pending_configuration</code>.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => authorize("meta")}>
-              Connect Meta
-            </Button>
-            <Button type="button" onClick={() => authorize("google_ads")}>
-              Connect Google Ads
-            </Button>
+      <section className="lo-section">
+        <div className="lo-panel-head-row">
+          <div>
+            <h2>Campaigns</h2>
+            <p className="lo-muted text-sm">
+              Published pages show a short landing name — copy the full link for
+              sharing.
+            </p>
           </div>
-          <ul className="space-y-2 text-sm">
-            {props.integrations.length === 0 ? (
-              <li className="text-[var(--lo-fg-muted)]">None configured</li>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/app/orgs/${props.orgId}/results`}>
+              <Button type="button" variant="secondary">
+                View Results
+              </Button>
+            </Link>
+            {showAdvanced ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowNewCampaign((v) => !v)}
+              >
+                {showNewCampaign ? "Hide form" : "New campaign"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {showAdvanced && showNewCampaign ? (
+          <form onSubmit={createCampaign} className="lo-advanced-form mb-4">
+            <h3 className="text-sm font-semibold">Manual campaign</h3>
+            <label className="lo-field">
+              Name
+              <input name="name" required placeholder="Q4 inbound" />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="lo-field">
+                Objective
+                <select name="objective" defaultValue="lead_gen">
+                  <option value="lead_gen">Lead gen</option>
+                  <option value="traffic">Traffic</option>
+                  <option value="conversions">Conversions</option>
+                  <option value="brand_awareness">Brand awareness</option>
+                  <option value="engagement">Engagement</option>
+                </select>
+              </label>
+              <label className="lo-field">
+                Template
+                <select name="templateKey" defaultValue="lead_gen">
+                  <option value="">None</option>
+                  <option value="lead_gen">Lead gen</option>
+                  <option value="real_estate">Real estate</option>
+                </select>
+              </label>
+            </div>
+            <label className="lo-field">
+              Ad copy
+              <textarea name="adCopy" rows={2} placeholder="Short offer copy" />
+            </label>
+            {showExpert ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="lo-field">
+                  UTM source
+                  <input name="utmSource" defaultValue="leadorbit" />
+                </label>
+                <label className="lo-field">
+                  UTM medium
+                  <input name="utmMedium" defaultValue="campaign" />
+                </label>
+                <label className="lo-field">
+                  Daily budget (USD)
+                  <input name="dailyBudget" type="number" min={0} />
+                </label>
+              </div>
             ) : (
-              props.integrations.map((i) => (
-                <li
-                  key={i.id}
-                  className="flex justify-between gap-2 rounded-md border border-[var(--lo-border)] px-3 py-2"
-                >
-                  <span>{i.network}</span>
-                  <Badge>{i.status}</Badge>
-                </li>
-              ))
+              <>
+                <input type="hidden" name="utmSource" value="leadorbit" />
+                <input type="hidden" name="utmMedium" value="campaign" />
+              </>
             )}
-          </ul>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Creative library</h2>
-          <form onSubmit={addCreative} className="grid gap-2">
-            <input
-              name="name"
-              required
-              placeholder="Asset name"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <input
-              name="storagePath"
-              placeholder="local://path or URL"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <input
-              name="tags"
-              placeholder="tags,comma,separated"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <Button type="submit">Add asset metadata</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit">Create draft</Button>
+              {showExpert ? (
+                <Button type="button" variant="ghost" onClick={suggestCopy}>
+                  AI copy suggestions
+                </Button>
+              ) : null}
+            </div>
+            {aiNote ? <p className="lo-muted text-xs">{aiNote}</p> : null}
           </form>
-          <ul className="space-y-2 text-sm">
-            {props.creatives.map((c) => (
-              <li
-                key={c.id}
-                className="rounded-md border border-[var(--lo-border)] px-3 py-2"
-              >
-                {c.name} · {c.contentType}
-              </li>
-            ))}
-          </ul>
-        </section>
+        ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Funnels</h2>
-          <form onSubmit={createFunnel} className="grid gap-2">
-            <input
-              name="name"
-              required
-              placeholder="Funnel name"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <select
-              name="campaignId"
-              className="rounded-md border border-[var(--lo-border)] bg-transparent px-3 py-2 text-sm"
-            >
-              <option value="">No campaign</option>
-              {props.campaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Create lead-gen funnel</Button>
-          </form>
-          <ul className="space-y-2 text-sm">
-            {props.funnels.map((f) => (
-              <li
-                key={f.id}
-                className="rounded-md border border-[var(--lo-border)] px-3 py-2"
-              >
-                {f.name} · {f.steps.length} steps · {f.status}
-              </li>
-            ))}
+        {props.campaigns.length === 0 ? (
+          <div className="lo-empty">
+            <p className="lo-muted">
+              No campaigns yet. Use Launch Pack above, or ask the AI Assistant to
+              launch a capture page.
+            </p>
+            <Link href={`/app/orgs/${props.orgId}/assistant`}>
+              <Button type="button">Open Assistant</Button>
+            </Link>
+          </div>
+        ) : (
+          <ul className="lo-campaign-list">
+            {props.campaigns.map((c) => {
+              const perf = perfMap.get(c.id);
+              const landing = landingForCampaign(props.orgId, c, props.pages);
+              return (
+                <li key={c.id} className="lo-campaign-row">
+                  <div className="lo-campaign-main">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong>{c.name}</strong>
+                      <Badge>{c.status}</Badge>
+                      {landing?.published ? (
+                        <span className="lo-pill-live">Live</span>
+                      ) : (
+                        <span className="lo-pill-draft">Draft page</span>
+                      )}
+                    </div>
+                    <p className="lo-muted mt-1 text-xs">
+                      {c.objective.replace(/_/g, " ")}
+                      {perf
+                        ? ` · ${perf.pageViews} views · ${perf.formSubmits} submits · ${perf.conversions} conversions`
+                        : null}
+                    </p>
+                    {landing ? (
+                      <div className="mt-2">
+                        <CopyLinkButton
+                          path={landing.path}
+                          label={landing.label}
+                        />
+                        <p className="lo-muted mt-1 text-[0.7rem]">
+                          /{landing.slug}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="lo-muted mt-2 text-xs">
+                        No landing page yet — Launch Pack or Page builder.
+                      </p>
+                    )}
+                  </div>
+                  <div className="lo-campaign-actions">
+                    {c.status !== "active" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setStatus(c.id, "active")}
+                      >
+                        Activate
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setStatus(c.id, "paused")}
+                      >
+                        Pause
+                      </Button>
+                    )}
+                    {showAdvanced ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => duplicate(c.id)}
+                      >
+                        Duplicate
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
+        )}
+      </section>
+
+      {isSimple ? (
+        <p className="lo-muted text-xs">
+          Ad channels, creative library, and funnel builder stay in{" "}
+          <strong className="font-medium text-[var(--lo-fg)]">Advanced</strong>{" "}
+          mode. Meta/Google never show as connected without credentials.
+        </p>
+      ) : null}
+
+      {showAdvanced ? (
+        <section className="lo-section">
+          <h2>Ad channels</h2>
+          <p className="lo-muted mb-3 text-sm">
+            Connect when credentials are ready. Nothing is marked live without
+            keys.
+          </p>
+          <div className="lo-channel-grid">
+            <AdChannelCard
+              title="Meta Ads"
+              network="meta"
+              integration={meta}
+              onRegisterInterest={authorize}
+            />
+            <AdChannelCard
+              title="Google Ads"
+              network="google_ads"
+              integration={google}
+              onRegisterInterest={authorize}
+            />
+          </div>
         </section>
-      </aside>
+      ) : null}
+
+      {showAdvanced ? (
+        <details className="lo-disclose">
+          <summary>Creative library & funnels</summary>
+          <div className="lo-disclose-body grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Creatives</h3>
+              <form onSubmit={addCreative} className="lo-advanced-form">
+                <label className="lo-field">
+                  Asset name
+                  <input name="name" required />
+                </label>
+                <label className="lo-field">
+                  Storage path or URL
+                  <input name="storagePath" placeholder="https://… or local://…" />
+                </label>
+                <label className="lo-field">
+                  Tags
+                  <input name="tags" placeholder="hero, retargeting" />
+                </label>
+                <Button type="submit" variant="secondary">
+                  Add asset metadata
+                </Button>
+              </form>
+              <ul className="mt-3 space-y-2 text-sm">
+                {props.creatives.length === 0 ? (
+                  <li className="lo-muted">No creatives yet.</li>
+                ) : (
+                  props.creatives.map((c) => (
+                    <li key={c.id} className="lo-muted">
+                      {c.name} · {c.contentType}
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Funnels</h3>
+              <form onSubmit={createFunnel} className="lo-advanced-form">
+                <label className="lo-field">
+                  Funnel name
+                  <input name="name" required />
+                </label>
+                <label className="lo-field">
+                  Campaign
+                  <select name="campaignId">
+                    <option value="">None</option>
+                    {props.campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button type="submit" variant="secondary">
+                  Create funnel
+                </Button>
+              </form>
+              <ul className="mt-3 space-y-2 text-sm">
+                {props.funnels.length === 0 ? (
+                  <li className="lo-muted">No funnels yet.</li>
+                ) : (
+                  props.funnels.map((f) => (
+                    <li key={f.id} className="lo-muted">
+                      {f.name} · {f.steps.length} steps · {f.status}
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+        </details>
+      ) : null}
+
+      {showAdvanced ? (
+        <div className="lo-card-actions">
+          <Link href={`/app/orgs/${props.orgId}/marketing/forms`}>
+            <Button type="button" variant="ghost">
+              Form builder
+            </Button>
+          </Link>
+          <Link href={`/app/orgs/${props.orgId}/marketing/pages`}>
+            <Button type="button" variant="ghost">
+              Page builder
+            </Button>
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

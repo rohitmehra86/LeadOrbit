@@ -18,6 +18,15 @@ function packNameFromGoal(goal: string): string {
   return `${trimmed.slice(0, 45)}…`;
 }
 
+function slugFromGoal(goal: string): string {
+  const base = goal
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return base || `launch-${Date.now().toString(36)}`;
+}
+
 export async function createLaunchPack(
   actor: SessionUser,
   orgId: string,
@@ -59,7 +68,7 @@ export async function createLaunchPack(
 
   const page = await campaigns.createPage(actor, orgId, {
     name,
-    slug: `launch-${campaign.id.slice(0, 8)}`,
+    slug: slugFromGoal(input.goal),
     campaignId: campaign.id,
     formId: form.id,
     document: {
@@ -118,6 +127,9 @@ export async function publishLaunchPack(
   const page = await campaigns.publishPage(actor, orgId, pack.pageId);
   const form = await campaigns.getForm(actor, orgId, pack.formId);
   const campaignId = form?.campaignId ?? "";
+  if (campaignId) {
+    await campaigns.updateCampaign(actor, orgId, campaignId, { status: "active" });
+  }
   return {
     campaignId,
     formId: pack.formId,

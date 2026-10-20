@@ -22,20 +22,23 @@
 
 ## Click path
 
+Keep mode **Simple** (bottom of sidebar — default).
+
 1. Sidebar → **Marketing**  
-   - Pre-seeded: campaign **Generate qualified inbound leads** already exists (published page).  
-   - Own account: AI Assistant → *“Create a lead gen Launch Pack and publish it”* **or** Marketing → create campaign / form / page → publish.
+   - Pre-seeded: campaign **Generate qualified inbound leads** with a short landing name + **Copy link**.  
+   - Or use **Launch Pack** on the page (goal → Launch & publish).  
+   - Own account: same Launch Pack, or AI Assistant → *“Create a lead gen Launch Pack and publish it”*.
 
 2. **Public capture page** (pre-seeded):  
    https://leadorbit-delta.vercel.app/p/33333333-3333-4333-8333-333333333333/launch-friend-demo  
    - Fill **Full name**, **Work email**, check **I agree to be contacted** → Continue / Submit  
-   - Own account: copy `/p/{orgId}/{slug}` from Marketing after publish.
+   - Own account: use **Copy link** on the campaign row (shows page name, not a raw UUID path).
 
 3. Sidebar → **Leads** → new contact appears (plus sample leads on seeded org).
 
-4. Sidebar → **Results** → funnel / activity.
+4. Sidebar → **Results** (or Marketing → View Results).
 
-Keep mode **Simple**.
+Ad channels / creative library stay under **Advanced** — they never fake Meta/Google as connected.
 
 ---
 

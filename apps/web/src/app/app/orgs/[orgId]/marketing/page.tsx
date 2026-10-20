@@ -30,47 +30,19 @@ export default async function MarketingPage({ params }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="lo-panel flex flex-col gap-6">
       <header className="lo-panel-head lo-panel-head-row">
         <div>
           <h1>Marketing</h1>
           <p>
-            Campaigns, forms, and landing pages. Ad networks stay pending until
-            credentials are configured — never faked as live.
+            Launch capture pages, share landing links, and track Results. Keep
+            Simple mode for demos — Advanced adds channels and builders.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/app/orgs/${orgId}/marketing/forms`}>
-            <Button type="button" variant="secondary">
-              Form builder
-            </Button>
-          </Link>
-          <Link href={`/app/orgs/${orgId}/marketing/pages`}>
-            <Button type="button" variant="secondary">
-              Page builder
-            </Button>
-          </Link>
-        </div>
+        <Link href={`/app/orgs/${orgId}/results`}>
+          <Button type="button">Results</Button>
+        </Link>
       </header>
-
-      <div className="lo-stat-grid">
-        <div className="lo-stat">
-          <span className="lo-stat-value">{campaigns.length}</span>
-          <span className="lo-stat-label">Campaigns</span>
-        </div>
-        <div className="lo-stat">
-          <span className="lo-stat-value">{forms.length}</span>
-          <span className="lo-stat-label">Forms</span>
-        </div>
-        <div className="lo-stat">
-          <span className="lo-stat-value">{pages.length}</span>
-          <span className="lo-stat-label">Pages</span>
-        </div>
-        <div className="lo-stat">
-          <span className="lo-stat-value">{funnels.length}</span>
-          <span className="lo-stat-label">Funnels</span>
-        </div>
-      </div>
 
       <MarketingConsole
         orgId={orgId}
