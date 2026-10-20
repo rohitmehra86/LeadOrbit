@@ -77,7 +77,25 @@ export function WhiteLabelConsole(props: Props) {
     }
     setDomains((d) => [data.domain, ...d]);
     setHostname("");
-    setMessage("Domain verification scaffolded");
+    setMessage("Domain added — publish TXT then verify");
+  }
+
+  async function verifyDomain(domainId: string) {
+    setMessage(null);
+    const res = await fetch(`/api/v1/orgs/${props.orgId}/white-label`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "verify_domain", domainId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.detail ?? "Domain verify failed");
+      return;
+    }
+    setDomains((list) =>
+      list.map((d) => (d.id === data.domain.id ? data.domain : d)),
+    );
+    setMessage(`Domain ${data.domain.status}: ${data.domain.detail}`);
   }
 
   async function linkChild() {
@@ -237,7 +255,18 @@ export function WhiteLabelConsole(props: Props) {
               >
                 <div className="flex justify-between gap-2">
                   <span className="font-mono">{d.hostname}</span>
-                  <Badge>{d.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge>{d.status}</Badge>
+                    {props.canEdit && d.status !== "verified" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void verifyDomain(d.id)}
+                      >
+                        Verify DNS
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 {d.txtChallenge ? (
                   <p className="mt-1 text-xs text-[var(--lo-fg-muted)]">
@@ -245,6 +274,14 @@ export function WhiteLabelConsole(props: Props) {
                   </p>
                 ) : null}
                 <p className="mt-1 text-xs text-[var(--lo-fg-muted)]">{d.detail}</p>
+                <p className="mt-1 text-xs">
+                  <a
+                    className="text-[var(--lo-accent)] underline"
+                    href={`/p/${props.orgId}/login`}
+                  >
+                    Branded login preview
+                  </a>
+                </p>
               </li>
             ))}
           </ul>

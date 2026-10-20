@@ -43,11 +43,17 @@ const CHANNELS: InboxChannel[] = [
 ];
 
 export class InboxStore {
+  private billing: import("./billing-store").BillingStore | null = null;
+
   constructor(
     private tenancy: LocalTenancyStore,
     private db: DatabaseSync = getCrmDatabase(),
     private queue: SqliteJobQueue = new SqliteJobQueue(db),
   ) {}
+
+  setBillingStore(billing: import("./billing-store").BillingStore | null): void {
+    this.billing = billing;
+  }
 
   private async gate(
     actor: SessionUser,
@@ -309,6 +315,11 @@ export class InboxStore {
 
     if (conversation.optedOut) {
       throw new AuthError("Contact opted out of this channel", "conflict");
+    }
+
+    if (this.billing) {
+      this.billing.requireFeature(orgId, "inbox");
+      this.billing.consumeQuota(orgId, "messages_sent", 1);
     }
 
     const id = randomUUID();

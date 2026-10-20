@@ -335,9 +335,68 @@ export class LocalTenancyStore {
     return [...this.quotas.values()].filter((q) => q.orgId === orgId);
   }
 
+  /** Mirror billing consume into M2 usage_quotas (local store). */
+  incrementUsageQuota(
+    orgId: string,
+    metric: string,
+    increment = 1,
+  ): UsageQuota | null {
+    const key = `${orgId}:${metric}`;
+    const existing = this.quotas.get(key);
+    if (!existing) return null;
+    const next: UsageQuota = {
+      ...existing,
+      usedValue: existing.usedValue + increment,
+    };
+    this.quotas.set(key, next);
+    return next;
+  }
+
   async listAudit(actor: SessionUser, orgId: string): Promise<AuditLogEntry[]> {
     await this.requirePermission(actor, orgId, "audit:read");
     return this.audits.filter((a) => a.orgId === orgId).slice(-200);
+  }
+
+  async listAllAuditAsPlatformAdmin(
+    actor: SessionUser,
+    limit = 200,
+  ): Promise<AuditLogEntry[]> {
+    if (!actor.isPlatformAdmin) {
+      throw new AuthError("Platform admin required", "forbidden");
+    }
+    return this.audits.slice(-limit).reverse();
+  }
+
+  async listAllFlagsAsPlatformAdmin(actor: SessionUser): Promise<FeatureFlag[]> {
+    if (!actor.isPlatformAdmin) {
+      throw new AuthError("Platform admin required", "forbidden");
+    }
+    return [...this.flags.values()];
+  }
+
+  async platformSetFlag(
+    actor: SessionUser,
+    orgId: string | null,
+    key: string,
+    enabled: boolean,
+  ): Promise<FeatureFlag> {
+    if (!actor.isPlatformAdmin) {
+      throw new AuthError("Platform admin required", "forbidden");
+    }
+    const id = `${orgId ?? "global"}:${key}`;
+    const flag: FeatureFlag = {
+      id,
+      orgId,
+      key,
+      enabled,
+      metadata: { setBy: "platform_admin" },
+    };
+    this.flags.set(id, flag);
+    await this.audit(actor, orgId, "platform.flag.set", "feature_flag", null, {
+      key,
+      enabled,
+    });
+    return flag;
   }
 
   async grantPlatformAdmin(actor: SessionUser, userId: string, note?: string): Promise<void> {

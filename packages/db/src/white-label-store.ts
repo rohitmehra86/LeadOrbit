@@ -4,9 +4,11 @@ import {
   featureAllowed,
   hasPermission,
   startDomainVerification,
+  verifyDomainTxtChallenge,
   visibleFeatures,
   type AgencyManagedOrg,
   type CustomDomain,
+  type DnsTxtLookup,
   type WhiteLabelBrand,
 } from "@leadorbit/domain";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
@@ -271,6 +273,50 @@ export class WhiteLabelStore {
     return this.mapDomain(
       this.db.prepare(`select * from custom_domains where id=?`).get(id) as DomainRow,
     );
+  }
+
+  /**
+   * Re-check DNS TXT for a custom domain. Never marks verified without a match.
+   */
+  async verifyDomain(
+    actor: SessionUser,
+    orgId: string,
+    domainId: string,
+    lookup?: DnsTxtLookup,
+  ): Promise<CustomDomain> {
+    await this.gate(actor, orgId, "white_label:write");
+    this.requireWhiteLabelEntitlement(orgId);
+    const row = this.db
+      .prepare(`select * from custom_domains where org_id=? and id=?`)
+      .get(orgId, domainId) as DomainRow | undefined;
+    if (!row) throw new AuthError("Domain not found", "not_found");
+    const result = await verifyDomainTxtChallenge({
+      hostname: row.hostname,
+      expectedToken: row.txt_challenge ?? "",
+      lookup,
+    });
+    const now = nowIso();
+    this.db
+      .prepare(
+        `update custom_domains set status=?, detail=?, updated_at=? where id=?`,
+      )
+      .run(result.status, result.detail, now, domainId);
+    return this.mapDomain(
+      this.db.prepare(`select * from custom_domains where id=?`).get(domainId) as DomainRow,
+    );
+  }
+
+  /** Public: resolve org id from a verified (or registered) custom hostname. */
+  resolveOrgIdByHostname(hostname: string): string | null {
+    const key = hostname.trim().toLowerCase().split(":")[0] ?? "";
+    const row = this.db
+      .prepare(
+        `select org_id from custom_domains where hostname=? order by
+           case status when 'verified' then 0 when 'pending' then 1 else 2 end
+         limit 1`,
+      )
+      .get(key) as { org_id: string } | undefined;
+    return row?.org_id ?? null;
   }
 
   async featureVisibility(

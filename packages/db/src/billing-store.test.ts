@@ -151,3 +151,63 @@ test("failed payment moves subscription to past_due with grace", async () => {
   assert.equal(res.subscription?.status, "past_due");
   assert.ok(res.subscription?.graceEndsAt);
 });
+
+test("checkout with stripe keys but no price stays scaffolded; never activates", async () => {
+  const { owner, org, billing } = await setup();
+  process.env.STRIPE_SECRET_KEY = "sk_test_wave5";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_wave5";
+  delete process.env.STRIPE_PRICE_STARTER_MONTHLY;
+  try {
+    const result = await billing.startCheckout(owner, org.id, {
+      planCode: "starter_monthly",
+      provider: "stripe",
+    });
+    assert.equal(result.status, "session_scaffolded");
+    assert.equal(result.checkoutUrl, null);
+    const sub = await billing.getSubscription(owner, org.id);
+    assert.notEqual(sub.status, "active");
+  } finally {
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+  }
+});
+
+test("consumeQuota and consumeAiCredits enforce entitlements", async () => {
+  const { owner, org, billing, tenancy } = await setup();
+  billing.ensureTrialSubscription(org.id);
+  billing.consumeQuota(org.id, "messages_sent", 1);
+  const sub = await billing.getSubscription(owner, org.id);
+  assert.equal(sub.usageQuotas.messages_sent.used, 1);
+
+  billing.consumeAiCredits(org.id, 1);
+  const after = await billing.getSubscription(owner, org.id);
+  assert.equal(after.aiCreditsUsed, 1);
+  assert.equal(after.usageQuotas.ai_jobs.used, 1);
+
+  const mirrored = await tenancy.listQuotas(owner, org.id);
+  const aiJobs = mirrored.find((q) => q.metric === "ai_jobs");
+  assert.ok(aiJobs);
+  assert.equal(aiJobs!.usedValue, 1);
+
+  // Exhaust messages
+  const limit = after.usageQuotas.messages_sent.limit;
+  const used = after.usageQuotas.messages_sent.used;
+  billing.consumeQuota(org.id, "messages_sent", limit - used);
+  assert.throws(
+    () => billing.consumeQuota(org.id, "messages_sent", 1),
+    /Quota exceeded/i,
+  );
+});
+
+test("client success path cannot activate — only verified webhook", async () => {
+  const { owner, org, billing } = await setup();
+  await billing.startCheckout(owner, org.id, {
+    planCode: "starter_monthly",
+    provider: "manual",
+  });
+  let sub = await billing.getSubscription(owner, org.id);
+  assert.notEqual(sub.status, "active");
+  // Simulate what a dishonest client callback must NOT do — store stays incomplete
+  // until webhook. Manual provider still never auto-activates from startCheckout.
+  assert.ok(sub.status === "incomplete" || sub.status === "trialing");
+});

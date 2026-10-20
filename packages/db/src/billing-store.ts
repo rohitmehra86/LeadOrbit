@@ -2,8 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_PLANS,
+  USAGE_METRICS,
+  applyAiCreditsIncrement,
+  applyQuotaIncrement,
   attemptCheckoutSession,
   authorizeBillingProvider,
+  canConsumeAiCredits,
+  canConsumeQuota,
+  createRazorpayCheckoutSession,
+  createStripeCheckoutSession,
+  defaultTrialUsageQuotas,
   featureAllowed,
   hasPermission,
   quotaExceeded,
@@ -253,10 +261,7 @@ export class BillingStore {
         1,
         plan.aiCreditsIncluded,
         0,
-        JSON.stringify({
-          leads_created: { limit: 1000, used: 0 },
-          messages_sent: { limit: 500, used: 0 },
-        }),
+        JSON.stringify(defaultTrialUsageQuotas()),
         JSON.stringify(plan.features),
         trialEnd.toISOString(),
         start,
@@ -295,6 +300,7 @@ export class BillingStore {
 
   /**
    * Checkout / upgrade attempt. Never activates subscription from this path.
+   * Live Stripe/Razorpay URLs come from adapters; client success never activates.
    */
   async startCheckout(
     actor: SessionUser,
@@ -305,24 +311,62 @@ export class BillingStore {
     checkoutUrl: string | null;
     detail: string;
     invoice: Invoice | null;
+    setupHints?: string[];
   }> {
     await this.gate(actor, orgId, "org:billing");
     const plan = this.getPlan(input.planCode);
     if (!plan) throw new AuthError("Unknown plan", "validation");
 
-    const attempt = attemptCheckoutSession({
+    const gate = attemptCheckoutSession({
       provider: input.provider,
       planCode: input.planCode,
     });
+
+    let status = gate.status as string;
+    let checkoutUrl: string | null = null;
+    let detail = gate.detail;
+    let setupHints: string[] | undefined;
+    let providerInvoiceId: string | null = null;
+
+    if (gate.status !== "pending_configuration") {
+      if (input.provider === "stripe") {
+        const live = await createStripeCheckoutSession({
+          orgId,
+          planCode: input.planCode,
+          customerEmail: actor.email,
+        });
+        status = live.status;
+        checkoutUrl = live.checkoutUrl;
+        detail = live.detail;
+        setupHints = live.setupHints;
+        providerInvoiceId = live.providerSessionId;
+      } else if (input.provider === "razorpay") {
+        const live = await createRazorpayCheckoutSession({
+          orgId,
+          planCode: input.planCode,
+          amountCents: plan.priceCents,
+          currency: plan.currency === "USD" ? "INR" : plan.currency,
+          customerEmail: actor.email,
+          description: `LeadOrbit ${plan.name}`,
+        });
+        status = live.status;
+        checkoutUrl = live.checkoutUrl;
+        detail = live.detail;
+        setupHints = live.setupHints;
+        providerInvoiceId = live.providerSessionId;
+      }
+    }
 
     const sub = this.ensureTrialSubscription(orgId);
     const invId = randomUUID();
     const now = nowIso();
     const number = `INV-${now.slice(0, 10)}-${invId.slice(0, 6).toUpperCase()}`;
     const invStatus: InvoiceStatus =
-      attempt.status === "pending_configuration"
+      status === "pending_configuration"
         ? "pending_configuration"
-        : "open";
+        : status === "error"
+          ? "pending_configuration"
+          : "open";
 
     this.db
       .prepare(
@@ -330,7 +374,7 @@ export class BillingStore {
           id, org_id, subscription_id, number, status, amount_cents, currency,
           provider, provider_invoice_id, hosted_invoice_url,
           period_start, period_end, paid_at, created_at
-        ) values (?,?,?,?,?,?,?,?,null,null,?,?,null,?)`,
+        ) values (?,?,?,?,?,?,?,?,?,?,?,?,null,?)`,
       )
       .run(
         invId,
@@ -341,27 +385,32 @@ export class BillingStore {
         plan.priceCents,
         plan.currency,
         input.provider,
+        providerInvoiceId,
+        checkoutUrl,
         sub.currentPeriodStart,
         sub.currentPeriodEnd,
         now,
       );
 
-    // Store intended plan on subscription metadata via features update? Keep status; webhook activates.
+    // Keep subscription incomplete until verified webhook — never activate here.
     this.db
       .prepare(
-        `update org_subscriptions set provider=?, updated_at=? where org_id=?`,
+        `update org_subscriptions set provider=?, plan_code=?,
+         status=case when status='active' then status else 'incomplete' end,
+         updated_at=? where org_id=?`,
       )
-      .run(input.provider, now, orgId);
+      .run(input.provider, input.planCode, now, orgId);
 
     const invoice = this.mapInv(
       this.db.prepare(`select * from billing_invoices where id=?`).get(invId) as InvRow,
     );
 
     return {
-      status: attempt.status,
-      checkoutUrl: attempt.checkoutUrl,
-      detail: attempt.detail,
+      status,
+      checkoutUrl,
+      detail,
       invoice,
+      setupHints,
     };
   }
 
@@ -644,9 +693,89 @@ export class BillingStore {
     const sub = this.ensureTrialSubscription(orgId);
     const q = sub.usageQuotas[metric];
     if (!q) return;
-    if (quotaExceeded(q.used + increment - 1, q.limit)) {
+    const check = canConsumeQuota(q, increment);
+    if (!check.ok) {
       throw new AuthError(`Quota exceeded: ${metric}`, "forbidden");
     }
+    void quotaExceeded;
+  }
+
+  /**
+   * Check + increment a usage quota. Throws when exceeded.
+   * Also mirrors into local tenancy usage_quotas when present.
+   */
+  consumeQuota(orgId: string, metric: string, increment = 1): void {
+    const sub = this.ensureTrialSubscription(orgId);
+    let q = sub.usageQuotas[metric];
+    if (!q) {
+      // Seed missing metric from defaults when possible
+      const defaults = defaultTrialUsageQuotas();
+      q = defaults[metric];
+      if (!q) return;
+      sub.usageQuotas[metric] = q;
+    }
+    const check = canConsumeQuota(q, increment);
+    if (!check.ok) {
+      throw new AuthError(`Quota exceeded: ${metric}`, "forbidden");
+    }
+    const next = applyQuotaIncrement(q, increment);
+    const quotas = { ...sub.usageQuotas, [metric]: next };
+    this.db
+      .prepare(
+        `update org_subscriptions set usage_quotas=?, updated_at=? where org_id=?`,
+      )
+      .run(JSON.stringify(quotas), nowIso(), orgId);
+    this.tenancy.incrementUsageQuota(orgId, metric, increment);
+  }
+
+  /** Check + increment AI credit counter and ai_jobs soft quota. */
+  consumeAiCredits(orgId: string, credits = 1): void {
+    const sub = this.ensureTrialSubscription(orgId);
+    const check = canConsumeAiCredits({
+      included: sub.aiCreditsIncluded,
+      used: sub.aiCreditsUsed,
+      credits,
+    });
+    if (!check.ok) {
+      throw new AuthError(check.reason, "forbidden");
+    }
+    // Pre-check ai_jobs before mutating credits
+    this.requireQuota(orgId, USAGE_METRICS.aiJobs, 1);
+    const used = applyAiCreditsIncrement(sub.aiCreditsUsed, credits);
+    this.db
+      .prepare(
+        `update org_subscriptions set ai_credits_used=?, updated_at=? where org_id=?`,
+      )
+      .run(used, nowIso(), orgId);
+    this.consumeQuota(orgId, USAGE_METRICS.aiJobs, 1);
+  }
+
+  /** Platform ops: usage snapshot across tenants (restricted). */
+  async platformUsageSummary(actor: SessionUser): Promise<
+    Array<{
+      orgId: string;
+      planCode: string;
+      status: SubscriptionStatus;
+      aiCreditsUsed: number;
+      aiCreditsIncluded: number;
+      usageQuotas: Record<string, { limit: number; used: number }>;
+    }>
+  > {
+    await this.gate(actor, "", "platform:admin");
+    const rows = this.db
+      .prepare(`select * from org_subscriptions order by updated_at desc limit 500`)
+      .all() as SubRow[];
+    return rows.map((r) => {
+      const sub = this.mapSub(r);
+      return {
+        orgId: sub.orgId,
+        planCode: sub.planCode,
+        status: sub.status,
+        aiCreditsUsed: sub.aiCreditsUsed,
+        aiCreditsIncluded: sub.aiCreditsIncluded,
+        usageQuotas: sub.usageQuotas,
+      };
+    });
   }
 
   async assertEntitled(

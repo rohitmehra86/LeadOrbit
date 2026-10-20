@@ -1208,6 +1208,7 @@ export function openCrmDatabase(path = defaultDbPath()): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec("pragma journal_mode = WAL;");
   db.exec("pragma foreign_keys = ON;");
+  db.exec("pragma busy_timeout = 5000;");
   db.exec(SCHEMA);
   return db;
 }

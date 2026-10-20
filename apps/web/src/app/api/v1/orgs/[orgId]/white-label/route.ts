@@ -24,9 +24,10 @@ export async function POST(request: Request, ctx: Ctx) {
     const user = await requireUser();
     const store = getWhiteLabelStore();
     const body = (await request.json()) as {
-      action: "update_brand" | "add_domain" | "link_agency";
+      action: "update_brand" | "add_domain" | "verify_domain" | "link_agency";
       brand?: Parameters<typeof store.updateBrand>[2];
       hostname?: string;
+      domainId?: string;
       childOrgId?: string;
       label?: string;
     };
@@ -40,6 +41,13 @@ export async function POST(request: Request, ctx: Ctx) {
         return jsonOk({ error: "hostname required" }, { status: 400 });
       }
       const domain = await store.addDomain(user, orgId, body.hostname);
+      return jsonOk({ domain });
+    }
+    if (body.action === "verify_domain") {
+      if (!body.domainId) {
+        return jsonOk({ error: "domainId required" }, { status: 400 });
+      }
+      const domain = await store.verifyDomain(user, orgId, body.domainId);
       return jsonOk({ domain });
     }
     if (body.action === "link_agency") {

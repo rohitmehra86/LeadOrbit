@@ -40,6 +40,10 @@ export function BillingConsole(props: Props) {
     }
     setMessage(`${data.status}: ${data.detail}`);
     if (data.invoice) setInvoices((prev) => [data.invoice, ...prev]);
+    // Never treat client redirect as activation — webhook only.
+    if (data.checkoutUrl && typeof data.checkoutUrl === "string") {
+      window.location.assign(data.checkoutUrl);
+    }
   }
 
   async function changePlan(planCode: string, mode: "upgrade" | "downgrade") {

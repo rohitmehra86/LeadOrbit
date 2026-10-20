@@ -6,6 +6,7 @@ import {
   getCrmDatabase,
 } from "@leadorbit/db";
 import { getSupabaseInboxStore } from "./supabase-inbox";
+import { getBillingStore } from "./billing";
 
 const globalInbox = globalThis as typeof globalThis & {
   __leadorbitInbox?: InboxStore;
@@ -23,5 +24,6 @@ export function getInboxStore(): InboxStore {
       new SqliteJobQueue(db),
     );
   }
+  globalInbox.__leadorbitInbox.setBillingStore(getBillingStore());
   return globalInbox.__leadorbitInbox;
 }

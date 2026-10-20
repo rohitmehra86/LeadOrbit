@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { getTenancyStore } from "@/lib/tenancy/service";
+import { getBillingStore } from "@/lib/tenancy/billing";
 import { AuthError } from "@leadorbit/db";
 import { Badge } from "@leadorbit/ui";
 import { signOutAction } from "@/app/actions/auth";
+import { PlatformOpsConsole } from "./platform-ops-console";
 
 export default async function PlatformAdminPage() {
   const user = await getSessionUser();
@@ -26,12 +28,43 @@ export default async function PlatformAdminPage() {
 
   let orgs: { id: string; name: string; slug: string; orgType: string; createdAt: string }[] =
     [];
+  let usage: Array<{
+    orgId: string;
+    planCode: string;
+    status: string;
+    aiCreditsUsed: number;
+    aiCreditsIncluded: number;
+    usageQuotas: Record<string, { limit: number; used: number }>;
+  }> = [];
+  let flags: { id: string; orgId: string | null; key: string; enabled: boolean }[] = [];
+  let audit: {
+    id: string;
+    orgId: string | null;
+    actorUserId: string | null;
+    action: string;
+    entityType: string;
+    createdAt: string;
+  }[] = [];
   let error: string | null = null;
+
   try {
-    orgs = await getTenancyStore().listAllOrgsAsPlatformAdmin(user);
+    const store = getTenancyStore();
+    orgs = (await store.listAllOrgsAsPlatformAdmin(user)).map((o) => ({
+      id: o.id,
+      name: o.name,
+      slug: o.slug,
+      orgType: o.orgType,
+      createdAt: o.createdAt,
+    }));
+    usage = await getBillingStore().platformUsageSummary(user);
+    if ("listAllFlagsAsPlatformAdmin" in store) {
+      flags = await store.listAllFlagsAsPlatformAdmin(user);
+    }
+    if ("listAllAuditAsPlatformAdmin" in store) {
+      audit = await store.listAllAuditAsPlatformAdmin(user, 100);
+    }
   } catch (e) {
-    error =
-      e instanceof AuthError ? e.message : "Failed to load tenants";
+    error = e instanceof AuthError ? e.message : "Failed to load platform data";
   }
 
   return (
@@ -40,8 +73,8 @@ export default async function PlatformAdminPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Platform admin</h1>
           <p className="mt-2 text-sm text-[var(--lo-fg-muted)]">
-            SaaS operator skeleton — list tenants. Destructive controls deferred until
-            Supabase production wiring.
+            Tenants, usage metering, feature flags, and audit — restricted to platform
+            admins. Destructive controls remain deferred.
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -57,26 +90,14 @@ export default async function PlatformAdminPage() {
         </div>
       </div>
 
-      {error ? <p className="text-red-300">{error}</p> : null}
+      {error ? <p className="mb-4 text-red-300">{error}</p> : null}
 
-      <ul className="divide-y divide-[var(--lo-border)] rounded-md border border-[var(--lo-border)]">
-        {orgs.map((o) => (
-          <li key={o.id} className="flex justify-between px-4 py-3 text-sm">
-            <span>
-              <span className="font-medium">{o.name}</span>{" "}
-              <span className="text-[var(--lo-fg-muted)]">{o.slug}</span>
-            </span>
-            <span className="text-[var(--lo-fg-muted)]">
-              {o.orgType} · {o.createdAt}
-            </span>
-          </li>
-        ))}
-        {orgs.length === 0 ? (
-          <li className="px-4 py-6 text-sm text-[var(--lo-fg-muted)]">
-            No tenants yet.
-          </li>
-        ) : null}
-      </ul>
+      <PlatformOpsConsole
+        orgs={orgs}
+        usage={usage}
+        flags={flags}
+        audit={audit}
+      />
     </main>
   );
 }

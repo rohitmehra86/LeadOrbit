@@ -223,6 +223,8 @@ export function authorizeBillingProvider(provider: BillingProvider): {
 /**
  * Checkout / activate attempt — never returns activated from client success alone.
  * Without provider credentials → pending_configuration.
+ * With credentials → session_scaffolded until the live adapter returns a URL
+ * (see createStripeCheckoutSession / createRazorpayCheckoutSession).
  */
 export function attemptCheckoutSession(input: {
   provider: BillingProvider;
@@ -232,6 +234,7 @@ export function attemptCheckoutSession(input: {
   checkoutUrl: string | null;
   detail: string;
 } {
+  void input.planCode;
   const auth = authorizeBillingProvider(input.provider);
   if (auth.status === "pending_configuration") {
     return {
@@ -244,7 +247,7 @@ export function attemptCheckoutSession(input: {
     status: "session_scaffolded",
     checkoutUrl: null,
     detail:
-      "Checkout session scaffolded — subscription activates only via verified webhook, not client success",
+      "Provider credentials present — live checkout via adapter; subscription activates only via verified webhook, not client success",
   };
 }
 

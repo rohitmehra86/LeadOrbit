@@ -45,6 +45,8 @@ function jparse<T>(raw: string | null | undefined, fallback: T): T {
 }
 
 export class AiStore {
+  private billing: import("./billing-store").BillingStore | null = null;
+
   constructor(
     private tenancy: LocalTenancyStore,
     private db: DatabaseSync = getCrmDatabase(),
@@ -55,6 +57,10 @@ export class AiStore {
 
   setRealEstateStore(store: RealEstateStore | null): void {
     this.realEstate = store;
+  }
+
+  setBillingStore(billing: import("./billing-store").BillingStore | null): void {
+    this.billing = billing;
   }
 
   private async gate(
@@ -510,6 +516,10 @@ export class AiStore {
     },
   ): Promise<AiTurnResult> {
     await this.gate(actor, orgId, "ai:run");
+    if (this.billing) {
+      this.billing.requireFeature(orgId, "ai");
+      this.billing.consumeAiCredits(orgId, 1);
+    }
     const started = Date.now();
     let persona: AiPersona;
     if (input.personaId) {

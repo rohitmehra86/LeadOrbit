@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { startDomainVerification, visibleFeatures } from "./white-label";
 
-test("domain verification scaffolds TXT challenge", () => {
+test("domain verification starts pending TXT challenge", () => {
   const ok = startDomainVerification("crm.acme.example.com");
-  assert.equal(ok.status, "scaffolded");
+  assert.equal(ok.status, "pending");
   assert.ok(ok.txtChallenge.startsWith("leadorbit-verify="));
 
   const bad = startDomainVerification("not a host");

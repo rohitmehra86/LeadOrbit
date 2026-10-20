@@ -5,6 +5,7 @@ import {
   getCrmDatabase,
 } from "@leadorbit/db";
 import { getKnowledgeStore } from "./knowledge";
+import { getBillingStore } from "./billing";
 
 const globalAi = globalThis as typeof globalThis & {
   __leadorbitAi?: AiStore;
@@ -20,5 +21,6 @@ export function getAiStore(): AiStore {
       new SqliteJobQueue(db),
     );
   }
+  globalAi.__leadorbitAi.setBillingStore(getBillingStore());
   return globalAi.__leadorbitAi;
 }

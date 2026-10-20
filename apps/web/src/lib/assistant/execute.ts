@@ -14,7 +14,9 @@ import { getDomainCrm } from "@/lib/tenancy/crm";
 import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 import { getCalendarStore } from "@/lib/tenancy/calendar";
 import { getSupabaseCrmStore } from "@/lib/tenancy/supabase-crm";
+import { getBillingStore } from "@/lib/tenancy/billing";
 import { createLaunchPack, publishLaunchPack } from "@/lib/launch/launch-pack";
+import { AuthError } from "@leadorbit/db";
 
 export type AssistantChatRequest = {
   message: string;
@@ -65,6 +67,26 @@ export async function runAssistantChat(
   input: AssistantChatRequest,
 ): Promise<AssistantChatResponse> {
   const role = await actorRole(actor, orgId);
+
+  // Entitlement + AI metering gate (never silent bypass)
+  try {
+    const billing = getBillingStore();
+    billing.requireFeature(orgId, "ai");
+    // Clarification-only turns still plan; meter when executing tools below
+  } catch (err) {
+    const detail =
+      err instanceof AuthError ? err.message : "AI not entitled on current plan";
+    return {
+      plan: planAssistantIntent({
+        message: input.message,
+        hasPendingPack: Boolean(input.pendingPack),
+      }),
+      status: "denied",
+      results: [],
+      report: detail,
+    };
+  }
+
   const plan = planAssistantIntent({
     message: input.message,
     hasPendingPack: Boolean(input.pendingPack),
@@ -113,6 +135,19 @@ export async function runAssistantChat(
       results: [],
       pendingPack: input.pendingPack ?? null,
       report: `Plan ready (approval required): ${plan.summary}. Reply approve or click Approve to continue.`,
+    };
+  }
+
+  try {
+    getBillingStore().consumeAiCredits(orgId, 1);
+  } catch (err) {
+    const detail =
+      err instanceof AuthError ? err.message : "AI usage quota exceeded";
+    return {
+      plan,
+      status: "denied",
+      results: [],
+      report: detail,
     };
   }
 

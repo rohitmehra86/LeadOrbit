@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Wave 4 — demand + messaging parity (cred-gated)  
+**Current focus:** Wave 5 — agency scale (billing, white-label, platform admin, metering)  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
 ---
@@ -17,48 +17,46 @@
 
 ---
 
-## Wave 4 — Demand + messaging (2026-10-20)
+## Wave 5 — Agency scale (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Lead ads adapters (`packages/domain/src/adapters/lead-ads.ts`) | **Verified** (unit + local fixture ingest) | Authorize/setup hints; pull never invents live leads; fixture path for tests only |
-| Messaging adapters + WhatsApp verify | **Verified** (unit) | `deliverOutboundMessage` / webhook challenge; outbound stays `pending_configuration` without keys |
-| Calendar OAuth start + callback | **Scaffolded** | Start URL when client IDs set; callback never claims connect success without token exchange |
-| Ad spend on Results | **Verified** (unit + UI) | Unavailable vs zero vs reported — never invents zero |
-| `public/leads` on Supabase | **Partial** | Migration `00015` applied (`ingest_public_lead`, `org_capture_tokens`); route wired; needs Redeploy + service role to exercise live |
-| Meta/Google Insights live HTTP | **Blocked** | Creds + verified API clients |
-| Live WhatsApp/email/SMS send | **Blocked** | Provider keys + HTTP adapters |
-| Live calendar event sync | **Blocked** | OAuth tokens stored + Graph/Google verify |
+| Stripe Checkout adapter | **Partial** | `createStripeCheckoutSession` — pending without keys; scaffolded without price ids; live session via HTTP when price + secret set. **Never activates from client success** |
+| Razorpay payment-link adapter | **Partial** | Same honesty; webhook + notes.orgId activate only |
+| Webhook idempotency | **Verified** (unit) | Duplicate `event_id` accepted once; bad signatures rejected |
+| White-label brand + branded login | **Verified** (local) | `/p/[orgId]/login` + public branding API; host map scaffold |
+| Domain DNS verify | **Partial** | TXT challenge + `verifyDomain` / dns-verify adapter; live DNS needs public records |
+| Platform admin (tenants/usage/flags/audit) | **Verified** (local) | `/platform` tabs + restricted APIs; audited flag writes |
+| Usage metering + entitlements gates | **Verified** (unit) | `consumeQuota` / `consumeAiCredits`; AI assistant + inbox outbound gated |
+| Live Stripe/Razorpay charge in prod | **Blocked** | Needs real keys + price/plan ids + webhook endpoints on Vercel |
+| Live custom-domain TLS / email send | **Blocked** | DNS + email provider wiring |
 
 ### Mode split
 
 | Surface | `local` | `supabase` |
 |---------|---------|------------|
-| Lead ads authorize/pull | SQLite adapters | Channel adapters + honest pull status |
-| Inbox outbound | Queue + pending_configuration | Same honesty |
-| `public/leads` | SQLite ingest | RPC + token hash (DEV_CAPTURE_TOKEN bootstrap via service role) |
-| Results ad spend | Event-derived | Event-derived when marketing_events listed |
+| Billing store | SQLite | Still SQLite billing store (Supabase billing tables exist; app path not switched) |
+| White-label | SQLite + branded login | Brand tables in `00011`; local store used today |
+| Platform flags/audit | In-memory tenancy audit | Needs platform RLS APIs for full parity |
+| Metering gates | BillingStore + tenancy mirror | Same when AUTH_MODE=local; AI/inbox gates on local stores |
 
 ---
 
-## Wave 3 — Advanced adapters (still current)
+## Wave 4 — Demand + messaging (still current)
 
 | Item | Status |
 |------|--------|
-| CRM/marketing/workflows/inbox/ingestion Postgres | Partial / verified in code |
-| Invites + convert_loop | Verified |
-| Local Playwright E2E | Verified (system Chrome) |
+| Lead ads / messaging / calendar / ad spend / public/leads | Verified unit + partial durable; live HTTP **Blocked** on credentials |
 
 ---
 
 ## Credentials still needed
 
 1. Vercel Redeploy `main` with `AUTH_MODE=supabase` + Supabase URL/anon/`SUPABASE_SERVICE_ROLE_KEY`  
-2. Meta: `META_ADS_ACCESS_TOKEN` (+ page/account for live pull); WhatsApp: `WHATSAPP_*`  
-3. Google Ads: `GOOGLE_ADS_DEVELOPER_TOKEN` (+ OAuth client/refresh for live)  
-4. Email/SMS: `RESEND_API_KEY`/`SMTP_URL`, `TWILIO_*`  
-5. Calendar: `GOOGLE_CALENDAR_CLIENT_*`, `MICROSOFT_CALENDAR_CLIENT_*`  
-6. Optional LLM keys  
+2. Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`  
+3. Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`  
+4. Meta/Google/WhatsApp/Email/SMS/Calendar keys (Wave 4)  
+5. Optional LLM keys  
 
 Linkbook: **untouched**.
 
@@ -66,15 +64,16 @@ Linkbook: **untouched**.
 
 - Web: http://127.0.0.1:43127  
 
-### Tests (Wave 4)
+### Tests (Wave 5)
 
-- Domain adapters — pass (82 total domain tests)  
-- Web lead-ads fixture + pending — pass  
-- Typecheck — clean  
+- Domain adapters (Wave 4 + Wave 5) — pass  
+- Billing store (webhook idempotency, consumeQuota, checkout honesty) — pass  
+- White-label domain verify — pass  
+- Convert-loop assistant (entitlement-gated) — pass  
+- Typecheck domain/db/web — clean  
 
-### Next (Wave 5)
+### Next (Wave 6)
 
-- Live Stripe + Razorpay checkout  
-- White-label domains + email  
-- Platform admin ops  
-- Usage metering + soft limits  
+- Zapier/n8n outbound webhooks + event catalog  
+- Public OpenAPI completeness for partners  
+- Marketplace of Launch Pack templates (vertical packs)  

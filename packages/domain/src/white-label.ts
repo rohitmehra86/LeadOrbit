@@ -56,10 +56,10 @@ export function startDomainVerification(hostname: string): {
   }
   const token = `leadorbit-verify=${Buffer.from(normalized).toString("base64url").slice(0, 24)}`;
   return {
-    status: "scaffolded",
+    status: "pending",
     txtChallenge: token,
     detail:
-      "DNS TXT verification scaffolded — live DNS lookup not performed in local runtime",
+      "Publish this TXT record at the hostname, then run verify — live lookup via dns-verify adapter",
   };
 }
 

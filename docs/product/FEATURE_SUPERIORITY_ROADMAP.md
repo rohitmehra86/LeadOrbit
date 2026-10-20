@@ -38,12 +38,14 @@
 - [x] `public/leads` durable path (`00015` ingest_public_lead + org_capture_tokens)  
 - [ ] Live Ads/Messaging/Calendar HTTP verified in production (**blocked** on credentials)
 
-### Wave 5 — Agency scale
+### Wave 5 — Agency scale ✅ (cred-gated honesty)
 
-- Live Stripe + Razorpay checkout  
-- White-label domains + email  
-- Platform admin ops beyond tenant list  
-- Usage metering + soft limits  
+- [x] Stripe + Razorpay checkout adapters (pending without keys; session URL only when provider HTTP succeeds)  
+- [x] Verified webhook idempotency — **never activate from client-only success**  
+- [x] White-label brand polish + branded login (`/p/[orgId]/login`) + domain TXT verify scaffold  
+- [x] Platform admin: tenants, usage, flags, audit (restricted)  
+- [x] Usage metering (`consumeQuota` / AI credits) with entitlements gates on AI + messaging  
+- [ ] Live Stripe/Razorpay + custom-domain TLS/email in production (**blocked** on credentials / DNS)
 
 ### Wave 6 — Ecosystem
 

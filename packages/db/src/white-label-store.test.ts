@@ -52,8 +52,16 @@ test("white-label write gated by entitlement; allowed after growth plan", async 
   assert.equal(brand.hideLeadOrbitBranding, true);
 
   const domain = await wl.addDomain(owner, org.id, "crm.client.example.com");
-  assert.equal(domain.status, "scaffolded");
+  assert.equal(domain.status, "pending");
   assert.ok(domain.txtChallenge?.startsWith("leadorbit-verify="));
+
+  const verified = await wl.verifyDomain(owner, org.id, domain.id, async () => [
+    domain.txtChallenge!,
+  ]);
+  assert.equal(verified.status, "verified");
+
+  const pending = await wl.verifyDomain(owner, org.id, domain.id, async () => []);
+  assert.equal(pending.status, "pending");
 
   const vis = await wl.featureVisibility(owner, org.id);
   assert.ok(vis.features.includes("white_label"));
