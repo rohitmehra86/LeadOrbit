@@ -199,10 +199,29 @@ export function RealEstateConsole(props: Props) {
   async function bookSiteVisit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const typeId = String(fd.get("appointmentTypeId") || "");
-    if (!enquiryId || !typeId) {
-      setNote("Need enquiry + site_visit appointment type (create in Calendar)");
+    if (!enquiryId) {
+      setNote("Create an enquiry first, then book a site visit");
       return;
+    }
+    let typeId = String(fd.get("appointmentTypeId") || "");
+    // On Vercel/Supabase, auto-create a site_visit type when Calendar is empty.
+    if (!typeId) {
+      const created = await fetch(`/api/v1/orgs/${props.orgId}/calendar/types`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Site visit",
+          kind: "site_visit",
+          durationMinutes: 60,
+          requiresSiteVisit: true,
+          timezone: "Asia/Kolkata",
+        }),
+      }).then((r) => r.json());
+      typeId = created.item?.id || "";
+      if (!typeId) {
+        setNote(created.detail ?? "Could not create site visit appointment type");
+        return;
+      }
     }
     const res = await fetch(`/api/v1/orgs/${props.orgId}/real-estate/enquiries`, {
       method: "POST",

@@ -1,15 +1,20 @@
 # LeadOrbit — plain-language overview
 
-LeadOrbit is an **AI lead & revenue workspace**. One org = one company. Friends should each use their **own signup** (or a pre-seeded demo org) so data never collides.
+LeadOrbit is an **AI lead & revenue workspace**. One org = one company. Friends each use a **separate account** so data never collides.
 
-## Reliable demo path
+## Demo URL (production)
 
-| Path | When to use |
-|------|-------------|
-| **Local** `pnpm local:demo` → http://127.0.0.1:43127 | **Preferred for friend demos.** `AUTH_MODE=local`, no Supabase needed. |
-| **Vercel** https://leadorbit-delta.vercel.app | Needs working Supabase auth/env. Signup can be flaky if project env is incomplete — don’t rely on it for timed demos. |
+**App:** https://leadorbit-delta.vercel.app  
 
-After local start: `pnpm demo:seed` creates two separate orgs (marketing + real estate). Accounts land in `.data/demo-seed.json`.
+Uses Supabase Auth + LeadOrbit Postgres (`kqmuxocbmtydkxdvmypy`). Not Linkbook.
+
+| Link | Purpose |
+|------|---------|
+| [Signup](https://leadorbit-delta.vercel.app/signup) | Create your own isolated org |
+| [Login](https://leadorbit-delta.vercel.app/login) | Sign in (pre-seeded friend accounts below) |
+| [Health](https://leadorbit-delta.vercel.app/api/v1/health) | Expect `"authMode":"supabase"` |
+
+Pre-seeded accounts (share one path per friend): see [`DEMO_ACCOUNTS.md`](./DEMO_ACCOUNTS.md).
 
 ## Shell navigation (left sidebar)
 
@@ -17,34 +22,28 @@ After local start: `pnpm demo:seed` creates two separate orgs (marketing + real 
 
 | Area | What it does |
 |------|----------------|
-| **AI Assistant** | Chat to create campaigns, leads, appointments in plain language |
-| **Leads** | Inbox of people who inquired; stages & follow-up |
-| **Marketing** | Campaigns, forms, public pages, Launch Pack / Marketplace |
-| **Sales & Appointments** | Bookings, site visits, sales pipeline |
-| **Results** | Funnel / performance snapshot (spend needs ad credentials) |
+| **AI Assistant** | Chat to create campaigns, leads, appointments |
+| **Leads** | People who inquired; stages & follow-up |
+| **Marketing** | Campaigns, forms, public pages, Launch Pack |
+| **Sales & Appointments** | Follow-ups, hot leads, link to calendar |
+| **Results** | Funnel / performance (ad spend needs Meta/Google) |
 | **Settings** | Org basics |
 
 **Advanced / Expert** (toggle at bottom of sidebar)
 
-Shows extra modules. For broker demos, switch to **Advanced** or **Expert** so **Real estate** appears (first in the Advanced list).
-
 | Extra | Purpose |
 |-------|---------|
-| **Real estate** | Developers, projects, units, buyer prefs, enquiries, site visits |
-| CRM board, Workflows, Inbox, AI lab | Deeper ops (optional for friends) |
-| Integrations, Billing, White label | Expert-only; Meta/Google/Stripe need real credentials |
+| **Real estate** | Developers, projects, units, enquiries, site visits |
+| CRM board, Workflows, Inbox | Optional ops |
+| Integrations, Billing, White label | Expert; need real credentials |
 
 ## Simple vs Advanced
 
-- **Simple** — day-to-day: Assistant → Marketing/Leads → Sales → Results.
-- **Advanced** — adds Real estate + a few ops tools (enough for broker demos).
-- **Expert** — full module list including Billing / White label / Integrations.
+- **Simple** — marketing friend day-to-day path.
+- **Advanced** — shows **Real estate** (first under Advanced) for broker demos.
+- **Expert** — full module list.
 
-Friends only need Simple (marketing) or Advanced (broker).
+## Two friend journeys
 
-## Two friend journeys (independent)
-
-1. **Marketing expert** — Launch Pack → publish page → capture lead → Results. See `WALKTHROUGH_MARKETING.md`.
-2. **Real estate broker** — enable RE → inventory → enquiry → qualify → site visit → Sales. See `WALKTHROUGH_REAL_ESTATE.md`.
-
-Accounts & reset: `DEMO_ACCOUNTS.md`.
+1. **Marketing** — Launch Pack → publish → public form → lead → Results → [`WALKTHROUGH_MARKETING.md`](./WALKTHROUGH_MARKETING.md)
+2. **Broker** — Advanced → Real estate → inventory → enquiry → site visit → Sales → [`WALKTHROUGH_REAL_ESTATE.md`](./WALKTHROUGH_REAL_ESTATE.md)

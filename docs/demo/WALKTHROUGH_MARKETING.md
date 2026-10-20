@@ -1,55 +1,57 @@
 # Friend demo — digital marketing expert (~15 min)
 
-**Goal:** Launch a lead-gen pack, publish a page, capture a lead, open Results.  
-**Use local:** `pnpm local:demo` → http://127.0.0.1:43127  
-**Optional seed:** `pnpm demo:seed` then login with Marketing account from `.data/demo-seed.json`.
+**App:** https://leadorbit-delta.vercel.app  
+**Goal:** Open a published capture page, submit a lead, see it in Leads + Results.
+
+---
+
+## Option A — pre-seeded (fastest)
+
+1. Open [Login](https://leadorbit-delta.vercel.app/login)  
+2. Email: `marketing.friend@test.com`  
+3. Password: `DemoFriend-Vercel-2026!`  
+4. Open workspace **Marketing Friend Agency**
+
+## Option B — own account
+
+1. [Signup](https://leadorbit-delta.vercel.app/signup) with **your** email  
+2. Create workspace e.g. `Acme Growth`  
+3. Continue from step 3 below (you’ll create the Launch Pack yourself)
 
 ---
 
 ## Click path
 
-1. **Signup / login**  
-   - Open `/signup` → any email + password → Create account  
-   - Or `/login` with seeded Marketing Demo email/password  
+1. Sidebar → **Marketing**  
+   - Pre-seeded: campaign **Generate qualified inbound leads** already exists (published page).  
+   - Own account: AI Assistant → *“Create a lead gen Launch Pack and publish it”* **or** Marketing → create campaign / form / page → publish.
 
-2. **Create workspace** (if empty)  
-   - Name e.g. `Acme Growth` → open the org  
+2. **Public capture page** (pre-seeded):  
+   https://leadorbit-delta.vercel.app/p/33333333-3333-4333-8333-333333333333/launch-friend-demo  
+   - Fill **Full name**, **Work email**, check **I agree to be contacted** → Continue / Submit  
+   - Own account: copy `/p/{orgId}/{slug}` from Marketing after publish.
 
-3. **Open Marketing** (sidebar)  
-   - Or AI Assistant: ask *“Install the general lead gen Launch Pack and publish it”*  
+3. Sidebar → **Leads** → new contact appears (plus sample leads on seeded org).
 
-4. **Launch Pack / Marketplace**  
-   - Install **General lead gen** (or use Marketplace → General lead gen → Install + publish)  
-   - You get a campaign + form + public page  
+4. Sidebar → **Results** → funnel / activity.
 
-5. **Open the public page**  
-   - Copy the `/p/...` link from Marketing  
-   - Open in a new tab → fill **Full name**, **Work email**, check **I agree to be contacted** → Submit  
-
-6. **Leads**  
-   - Sidebar → **Leads** → new contact appears  
-
-7. **Results**  
-   - Sidebar → **Results** → see funnel / lead activity  
+Keep mode **Simple**.
 
 ---
 
-## What works (local)
+## What works on Vercel
 
-- Signup, org create, Launch Pack install + publish  
-- Public capture form → lead in CRM  
-- Marketing console, Leads list, Results UI  
-- Seeded sample leads if you ran `pnpm demo:seed`
+- Signup/login (needs `SUPABASE_SERVICE_ROLE_KEY` on the Vercel project for auto-confirm)  
+- Org create, Launch Pack via campaign store (durable Supabase)  
+- Public published page → form submit → lead  
+- Leads + Results UI  
 
 ## Blocked / needs credentials
 
 | Feature | Status |
 |---------|--------|
-| Meta / Facebook Lead Ads | Needs Meta app + tokens (Integrations) |
-| Google Ads spend / sync | Needs Google credentials |
-| Live ad spend on Results | Pending real integrations |
-| Vercel + Supabase signup | May fail if env incomplete — use local |
+| Meta / Google ads | Connect stubs — need real tokens |
+| Live ad spend on Results | Pending integrations |
+| Email confirmation without service_role | Set `SUPABASE_SERVICE_ROLE_KEY` on Vercel |
 
-## Tip
-
-Keep the sidebar on **Simple**. No Real estate needed for this path.
+If login fails, open [health](https://leadorbit-delta.vercel.app/api/v1/health) — must show `"authMode":"supabase"`.

@@ -2,15 +2,21 @@ import {
   RealEstateStore,
   getLocalTenancyStore,
   getCrmDatabase,
+  getAuthMode,
 } from "@leadorbit/db";
 import { getCalendarStore } from "./calendar";
 import { getAiStore } from "./ai";
+import { getSupabaseRealEstateStore } from "./supabase-real-estate";
 
 const globalRe = globalThis as typeof globalThis & {
   __leadorbitRealEstate?: RealEstateStore;
 };
 
+/** Local SQLite RealEstateStore, or Supabase adapter cast for shared call sites. */
 export function getRealEstateStore(): RealEstateStore {
+  if (getAuthMode() === "supabase") {
+    return getSupabaseRealEstateStore() as unknown as RealEstateStore;
+  }
   if (!globalRe.__leadorbitRealEstate) {
     const store = new RealEstateStore(
       getLocalTenancyStore(),
@@ -21,7 +27,6 @@ export function getRealEstateStore(): RealEstateStore {
   } else {
     globalRe.__leadorbitRealEstate.setCalendarStore(getCalendarStore());
   }
-  // Keep AI inventory-aware when module enabled (optional hook — not core CRM).
   getAiStore().setRealEstateStore(globalRe.__leadorbitRealEstate);
   return globalRe.__leadorbitRealEstate;
 }

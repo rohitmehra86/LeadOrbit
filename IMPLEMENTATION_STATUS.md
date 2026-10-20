@@ -4,16 +4,15 @@
 **Current focus:** Friend-demo docs + dual-org seed (`docs/demo/`); Wave 6 shipped  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
-### Friend demos (2026-10-20)
+### Friend demos — Vercel (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Docs `docs/demo/{OVERVIEW,WALKTHROUGH_*,DEMO_ACCOUNTS}.md` | **Verified** | Plain-language; marketing + broker paths |
-| `pnpm demo:seed` (two orgs via HTTP) | **Verified** | AUTH_MODE=local; Marketing + Demo Realty; writes `.data/demo-seed.json` |
-| `pnpm demo:smoke` | **Verified** | Campaigns, public submit, RE module/inventory/enquiries |
-| Local UI walkthroughs + screenshots | **Verified** | `/cursor/stores/self/media/demo-marketing-*.png`, `demo-re-*.png` |
-| Meta / Google ads in Results | **Blocked** | Needs provider credentials |
-| Vercel friend demos | **Not verified here** | Prefer `pnpm local:demo`; Supabase signup path needs working deploy env |
+| Docs `docs/demo/*` (Vercel URLs only) | **Verified** | Store copies under `/cursor/stores/self/docs/demo-*.md` |
+| Durable Supabase seed (2 orgs) | **Verified** (SQL via MCP) | `marketing.friend@test.com` / `broker.friend@test.com`; `scripts/seed-vercel-demo-orgs.sql` |
+| Supabase RE + calendar adapters | **Code shipped** | Was SQLite-only on Vercel; now AUTH_MODE=supabase uses Postgres |
+| Production signup/journey click-test | **Blocked in agent** | Egress cannot reach `*.vercel.app` / `*.supabase.co` HTTPS — Rohit must confirm health + login |
+| Meta / Google ads | **Blocked** | Needs provider credentials |
 
 ### Vercel production build (2026-10-20)
 

@@ -74,12 +74,13 @@ pnpm install
 pnpm local:demo
 # → http://127.0.0.1:43127  (signup with any email/password)
 
-# Optional: two separate demo orgs (marketing + real estate)
-pnpm demo:seed    # writes .data/demo-seed.json
-pnpm demo:smoke   # API smoke of both friend journeys
+# Optional local API smoke (AUTH_MODE=local only)
+pnpm demo:seed
+pnpm demo:smoke
 ```
 
-Friend walkthroughs: [`docs/demo/`](./docs/demo/) — use local `AUTH_MODE=local` for reliable demos; Vercel/Supabase is optional.
+**Friend demos (Vercel):** https://leadorbit-delta.vercel.app — walkthroughs in [`docs/demo/`](./docs/demo/).  
+Durable seed SQL: [`scripts/seed-vercel-demo-orgs.sql`](./scripts/seed-vercel-demo-orgs.sql) (LeadOrbit Supabase).
 
 Or start services separately:
 

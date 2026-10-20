@@ -1,52 +1,40 @@
-# Demo accounts & sample data
+# Demo accounts (Vercel / Supabase)
 
-## Preferred setup (friends don’t collide)
+**App:** https://leadorbit-delta.vercel.app  
+**Database:** LeadOrbit Supabase `kqmuxocbmtydkxdvmypy` (never Linkbook).
 
-Each friend **signs up with their own email** on local LeadOrbit. That creates a separate org automatically — no shared data.
+## Pre-seeded friend accounts
 
-| Friend | Suggested org name | Mode |
-|--------|-------------------|------|
-| Marketing expert | Their agency name | Simple |
-| Real estate broker | Their brokerage name | Advanced (to see Real estate) |
+Same password for both: `DemoFriend-Vercel-2026!`
 
-## Pre-seeded orgs (local only)
+| Friend | Email | Org | Deep links |
+|--------|-------|-----|------------|
+| Marketing | `marketing.friend@test.com` | Marketing Friend Agency | [Login](https://leadorbit-delta.vercel.app/login) · [Marketing](https://leadorbit-delta.vercel.app/app/orgs/33333333-3333-4333-8333-333333333333/marketing) · [Public page](https://leadorbit-delta.vercel.app/p/33333333-3333-4333-8333-333333333333/launch-friend-demo) |
+| Broker | `broker.friend@test.com` | Broker Friend Realty | [Login](https://leadorbit-delta.vercel.app/login) · [Real estate](https://leadorbit-delta.vercel.app/app/orgs/44444444-4444-4444-8444-444444444444/real-estate) |
 
-With the app running (`pnpm local:demo` or web on :43127):
+Orgs are **independent** — friends do not see each other’s leads.
 
-```bash
-pnpm demo:seed
-```
+## Prefer friends create their own?
 
-Creates **two independent orgs** and writes credentials to:
+[Signup](https://leadorbit-delta.vercel.app/signup) → new email → create workspace. That also creates an isolated org.
 
-```
-.data/demo-seed.json
-```
+## Reset / re-seed
 
-| Org | Purpose |
-|-----|---------|
-| **Marketing Demo Agency** | Launch Pack published + sample leads + one public form submit |
-| **Demo Realty Brokers** | RE enabled, project/units, buyer prefs, enquiry, site visit |
+Re-run the durable seed SQL in Supabase SQL editor (LeadOrbit project), or ask the agent to re-apply `scripts/seed-vercel-demo-orgs.sql`. Fixed org IDs above are replaced on re-seed.
 
-Passwords are printed once in the terminal and stored in `.data/demo-seed.json` (gitignored). Re-run `pnpm demo:seed` anytime for fresh emails/orgs (in-memory tenancy resets when the server restarts — seed again after restart).
+## Vercel env checklist (Rohit)
 
-Smoke check:
+Production project **leadorbit** (`leadorbit-delta.vercel.app`), Root Directory = `apps/web`:
 
-```bash
-pnpm demo:smoke
-```
+| Variable | Value |
+|----------|--------|
+| `AUTH_MODE` | `supabase` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://kqmuxocbmtydkxdvmypy.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | LeadOrbit anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | LeadOrbit **service_role** (server only; required for smooth signup) |
+| `NEXT_PUBLIC_APP_URL` | `https://leadorbit-delta.vercel.app` |
+| `CSRF_ALLOWED_ORIGINS` | `https://leadorbit-delta.vercel.app` |
+| `CSRF_STRICT` | `1` |
+| `SESSION_SECRET` | long random string |
 
-## Reset
-
-1. Stop the local server (Ctrl+C).  
-2. Optional: delete `.data/leadorbit.sqlite` and `.data/demo-seed.json`.  
-3. Start again: `pnpm local:demo`.  
-4. `pnpm demo:seed` (or friends use `/signup`).
-
-**Note:** `AUTH_MODE=local` keeps users/orgs in process memory. A server restart clears tenancy — always re-seed or re-signup after restart.
-
-## Vercel (https://leadorbit-delta.vercel.app)
-
-- Uses Supabase when configured.  
-- **Do not promise** friend demos on Vercel until signup/login is verified for that deploy.  
-- If signup fails or is slow, fall back to local `pnpm local:demo` + `pnpm demo:seed`.
+After changes: **Redeploy** `main`. Confirm [health](https://leadorbit-delta.vercel.app/api/v1/health) shows `"authMode":"supabase"`.

@@ -1,63 +1,60 @@
 # Friend demo — real estate broker (~15–20 min)
 
-**Goal:** Inventory → buyer enquiry → qualify → site visit → Sales.  
-**Use local:** `pnpm local:demo` → http://127.0.0.1:43127  
-**Optional seed:** `pnpm demo:seed` then login with Broker account from `.data/demo-seed.json` (project + enquiry + visit already created).
+**App:** https://leadorbit-delta.vercel.app  
+**Goal:** Inventory → enquiry → site visit → Sales. Separate org from the marketing friend.
+
+---
+
+## Option A — pre-seeded (fastest)
+
+1. Open [Login](https://leadorbit-delta.vercel.app/login)  
+2. Email: `broker.friend@test.com`  
+3. Password: `DemoFriend-Vercel-2026!`  
+4. Open workspace **Broker Friend Realty**  
+5. Direct: https://leadorbit-delta.vercel.app/app/orgs/44444444-4444-4444-8444-444444444444/real-estate
+
+## Option B — own account
+
+1. [Signup](https://leadorbit-delta.vercel.app/signup) with a **different** email than marketing  
+2. Create workspace e.g. `Whitefield Brokers`  
+3. Continue from step 1 below
 
 ---
 
 ## Click path
 
-1. **Signup / login**  
-   - `/signup` with a **different** email than the marketing friend  
-   - Or `/login` with seeded Broker Demo account  
+1. Sidebar bottom → **Advanced** (or Expert) → **Real estate** appears first.
 
-2. **Create workspace**  
-   - e.g. `Whitefield Brokers` → open org  
+2. **Enable** real estate / select Real estate template (seeded org already enabled).
 
-3. **Switch UX mode**  
-   - Bottom of sidebar → **Advanced** or **Expert**  
-   - **Real estate** link appears (first under Advanced)  
+3. **Inventory**  
+   - Seeded: Horizon Developers → Green Park Residences → 3 units.  
+   - Own account: use **Quick seed inventory** on the page (developer → project → unit).
 
-4. **Enable Real estate**  
-   - Open **Real estate** → enable template / module if prompted  
+4. **Enquiry**  
+   - Seeded: buyer **Sneha Rao** + matched enquiry.  
+   - Or: Leads → add buyer → Real estate → preferences → **Create enquiry (auto-match)**.
 
-5. **Inventory**  
-   - Add developer → project (city/location) → property → units (BHK, price)  
-   - Seeded org already has *Horizon Developers / Green Park Residences* + 3 units  
+5. **Site visit**  
+   - On Real estate → Site visit form → pick enquiry → date/time → address → book.  
+   - If no appointment type exists, the UI creates a **Site visit** type automatically.
 
-6. **Lead + enquiry**  
-   - **Leads** → add buyer (or use seeded *Sneha Rao*)  
-   - Back in **Real estate** → set buyer preferences (budget, BHK, location) → create enquiry (auto-match units)  
-
-7. **Qualify**  
-   - Review matches on the enquiry; move lead stage on **Leads** if you want a “qualified” signal  
-
-8. **Site visit**  
-   - On enquiry → schedule **Site visit** (needs a site_visit appointment type — seed creates one)  
-   - Or **Sales & Appointments** → book visit with address  
-
-9. **Sales**  
-   - Sidebar → **Sales & Appointments** → see the visit / pipeline  
+6. Sidebar → **Sales & Appointments** → see hot leads / follow-ups; calendar link for visits.
 
 ---
 
-## What works (local)
+## What works on Vercel
 
-- Separate org from marketing friend (no shared leads)  
-- RE module enable, inventory CRUD, preferences, enquiry + match  
-- Site visit scheduling (calendar type + RE console)  
+- Separate org from marketing friend  
+- Durable RE module (Supabase): enable, inventory, prefs, enquiry, match, site visit appointments  
 - Leads + Sales surfaces  
 
 ## Blocked / needs credentials
 
 | Feature | Status |
 |---------|--------|
-| Meta / Google lead ads into RE | Needs ad credentials |
-| Live WhatsApp / SMS | Needs messaging providers |
-| Payments / brokerage payouts | Not wired for friend demos |
-| Vercel + Supabase | Prefer local `pnpm local:demo` |
+| Meta / Google lead ads | Needs ad credentials |
+| WhatsApp / SMS | Needs messaging providers |
+| Full Calendar OAuth | Pending provider keys |
 
-## Tip
-
-Do **not** reuse the marketing friend’s login — each person needs their own org.
+Do **not** share the marketing friend’s login — each persona has its own org.
