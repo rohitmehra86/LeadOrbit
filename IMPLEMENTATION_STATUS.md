@@ -11,7 +11,7 @@
 | Docs `docs/demo/*` (Vercel URLs only) | **Verified** | Store copies under `/cursor/stores/self/docs/demo-*.md` |
 | Durable Supabase seed (2 orgs) | **Verified** (SQL via MCP) | `marketing.friend@test.com` / `broker.friend@test.com`; `scripts/seed-vercel-demo-orgs.sql` |
 | Supabase RE + calendar adapters | **Code shipped** | Was SQLite-only on Vercel; now AUTH_MODE=supabase uses Postgres |
-| Production signup/journey click-test | **Blocked in agent** | Egress cannot reach `*.vercel.app` / `*.supabase.co` HTTPS — Rohit must confirm health + login |
+| Production signup/journey click-test | **Blocked** | Browser + agent: `leadorbit-delta.vercel.app` → `ERR_CONNECTION_CLOSED`. Fix Vercel deploy/domain, then Redeploy `main` and re-verify health |
 | Meta / Google ads | **Blocked** | Needs provider credentials |
 
 ### Vercel production build (2026-10-20)
