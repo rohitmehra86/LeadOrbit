@@ -21,7 +21,7 @@ export async function POST(request: Request, ctx: Ctx) {
     const body = (await request.json()) as {
       name?: string;
       graph?: WorkflowGraph;
-      template?: "lead_created" | null;
+      template?: "lead_created" | "convert_loop" | null;
       testMode?: boolean;
     };
     const item = await getWorkflowStore().createWorkflow(user, orgId, {

@@ -20,11 +20,17 @@ type ChatResult = {
 
 type Msg = { role: "user" | "assistant"; text: string; meta?: ChatResult };
 
+const STARTERS = [
+  "Launch a campaign for condo leads in Bangalore",
+  "Qualify my newest lead and book a follow-up",
+  "Show hot leads that need attention",
+];
+
 export function AssistantConsole({ orgId }: { orgId: string }) {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      text: "Tell me a goal — for example: “Launch a campaign for condo leads in Bangalore.” I’ll plan tools, ask for approval when publishing, then report exactly what ran.",
+      text: "Tell me a goal — Launch Pack, convert a lead, or check Results. I’ll plan tools, ask for approval when publishing, then report exactly what ran.",
     },
   ]);
   const [pendingPack, setPendingPack] = useState<PendingPack | null>(null);
@@ -58,10 +64,7 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
         return pack?.publicPath ? [pack.publicPath] : [];
       })
       .at(-1);
-    const text = [
-      data.report,
-      publicPath ? `Open capture page: ${publicPath}` : null,
-    ]
+    const text = [data.report, publicPath ? `Open capture page: ${publicPath}` : null]
       .filter(Boolean)
       .join("\n");
     setMessages((m) => [...m, { role: "assistant", text, meta: data }]);
@@ -82,16 +85,46 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
         <h1>AI Assistant</h1>
         <p>
           Intent → org tools → approval for publish → exact success/fail report. No permission
-          bypass.
+          bypass. Ink + saffron shell.
         </p>
       </header>
+
+      {messages.length <= 1 ? (
+        <div className="lo-starter-chips" aria-label="Suggested goals">
+          {STARTERS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className="lo-chip"
+              disabled={loading}
+              onClick={() => send(s, false)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="lo-chat" aria-live="polite">
         {messages.map((m, i) => (
           <div key={i} className={`lo-chat-bubble lo-chat-${m.role}`}>
             <pre>{m.text}</pre>
+            {m.meta?.results?.length ? (
+              <ul className="lo-tool-results">
+                {m.meta.results.map((r) => (
+                  <li key={`${r.tool}-${r.detail}`} className={r.ok ? "ok" : "fail"}>
+                    <code>{r.tool}</code> {r.ok ? "ok" : "failed"} — {r.detail}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ))}
+        {loading ? (
+          <div className="lo-chat-bubble lo-chat-assistant lo-typing" aria-busy="true">
+            Planning tools…
+          </div>
+        ) : null}
       </div>
 
       {lastPlan?.status === "needs_approval" ? (
@@ -109,7 +142,9 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
           <Button
             type="button"
             disabled={loading}
-            onClick={() => send(messages.filter((m) => m.role === "user").at(-1)?.text ?? "approve", true)}
+            onClick={() =>
+              send(messages.filter((m) => m.role === "user").at(-1)?.text ?? "approve", true)
+            }
           >
             Approve & run
           </Button>

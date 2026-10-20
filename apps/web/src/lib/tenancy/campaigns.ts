@@ -13,8 +13,11 @@ const globalMkt = globalThis as typeof globalThis & {
   __leadorbitCampaigns?: CampaignStore;
 };
 
-/** Local SQLite campaigns (Advanced marketing builders). */
+/** Mode-aware campaigns: local SQLite or durable Supabase. */
 export function getCampaignStore(): CampaignStore {
+  if (getAuthMode() === "supabase") {
+    return getSupabaseCampaignStore() as unknown as CampaignStore;
+  }
   if (!globalMkt.__leadorbitCampaigns) {
     const store = new CampaignStore(getLocalTenancyStore());
     store.setCrmStore(getCrmStore());
@@ -27,7 +30,6 @@ export function getCampaignStore(): CampaignStore {
 
 export type DomainCampaignStore = CampaignStore | SupabaseCampaignStore;
 
-/** Mode-aware campaigns for Launch Pack, public forms/pages, Assistant, Results. */
 export function getDomainCampaigns(): DomainCampaignStore {
   if (getAuthMode() === "supabase") return getSupabaseCampaignStore();
   return getCampaignStore();

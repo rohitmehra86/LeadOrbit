@@ -53,7 +53,8 @@ export default async function CrmPage({ params }: Props) {
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">CRM</h1>
           <p className="mt-1 text-sm text-[var(--lo-fg-muted)]">
-            Leads, deals, contacts — Kanban + table. Persisted in local SQLite.
+            Leads, deals, contacts — Kanban + table. Durable on Supabase when AUTH_MODE=supabase;
+            local SQLite otherwise.
           </p>
         </div>
       </div>

@@ -8,7 +8,7 @@
     "start": "next start --hostname 127.0.0.1 --port 43127",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 src/**/*.test.ts"
   },
   "dependencies": {
     "@leadorbit/api-contracts": "workspace:*",

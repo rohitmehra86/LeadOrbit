@@ -239,6 +239,65 @@ h2,
   max-width: 720px;
 }
 
+.lo-starter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lo-chip {
+  border: 1px solid color-mix(in srgb, var(--lo-accent) 35%, var(--lo-border));
+  background: color-mix(in srgb, var(--lo-accent) 8%, var(--lo-surface));
+  color: var(--lo-fg);
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.lo-chip:hover:not(:disabled) {
+  border-color: var(--lo-accent);
+  background: color-mix(in srgb, var(--lo-accent) 14%, var(--lo-surface));
+  transform: translateY(-1px);
+}
+
+.lo-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.lo-tool-results {
+  margin: 0.65rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.8rem;
+  color: var(--lo-fg-muted);
+}
+
+.lo-tool-results .ok code {
+  color: var(--lo-cyan);
+}
+
+.lo-tool-results .fail code {
+  color: var(--lo-danger);
+}
+
+.lo-typing {
+  opacity: 0.75;
+  animation: lo-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes lo-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
 .lo-chat {
   display: flex;
   flex-direction: column;

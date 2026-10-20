@@ -1,4 +1,3 @@
-import { getAuthMode } from "@leadorbit/db";
 import { fromAuthError, jsonOk } from "@/lib/api/http";
 import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 import { getIngestionStore } from "@/lib/tenancy/ingestion";
@@ -26,20 +25,21 @@ export async function POST(request: Request, ctx: Ctx) {
       campaignId: body.campaignId,
     });
 
-    // Attribution + workflow hooks remain SQLite-local until those adapters ship.
-    if (item.leadId && getAuthMode() === "local") {
-      getIngestionStore().recordPostCreateAttribution({
-        orgId,
-        leadId: item.leadId,
-        channel: body.pageId ? "landing_page" : "form",
-        campaignId: item.campaignId,
-        formId,
-        pageId: body.pageId ?? null,
-        utm: body.utm ?? item.utm,
-        idempotencyKey: item.id,
-        payload: item.payload,
-        duplicate: Boolean(item.duplicateOfId),
-      });
+    if (item.leadId) {
+      await Promise.resolve(
+        getIngestionStore().recordPostCreateAttribution({
+          orgId,
+          leadId: item.leadId,
+          channel: body.pageId ? "landing_page" : "form",
+          campaignId: item.campaignId,
+          formId,
+          pageId: body.pageId ?? null,
+          utm: body.utm ?? item.utm,
+          idempotencyKey: item.id,
+          payload: item.payload,
+          duplicate: Boolean(item.duplicateOfId),
+        }),
+      );
       if (!item.duplicateOfId) {
         await getWorkflowStore().dispatchTrigger({
           orgId,

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
+  convertLoopWorkflow,
   defaultLeadCreatedWorkflow,
   emptyWorkflowGraph,
   evaluateBranch,
@@ -139,7 +140,7 @@ export class WorkflowStore {
     input: {
       name: string;
       graph?: WorkflowGraph;
-      template?: "lead_created" | null;
+      template?: "lead_created" | "convert_loop" | null;
       testMode?: boolean;
     },
   ): Promise<WorkflowDefinition> {
@@ -150,7 +151,9 @@ export class WorkflowStore {
       input.graph ??
       (input.template === "lead_created"
         ? defaultLeadCreatedWorkflow()
-        : emptyWorkflowGraph());
+        : input.template === "convert_loop"
+          ? convertLoopWorkflow()
+          : emptyWorkflowGraph());
     this.db
       .prepare(
         `insert into workflows(id, org_id, name, status, graph, version, test_mode, published_at, created_at, updated_at)

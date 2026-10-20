@@ -13,9 +13,10 @@ test.describe("LeadOrbit M11 e2e", () => {
 
     await page.locator('input[name="name"]').fill(`E2E Org ${Date.now()}`);
     await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/app\/orgs\/[a-f0-9-]+/, { timeout: 20_000 });
+    await page.waitForURL(/\/app\/orgs\/[^/]+/, { timeout: 20_000 });
 
-    const orgUrl = page.url();
+    const match = page.url().match(/\/app\/orgs\/([^/]+)/);
+    const orgUrl = match ? `/app/orgs/${match[1]}` : page.url();
     await page.goto(`${orgUrl}/analytics`);
     await expect(page.getByRole("heading", { name: /analytics/i })).toBeVisible();
     await expect(page.getByText(/ok|zero|unavailable/i).first()).toBeVisible({

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  convertLoopWorkflow,
   defaultLeadCreatedWorkflow,
   evaluateBranch,
   nextNodes,
@@ -14,6 +15,18 @@ test("default workflow graph walks trigger → actions", () => {
   assert.equal(first[0]?.type, "assign");
   const second = nextNodes(g, first[0]!.id);
   assert.equal(second[0]?.type, "tag");
+});
+
+test("convert loop template: form → qualify → task → notify", () => {
+  const g = convertLoopWorkflow();
+  const trigger = g.nodes.find((n) => n.kind === "trigger")!;
+  assert.equal(trigger.type, "form_submitted");
+  const qualify = nextNodes(g, trigger.id);
+  assert.equal(qualify[0]?.type, "ai_qualify");
+  const task = nextNodes(g, qualify[0]!.id);
+  assert.equal(task[0]?.type, "create_task");
+  const notify = nextNodes(g, task[0]!.id);
+  assert.equal(notify[0]?.type, "notify");
 });
 
 test("evaluateBranch ops", () => {

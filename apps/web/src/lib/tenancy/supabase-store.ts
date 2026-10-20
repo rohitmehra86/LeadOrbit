@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { AuthError, type SessionUser } from "@leadorbit/db";
 import type {
   AuditLogEntry,
@@ -13,6 +14,10 @@ import type {
 } from "@leadorbit/domain";
 import { hasPermission, slugifyOrgName } from "@leadorbit/domain";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 type OrgRow = {
   id: string;
@@ -223,14 +228,89 @@ export class SupabaseTenancyStore {
   ): Promise<Invite> {
     await this.requirePermission(actor, orgId, "members:invite");
     if (role === "owner") throw new AuthError("Cannot invite as owner", "validation");
-    throw new AuthError(
-      "Invites via Supabase Auth email are not wired yet for staging.",
-      "validation",
-    );
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes("@")) throw new AuthError("Invalid email", "validation");
+    const token = randomBytes(24).toString("hex");
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+    const supabase = await client();
+    // Clear prior pending invite for same email (unique org_id,email,status).
+    await supabase
+      .from("invites")
+      .delete()
+      .eq("org_id", orgId)
+      .eq("email", normalized)
+      .eq("status", "pending");
+    const { data, error } = await supabase
+      .from("invites")
+      .insert({
+        org_id: orgId,
+        email: normalized,
+        role,
+        status: "pending",
+        token_hash: tokenHash,
+        invited_by_user_id: actor.id,
+        expires_at: expiresAt,
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const row = data as {
+      id: string;
+      org_id: string;
+      email: string;
+      role: MembershipRole;
+      status: Invite["status"];
+      invited_by_user_id: string;
+      expires_at: string;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      invitedByUserId: row.invited_by_user_id,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      token,
+    };
   }
 
-  async acceptInvite(_actor: SessionUser, _token: string): Promise<Membership> {
-    throw new AuthError("Invite accept is not wired for Supabase mode yet", "validation");
+  async acceptInvite(actor: SessionUser, token: string): Promise<Membership> {
+    const supabase = await client();
+    const { data, error } = await supabase.rpc("accept_org_invite", {
+      p_token_hash: hashToken(token),
+    });
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes("not found")) throw new AuthError("Invite not found", "not_found");
+      if (msg.includes("expired")) throw new AuthError("Invite expired", "validation");
+      if (msg.includes("mismatch") || msg.includes("42501")) {
+        throw new AuthError("Invite email mismatch", "forbidden");
+      }
+      throw new AuthError(error.message, "validation");
+    }
+    const row = data as {
+      id: string;
+      orgId: string;
+      userId: string;
+      role: MembershipRole;
+      status: Membership["status"];
+      createdAt: string;
+      updatedAt: string;
+    };
+    void actor;
+    return {
+      id: row.id,
+      orgId: row.orgId,
+      userId: row.userId,
+      role: row.role,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   }
 
   async listFlags(actor: SessionUser, orgId: string): Promise<FeatureFlag[]> {

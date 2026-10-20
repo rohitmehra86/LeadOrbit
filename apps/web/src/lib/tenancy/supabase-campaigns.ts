@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 import { AuthError, isSupabaseConfigured, type SessionUser } from "@leadorbit/db";
 import {
+  aggregatePerformance,
+  aiCopySuggestionHook,
   buildUtmParams,
   leadGenFormTemplate,
   sanitizePageDocument,
   type Campaign,
+  type CreativeAsset,
   type FormDefinition,
   type FormSubmission,
+  type Funnel,
+  type FunnelStep,
   type LandingPage,
+  type MarketingEvent,
   type PageDocument,
   type PublishStatus,
   type UtmParams,
@@ -470,6 +476,316 @@ export class SupabaseCampaignStore {
       duplicateOfId: result.duplicateOfId,
       createdAt: new Date().toISOString(),
     };
+  }
+
+  async listForms(_actor: SessionUser, orgId: string): Promise<FormDefinition[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map(mapForm);
+  }
+
+  async listSubmissions(
+    _actor: SessionUser,
+    orgId: string,
+    formId: string,
+  ): Promise<FormSubmission[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("form_submissions")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("form_id", formId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      formId: String(r.form_id),
+      campaignId: (r.campaign_id as string | null) ?? null,
+      leadId: (r.lead_id as string | null) ?? null,
+      payload: (r.payload as Record<string, unknown>) ?? {},
+      utm: (r.utm as UtmParams) ?? { utmSource: "", utmMedium: "", utmCampaign: "" },
+      fingerprint: String(r.fingerprint ?? ""),
+      duplicateOfId: (r.duplicate_of_id as string | null) ?? null,
+      createdAt: String(r.created_at),
+    }));
+  }
+
+  async listCreatives(_actor: SessionUser, orgId: string): Promise<CreativeAsset[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("creative_assets")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      contentType: String(r.content_type),
+      storagePath: String(r.storage_path),
+      width: r.width == null ? null : Number(r.width),
+      height: r.height == null ? null : Number(r.height),
+      tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
+      createdAt: String(r.created_at),
+    }));
+  }
+
+  async createCreative(
+    _actor: SessionUser,
+    orgId: string,
+    input: {
+      name: string;
+      contentType: string;
+      storagePath: string;
+      width?: number | null;
+      height?: number | null;
+      tags?: string[];
+    },
+  ): Promise<CreativeAsset> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("creative_assets")
+      .insert({
+        org_id: orgId,
+        name: input.name,
+        content_type: input.contentType,
+        storage_path: input.storagePath,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        tags: input.tags ?? [],
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      contentType: String(r.content_type),
+      storagePath: String(r.storage_path),
+      width: r.width == null ? null : Number(r.width),
+      height: r.height == null ? null : Number(r.height),
+      tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
+      createdAt: String(r.created_at),
+    };
+  }
+
+  async listFunnels(_actor: SessionUser, orgId: string): Promise<Funnel[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("funnels")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      campaignId: (r.campaign_id as string | null) ?? null,
+      name: String(r.name),
+      status: r.status as PublishStatus,
+      steps: (r.steps as FunnelStep[]) ?? [],
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    }));
+  }
+
+  async createFunnel(
+    _actor: SessionUser,
+    orgId: string,
+    input: { name: string; campaignId?: string | null; steps?: FunnelStep[] },
+  ): Promise<Funnel> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("funnels")
+      .insert({
+        org_id: orgId,
+        campaign_id: input.campaignId ?? null,
+        name: input.name.trim(),
+        status: "draft",
+        steps: input.steps ?? [],
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      campaignId: (r.campaign_id as string | null) ?? null,
+      name: String(r.name),
+      status: r.status as PublishStatus,
+      steps: (r.steps as FunnelStep[]) ?? [],
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  }
+
+  async updatePage(
+    _actor: SessionUser,
+    orgId: string,
+    pageId: string,
+    patch: Partial<{
+      name: string;
+      slug: string;
+      formId: string | null;
+      document: PageDocument;
+      status: PublishStatus;
+    }>,
+  ): Promise<LandingPage> {
+    const supabase = await authed();
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.name !== undefined) updates.name = patch.name;
+    if (patch.slug !== undefined) updates.slug = slugify(patch.slug);
+    if (patch.formId !== undefined) updates.form_id = patch.formId;
+    if (patch.document !== undefined) updates.document = sanitizePageDocument(patch.document);
+    if (patch.status !== undefined) {
+      updates.status = patch.status;
+      if (patch.status === "published") updates.published_at = new Date().toISOString();
+    }
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .update(updates)
+      .eq("org_id", orgId)
+      .eq("id", pageId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapPage(data as Record<string, unknown>);
+  }
+
+  async listPageVersions(_actor: SessionUser, orgId: string, pageId: string) {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("page_versions")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("page_id", pageId)
+      .order("version", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      pageId: String(r.page_id),
+      version: Number(r.version),
+      document: sanitizePageDocument(r.document),
+      createdAt: String(r.created_at),
+      note: r.note ? String(r.note) : null,
+    }));
+  }
+
+  async campaignPerformance(
+    _actor: SessionUser,
+    orgId: string,
+    campaignId: string,
+  ) {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("marketing_events")
+      .select("event_type")
+      .eq("org_id", orgId)
+      .eq("campaign_id", campaignId);
+    if (error) throw new AuthError(error.message, "validation");
+    const rows = ((data ?? []) as Array<{ event_type: MarketingEvent["eventType"] }>).map(
+      (r) => ({ eventType: r.event_type }),
+    );
+    return { campaignId, ...aggregatePerformance(rows) };
+  }
+
+  suggestCopy(prompt: string) {
+    return aiCopySuggestionHook({
+      prompt,
+      llmApiKey: process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? null,
+    });
+  }
+
+  async trackEvent(
+    _actor: SessionUser,
+    orgId: string,
+    input: {
+      campaignId?: string | null;
+      pageId?: string | null;
+      formId?: string | null;
+      eventType: MarketingEvent["eventType"];
+      meta?: Record<string, unknown>;
+    },
+  ): Promise<MarketingEvent> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("marketing_events")
+      .insert({
+        org_id: orgId,
+        campaign_id: input.campaignId ?? null,
+        page_id: input.pageId ?? null,
+        form_id: input.formId ?? null,
+        event_type: input.eventType,
+        meta: input.meta ?? {},
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      campaignId: (r.campaign_id as string | null) ?? null,
+      pageId: (r.page_id as string | null) ?? null,
+      formId: (r.form_id as string | null) ?? null,
+      eventType: r.event_type as MarketingEvent["eventType"],
+      meta: (r.meta as Record<string, unknown>) ?? {},
+      createdAt: String(r.created_at),
+    };
+  }
+
+  async listAdIntegrations(_actor: SessionUser, orgId: string) {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("ad_integrations")
+      .select("*")
+      .eq("org_id", orgId);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      network: r.network as import("@leadorbit/domain").AdNetwork,
+      status: r.status as import("@leadorbit/domain").IntegrationConfigStatus,
+      externalAccountId: (r.external_account_id as string | null) ?? null,
+      lastError: (r.last_error as string | null) ?? null,
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    }));
+  }
+
+  async authorizeAdNetwork(): Promise<never> {
+    throw new AuthError(
+      "Ad network authorize blocked: Meta/Google credentials not configured (no fake success)",
+      "validation",
+    );
+  }
+
+  async duplicateForm(): Promise<never> {
+    throw new AuthError("duplicateForm not yet ported on Supabase adapter", "validation");
+  }
+
+  async duplicatePage(): Promise<never> {
+    throw new AuthError("duplicatePage not yet ported on Supabase adapter", "validation");
+  }
+
+  async duplicateCampaign(): Promise<never> {
+    throw new AuthError("duplicateCampaign not yet ported on Supabase adapter", "validation");
+  }
+
+  setCrmStore(_crm: unknown): void {
+    // no-op
   }
 }
 

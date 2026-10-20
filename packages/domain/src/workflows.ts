@@ -235,3 +235,49 @@ export function defaultLeadCreatedWorkflow(): WorkflowGraph {
     ],
   };
 }
+
+/** Convert loop: form submit → qualify → follow-up task → notify owner. */
+export function convertLoopWorkflow(): WorkflowGraph {
+  return {
+    version: 1,
+    nodes: [
+      {
+        id: "trg_form",
+        kind: "trigger",
+        type: "form_submitted",
+        label: "Form submitted",
+        config: {},
+        position: { x: 80, y: 80 },
+      },
+      {
+        id: "act_qualify",
+        kind: "action",
+        type: "ai_qualify",
+        label: "Qualify lead",
+        config: { mode: "deterministic" },
+        position: { x: 80, y: 180 },
+      },
+      {
+        id: "act_task",
+        kind: "action",
+        type: "create_task",
+        label: "Follow-up task",
+        config: { title: "Follow up within 24h" },
+        position: { x: 80, y: 280 },
+      },
+      {
+        id: "act_notify",
+        kind: "action",
+        type: "notify",
+        label: "Notify owner",
+        config: { channel: "in_app" },
+        position: { x: 80, y: 380 },
+      },
+    ],
+    edges: [
+      { id: "e1", from: "trg_form", to: "act_qualify" },
+      { id: "e2", from: "act_qualify", to: "act_task" },
+      { id: "e3", from: "act_task", to: "act_notify" },
+    ],
+  };
+}

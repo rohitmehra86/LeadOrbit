@@ -1,5 +1,17 @@
 import { AuthError, type SessionUser } from "@leadorbit/db";
-import type { CrmTask, Lead, LeadStatus } from "@leadorbit/domain";
+import type {
+  AssignmentRule,
+  AssignmentStrategy,
+  Company,
+  Contact,
+  CrmTask,
+  FollowUpReminder,
+  Lead,
+  LeadStatus,
+  Opportunity,
+  Pipeline,
+  PipelineStage,
+} from "@leadorbit/domain";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type LeadRow = {
@@ -52,18 +64,125 @@ function mapLead(row: LeadRow): Lead {
   };
 }
 
+function mapTask(row: Record<string, unknown>): CrmTask {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    title: String(row.title),
+    description: (row.description as string | null) ?? null,
+    status: row.status as CrmTask["status"],
+    dueAt: (row.due_at as string | null) ?? null,
+    ownerUserId: (row.owner_user_id as string | null) ?? null,
+    entityType: row.entity_type as CrmTask["entityType"],
+    entityId: String(row.entity_id),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapOpp(row: Record<string, unknown>): Opportunity {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    name: String(row.name),
+    pipelineId: String(row.pipeline_id),
+    stageId: String(row.stage_id),
+    leadId: (row.lead_id as string | null) ?? null,
+    contactId: (row.contact_id as string | null) ?? null,
+    companyId: (row.company_id as string | null) ?? null,
+    amount: Number(row.amount ?? 0),
+    currency: String(row.currency ?? "USD"),
+    status: row.status as Opportunity["status"],
+    ownerUserId: (row.owner_user_id as string | null) ?? null,
+    expectedCloseDate: (row.expected_close_date as string | null) ?? null,
+    customFields: (row.custom_fields as Record<string, unknown>) ?? {},
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
 async function client() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) throw new AuthError("Supabase is not configured", "validation");
   return supabase;
 }
 
-/** Durable CRM subset for AUTH_MODE=supabase (leads + tasks + assign). */
+function unsupported(method: string): never {
+  throw new AuthError(
+    `CRM method "${method}" is not available on the Supabase adapter yet`,
+    "validation",
+  );
+}
+
+/** Durable CRM for AUTH_MODE=supabase (board + convert + Advanced list/create). */
 export class SupabaseCrmStore {
+  registerOrg(_orgId: string, _name: string): void {
+    // Pipelines created lazily via ensure_org_pipelines on first board/lead access.
+  }
+
+  async ensurePipelines(orgId: string): Promise<{
+    leadPipelineId: string;
+    leadStageId: string;
+    dealPipelineId: string;
+    dealStageId: string;
+  }> {
+    const supabase = await client();
+    const { data, error } = await supabase.rpc("ensure_org_pipelines", {
+      p_org_id: orgId,
+    });
+    if (error) throw new AuthError(error.message, "validation");
+    const row = data as Record<string, string>;
+    return {
+      leadPipelineId: String(row.leadPipelineId),
+      leadStageId: String(row.leadStageId),
+      dealPipelineId: String(row.dealPipelineId),
+      dealStageId: String(row.dealStageId),
+    };
+  }
+
+  async listPipelines(_actor: SessionUser, orgId: string): Promise<Pipeline[]> {
+    await this.ensurePipelines(orgId);
+    const supabase = await client();
+    const { data, error } = await supabase.from("pipelines").select("*").eq("org_id", orgId);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      kind: r.kind as Pipeline["kind"],
+      isDefault: Boolean(r.is_default),
+    }));
+  }
+
+  async listStages(
+    _actor: SessionUser,
+    orgId: string,
+    pipelineId: string,
+  ): Promise<PipelineStage[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("pipeline_stages")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("pipeline_id", pipelineId)
+      .order("position", { ascending: true });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      pipelineId: String(r.pipeline_id),
+      name: String(r.name),
+      position: Number(r.position),
+      probability: Number(r.probability),
+      isWon: Boolean(r.is_won),
+      isLost: Boolean(r.is_lost),
+    }));
+  }
+
   async listLeads(
     _actor: SessionUser,
     orgId: string,
-    opts?: { ownerUserId?: string; status?: string },
+    opts?: { ownerUserId?: string; status?: string; stageId?: string },
   ): Promise<Lead[]> {
     const supabase = await client();
     let q = supabase
@@ -74,6 +193,7 @@ export class SupabaseCrmStore {
       .limit(500);
     if (opts?.ownerUserId) q = q.eq("owner_user_id", opts.ownerUserId);
     if (opts?.status) q = q.eq("status", opts.status);
+    if (opts?.stageId) q = q.eq("stage_id", opts.stageId);
     const { data, error } = await q;
     if (error) throw new AuthError(error.message, "validation");
     return ((data ?? []) as LeadRow[]).map(mapLead);
@@ -118,13 +238,7 @@ export class SupabaseCrmStore {
       if (existing) return mapLead(existing as LeadRow);
     }
 
-    const { data: pipeRows, error: pipeErr } = await supabase.rpc(
-      "ensure_org_lead_pipeline",
-      { p_org_id: orgId },
-    );
-    if (pipeErr) throw new AuthError(pipeErr.message, "validation");
-    const pipe = Array.isArray(pipeRows) ? pipeRows[0] : pipeRows;
-
+    const pipes = await this.ensurePipelines(orgId);
     const { data, error } = await supabase
       .from("leads")
       .insert({
@@ -138,8 +252,8 @@ export class SupabaseCrmStore {
         score: input.score ?? 0,
         owner_user_id: input.ownerUserId ?? actor.id,
         territory: input.territory ?? null,
-        pipeline_id: pipe?.pipeline_id ?? null,
-        stage_id: pipe?.stage_id ?? null,
+        pipeline_id: pipes.leadPipelineId,
+        stage_id: pipes.leadStageId,
         idempotency_key: input.idempotencyKey ?? null,
         custom_fields: input.customFields ?? {},
         sla_due_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -175,14 +289,33 @@ export class SupabaseCrmStore {
     return mapLead(data as LeadRow);
   }
 
+  async updateLeadStage(
+    _actor: SessionUser,
+    orgId: string,
+    leadId: string,
+    stageId: string,
+  ): Promise<Lead> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("leads")
+      .update({ stage_id: stageId, updated_at: new Date().toISOString() })
+      .eq("org_id", orgId)
+      .eq("id", leadId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapLead(data as LeadRow);
+  }
+
   async assignLead(
     actor: SessionUser,
     orgId: string,
     leadId: string,
     ownerUserId: string,
-    _reason = "manual_reassign",
+    reason = "manual_reassign",
   ): Promise<Lead> {
     const supabase = await client();
+    const existing = await this.getLead(actor, orgId, leadId);
     const { data, error } = await supabase
       .from("leads")
       .update({
@@ -194,7 +327,15 @@ export class SupabaseCrmStore {
       .select("*")
       .single();
     if (error) throw new AuthError(error.message, "validation");
-    void actor;
+    await supabase.from("ownership_history").insert({
+      org_id: orgId,
+      entity_type: "lead",
+      entity_id: leadId,
+      from_user_id: existing.ownerUserId,
+      to_user_id: ownerUserId,
+      reason,
+      changed_by_user_id: actor.id,
+    });
     return mapLead(data as LeadRow);
   }
 
@@ -226,32 +367,7 @@ export class SupabaseCrmStore {
       .select("*")
       .single();
     if (error) throw new AuthError(error.message, "validation");
-    const row = data as {
-      id: string;
-      org_id: string;
-      title: string;
-      description: string | null;
-      status: string;
-      due_at: string | null;
-      owner_user_id: string | null;
-      entity_type: string;
-      entity_id: string;
-      created_at: string;
-      updated_at: string;
-    };
-    return {
-      id: row.id,
-      orgId: row.org_id,
-      title: row.title,
-      description: row.description,
-      status: row.status as CrmTask["status"],
-      dueAt: row.due_at,
-      ownerUserId: row.owner_user_id,
-      entityType: row.entity_type as CrmTask["entityType"],
-      entityId: row.entity_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return mapTask(data as Record<string, unknown>);
   }
 
   async listTasks(_actor: SessionUser, orgId: string): Promise<CrmTask[]> {
@@ -263,19 +379,396 @@ export class SupabaseCrmStore {
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new AuthError(error.message, "validation");
-    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
-      id: String(row.id),
-      orgId: String(row.org_id),
-      title: String(row.title),
-      description: (row.description as string | null) ?? null,
-      status: row.status as CrmTask["status"],
-      dueAt: (row.due_at as string | null) ?? null,
-      ownerUserId: (row.owner_user_id as string | null) ?? null,
-      entityType: row.entity_type as CrmTask["entityType"],
-      entityId: String(row.entity_id),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
+    return ((data ?? []) as Array<Record<string, unknown>>).map(mapTask);
+  }
+
+  async listCompanies(_actor: SessionUser, orgId: string): Promise<Company[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("name", { ascending: true });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      domain: (r.domain as string | null) ?? null,
+      industry: (r.industry as string | null) ?? null,
+      ownerUserId: (r.owner_user_id as string | null) ?? null,
+      customFields: (r.custom_fields as Record<string, unknown>) ?? {},
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
     }));
+  }
+
+  async createCompany(
+    actor: SessionUser,
+    orgId: string,
+    input: { name: string; domain?: string; industry?: string },
+  ): Promise<Company> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("companies")
+      .insert({
+        org_id: orgId,
+        name: input.name.trim(),
+        domain: input.domain ?? null,
+        industry: input.industry ?? null,
+        owner_user_id: actor.id,
+        custom_fields: {},
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      domain: (r.domain as string | null) ?? null,
+      industry: (r.industry as string | null) ?? null,
+      ownerUserId: (r.owner_user_id as string | null) ?? null,
+      customFields: {},
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  }
+
+  async listContacts(_actor: SessionUser, orgId: string): Promise<Contact[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      companyId: (r.company_id as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+      phone: (r.phone as string | null) ?? null,
+      fullName: String(r.full_name),
+      title: (r.title as string | null) ?? null,
+      ownerUserId: (r.owner_user_id as string | null) ?? null,
+      customFields: (r.custom_fields as Record<string, unknown>) ?? {},
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    }));
+  }
+
+  async createContact(
+    actor: SessionUser,
+    orgId: string,
+    input: {
+      fullName: string;
+      email?: string;
+      phone?: string;
+      companyId?: string;
+      title?: string;
+    },
+  ): Promise<Contact> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("contacts")
+      .insert({
+        org_id: orgId,
+        company_id: input.companyId ?? null,
+        email: input.email?.trim().toLowerCase() || null,
+        phone: input.phone ?? null,
+        full_name: input.fullName.trim(),
+        title: input.title ?? null,
+        owner_user_id: actor.id,
+        custom_fields: {},
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      companyId: (r.company_id as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+      phone: (r.phone as string | null) ?? null,
+      fullName: String(r.full_name),
+      title: (r.title as string | null) ?? null,
+      ownerUserId: (r.owner_user_id as string | null) ?? null,
+      customFields: {},
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  }
+
+  async listOpportunities(_actor: SessionUser, orgId: string): Promise<Opportunity[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("opportunities")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map(mapOpp);
+  }
+
+  async getOpportunity(
+    _actor: SessionUser,
+    orgId: string,
+    id: string,
+  ): Promise<Opportunity> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("opportunities")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    if (!data) throw new AuthError("Opportunity not found", "not_found");
+    return mapOpp(data as Record<string, unknown>);
+  }
+
+  async createOpportunity(
+    actor: SessionUser,
+    orgId: string,
+    input: {
+      name: string;
+      amount?: number;
+      currency?: string;
+      leadId?: string;
+      contactId?: string;
+      companyId?: string;
+      ownerUserId?: string;
+    },
+  ): Promise<Opportunity> {
+    const pipes = await this.ensurePipelines(orgId);
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("opportunities")
+      .insert({
+        org_id: orgId,
+        name: input.name.trim(),
+        pipeline_id: pipes.dealPipelineId,
+        stage_id: pipes.dealStageId,
+        lead_id: input.leadId ?? null,
+        contact_id: input.contactId ?? null,
+        company_id: input.companyId ?? null,
+        amount: input.amount ?? 0,
+        currency: input.currency ?? "USD",
+        status: "open",
+        owner_user_id: input.ownerUserId ?? actor.id,
+        custom_fields: {},
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapOpp(data as Record<string, unknown>);
+  }
+
+  async moveOpportunityStage(
+    actor: SessionUser,
+    orgId: string,
+    oppId: string,
+    stageId: string,
+  ): Promise<Opportunity> {
+    const supabase = await client();
+    const { data: stage, error: stageErr } = await supabase
+      .from("pipeline_stages")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", stageId)
+      .maybeSingle();
+    if (stageErr) throw new AuthError(stageErr.message, "validation");
+    if (!stage) throw new AuthError("Stage not found", "not_found");
+    let status: Opportunity["status"] = "open";
+    if (stage.is_won) status = "won";
+    else if (stage.is_lost) status = "lost";
+    const { data, error } = await supabase
+      .from("opportunities")
+      .update({
+        stage_id: stageId,
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("org_id", orgId)
+      .eq("id", oppId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    void actor;
+    return mapOpp(data as Record<string, unknown>);
+  }
+
+  async listReminders(_actor: SessionUser, orgId: string): Promise<FollowUpReminder[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("follow_up_reminders")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("due_at", { ascending: true });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      entityType: String(r.entity_type),
+      entityId: String(r.entity_id),
+      dueAt: String(r.due_at),
+      assignedUserId: String(r.assigned_user_id),
+      status: r.status as FollowUpReminder["status"],
+      note: (r.note as string | null) ?? null,
+      createdAt: String(r.created_at),
+    }));
+  }
+
+  async createReminder(
+    actor: SessionUser,
+    orgId: string,
+    input: {
+      entityType: string;
+      entityId: string;
+      dueAt: string;
+      assignedUserId?: string;
+      note?: string;
+    },
+  ): Promise<FollowUpReminder> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("follow_up_reminders")
+      .insert({
+        org_id: orgId,
+        entity_type: input.entityType,
+        entity_id: input.entityId,
+        due_at: input.dueAt,
+        assigned_user_id: input.assignedUserId ?? actor.id,
+        status: "pending",
+        note: input.note ?? null,
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      entityType: String(r.entity_type),
+      entityId: String(r.entity_id),
+      dueAt: String(r.due_at),
+      assignedUserId: String(r.assigned_user_id),
+      status: "pending",
+      note: (r.note as string | null) ?? null,
+      createdAt: String(r.created_at),
+    };
+  }
+
+  async listAssignmentRules(
+    _actor: SessionUser,
+    orgId: string,
+  ): Promise<AssignmentRule[]> {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("assignment_rules")
+      .select("*")
+      .eq("org_id", orgId);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      strategy: r.strategy as AssignmentStrategy,
+      enabled: Boolean(r.enabled),
+      config: (r.config as Record<string, unknown>) ?? {},
+    }));
+  }
+
+  async upsertAssignmentRule(
+    _actor: SessionUser,
+    orgId: string,
+    input: Omit<AssignmentRule, "id" | "orgId"> & { id?: string },
+  ): Promise<AssignmentRule> {
+    const supabase = await client();
+    const row: Record<string, unknown> = {
+      org_id: orgId,
+      name: input.name,
+      strategy: input.strategy,
+      enabled: input.enabled,
+      config: input.config,
+      updated_at: new Date().toISOString(),
+    };
+    if (input.id) row.id = input.id;
+    const { data, error } = input.id
+      ? await supabase.from("assignment_rules").upsert(row, { onConflict: "id" }).select("*").single()
+      : await supabase.from("assignment_rules").insert(row).select("*").single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      name: String(r.name),
+      strategy: r.strategy as AssignmentStrategy,
+      enabled: Boolean(r.enabled),
+      config: (r.config as Record<string, unknown>) ?? {},
+    };
+  }
+
+  async listActivities(
+    _actor: SessionUser,
+    orgId: string,
+    entityType: string,
+    entityId: string,
+  ) {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("crm_activities")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("entity_type", entityType)
+      .eq("entity_id", entityId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      actorUserId: (r.actor_user_id as string | null) ?? null,
+      entityType: String(r.entity_type),
+      entityId: String(r.entity_id),
+      activityType: String(r.activity_type),
+      summary: String(r.summary),
+      payload: (r.payload as Record<string, unknown>) ?? {},
+      createdAt: String(r.created_at),
+    }));
+  }
+
+  async addNote(
+    actor: SessionUser,
+    orgId: string,
+    input: { body: string; entityType: string; entityId: string },
+  ) {
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("notes")
+      .insert({
+        org_id: orgId,
+        body: input.body,
+        author_user_id: actor.id,
+        entity_type: input.entityType,
+        entity_id: input.entityId,
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      body: String(r.body),
+      authorUserId: String(r.author_user_id),
+      entityType: String(r.entity_type),
+      entityId: String(r.entity_id),
+      createdAt: String(r.created_at),
+    };
   }
 
   async bookLeadAppointment(
@@ -313,6 +806,23 @@ export class SupabaseCrmStore {
       status: String(row.status),
       siteVisitAddress: (row.site_visit_address as string | null) ?? null,
     };
+  }
+
+  // Expert surfaces not yet ported — honest failures (no silent SQLite fallback).
+  async importLeadsCsv(): Promise<never> {
+    return unsupported("importLeadsCsv");
+  }
+  async exportLeadsCsv(): Promise<never> {
+    return unsupported("exportLeadsCsv");
+  }
+  async mergeLeads(): Promise<never> {
+    return unsupported("mergeLeads");
+  }
+  async findDuplicates(): Promise<never> {
+    return unsupported("findDuplicates");
+  }
+  async escalateOverdueLeads(): Promise<never> {
+    return unsupported("escalateOverdueLeads");
   }
 }
 
