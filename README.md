@@ -8,6 +8,7 @@ Stack: Next.js App Router · TypeScript · Tailwind · Supabase · Vercel · dur
 
 | Document | Path |
 |----------|------|
+| Friend demos (overview + walkthroughs) | [`docs/demo/OVERVIEW.md`](./docs/demo/OVERVIEW.md) |
 | Competitor feature matrix (AI-first) | [`docs/product/COMPETITOR_FEATURE_MATRIX.md`](./docs/product/COMPETITOR_FEATURE_MATRIX.md) |
 | Competitive differentiation | [`docs/product/COMPETITIVE_DIFFERENTIATION.md`](./docs/product/COMPETITIVE_DIFFERENTIATION.md) |
 | Feature superiority roadmap | [`docs/product/FEATURE_SUPERIORITY_ROADMAP.md`](./docs/product/FEATURE_SUPERIORITY_ROADMAP.md) |
@@ -72,7 +73,13 @@ From the repo root:
 pnpm install
 pnpm local:demo
 # → http://127.0.0.1:43127  (signup with any email/password)
+
+# Optional: two separate demo orgs (marketing + real estate)
+pnpm demo:seed    # writes .data/demo-seed.json
+pnpm demo:smoke   # API smoke of both friend journeys
 ```
+
+Friend walkthroughs: [`docs/demo/`](./docs/demo/) — use local `AUTH_MODE=local` for reliable demos; Vercel/Supabase is optional.
 
 Or start services separately:
 

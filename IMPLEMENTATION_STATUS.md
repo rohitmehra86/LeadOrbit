@@ -1,8 +1,19 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Wave 6 shipped; Vercel production build fix for `node:dns/promises` client graph  
+**Current focus:** Friend-demo docs + dual-org seed (`docs/demo/`); Wave 6 shipped  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
+
+### Friend demos (2026-10-20)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Docs `docs/demo/{OVERVIEW,WALKTHROUGH_*,DEMO_ACCOUNTS}.md` | **Verified** | Plain-language; marketing + broker paths |
+| `pnpm demo:seed` (two orgs via HTTP) | **Verified** | AUTH_MODE=local; Marketing + Demo Realty; writes `.data/demo-seed.json` |
+| `pnpm demo:smoke` | **Verified** | Campaigns, public submit, RE module/inventory/enquiries |
+| Local UI walkthroughs + screenshots | **Verified** | `/cursor/stores/self/media/demo-marketing-*.png`, `demo-re-*.png` |
+| Meta / Google ads in Results | **Blocked** | Needs provider credentials |
+| Vercel friend demos | **Not verified here** | Prefer `pnpm local:demo`; Supabase signup path needs working deploy env |
 
 ### Vercel production build (2026-10-20)
 

@@ -14,12 +14,13 @@ const PRIMARY = [
 ] as const;
 
 const EXPERT_EXTRA = [
+  // Real estate first so Advanced mode (slice 0..4) exposes it for broker demos.
+  { label: "Real estate", href: (id: string) => `/app/orgs/${id}/real-estate` },
   { label: "CRM board", href: (id: string) => `/app/orgs/${id}/crm` },
   { label: "Workflows", href: (id: string) => `/app/orgs/${id}/workflows` },
   { label: "Inbox", href: (id: string) => `/app/orgs/${id}/inbox` },
   { label: "AI lab", href: (id: string) => `/app/orgs/${id}/ai` },
   { label: "Integrations", href: (id: string) => `/app/orgs/${id}/integrations` },
-  { label: "Real estate", href: (id: string) => `/app/orgs/${id}/real-estate` },
   { label: "Billing", href: (id: string) => `/app/orgs/${id}/billing` },
   { label: "White label", href: (id: string) => `/app/orgs/${id}/white-label` },
 ] as const;

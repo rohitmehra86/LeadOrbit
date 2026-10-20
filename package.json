@@ -10,6 +10,8 @@
     "dev:web": "pnpm --filter @leadorbit/web dev",
     "dev:worker": "pnpm --filter @leadorbit/worker dev",
     "local:demo": "bash scripts/local-demo.sh",
+    "demo:seed": "node scripts/seed-demo-orgs.mjs",
+    "demo:smoke": "node scripts/smoke-demo-walkthroughs.mjs",
 
     "build": "turbo run build",
     "lint": "turbo run lint",
