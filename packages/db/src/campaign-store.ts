@@ -970,6 +970,28 @@ export class CampaignStore {
     };
   }
 
+  async listMarketingEvents(
+    actor: SessionUser,
+    orgId: string,
+  ): Promise<MarketingEvent[]> {
+    await this.gate(actor, orgId, "campaigns:read");
+    const rows = this.db
+      .prepare(
+        `select * from marketing_events where org_id = ? order by created_at desc limit 500`,
+      )
+      .all(orgId) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      campaignId: r.campaign_id ? String(r.campaign_id) : null,
+      pageId: r.page_id ? String(r.page_id) : null,
+      formId: r.form_id ? String(r.form_id) : null,
+      eventType: r.event_type as MarketingEvent["eventType"],
+      meta: jparse(String(r.meta), {}),
+      createdAt: String(r.created_at),
+    }));
+  }
+
   async trackEvent(
     actor: SessionUser,
     orgId: string,

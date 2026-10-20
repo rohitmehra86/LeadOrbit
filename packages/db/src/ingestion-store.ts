@@ -4,8 +4,9 @@ import {
   advanceDeliveryStatus,
   hasPermission,
   ingestionFingerprint,
-  leadAdsSyncStub,
+  authorizeLeadAdsNetwork,
   matchCampaignByUtm,
+  pullLeadAdsFromNetwork,
   normalizeIdempotencyKey,
   resolveAttribution,
   type AttributionModel,
@@ -888,11 +889,7 @@ export class IngestionStore {
   ): Promise<ChannelAdapter> {
     await this.gate(actor, orgId, "integrations:write");
     this.ensureDefaultAdapters(orgId);
-    const creds =
-      network === "meta_lead_ads"
-        ? Boolean(process.env.META_ADS_ACCESS_TOKEN)
-        : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
-    const stub = leadAdsSyncStub(network, creds);
+    const stub = authorizeLeadAdsNetwork(network);
     const status: ChannelAdapter["status"] =
       stub.status === "pending_configuration"
         ? "pending_configuration"
@@ -900,9 +897,16 @@ export class IngestionStore {
     const now = nowIso();
     this.db
       .prepare(
-        `update channel_adapters set status=?, last_error=?, updated_at=? where org_id=? and channel=?`,
+        `update channel_adapters set status=?, last_error=?, updated_at=?, config=? where org_id=? and channel=?`,
       )
-      .run(status, stub.detail, now, orgId, network);
+      .run(
+        status,
+        stub.detail,
+        now,
+        JSON.stringify({ setupHints: stub.setupHints }),
+        orgId,
+        network,
+      );
     const row = this.db
       .prepare(`select * from channel_adapters where org_id = ? and channel = ?`)
       .get(orgId, network) as Record<string, unknown>;
@@ -920,33 +924,54 @@ export class IngestionStore {
   }
 
   /**
-   * Meta/Google lead ads pull stub — always refuses live success without claiming fake leads.
+   * Meta/Google lead ads pull — never invents leads from live API.
+   * Optional fixtureLeads (tests) normalize + ingest without claiming live Ads success.
    */
   async pullLeadAds(
     actor: SessionUser,
     orgId: string,
     network: "meta_lead_ads" | "google_lead_ads",
+    opts?: { fixtureLeads?: Record<string, unknown>[] },
   ): Promise<{
-    status: "pending_configuration";
+    status: string;
     detail: string;
     imported: number;
+    setupHints?: string[];
   }> {
     await this.gate(actor, orgId, "integrations:write");
-    const adapter = await this.authorizeLeadAds(actor, orgId, network);
-    // Never invent leads — live Ads API pull is not wired.
-    if (adapter.status === "pending_configuration") {
+    await this.authorizeLeadAds(actor, orgId, network);
+    const pulled = pullLeadAdsFromNetwork({
+      network,
+      fixtureLeads: opts?.fixtureLeads,
+    });
+    if (pulled.status !== "imported" || pulled.leads.length === 0) {
       return {
-        status: "pending_configuration",
-        detail:
-          adapter.lastError ??
-          `${network} pull blocked — credentials not configured`,
+        status: pulled.status,
+        detail: pulled.detail,
         imported: 0,
+        setupHints: pulled.setupHints,
       };
     }
+    let imported = 0;
+    for (const lead of pulled.leads) {
+      const result = await this.ingestLead({
+        orgId,
+        channel: network,
+        fullName: lead.fullName,
+        email: lead.email ?? undefined,
+        phone: lead.phone ?? undefined,
+        source: network,
+        externalEventId: lead.externalId,
+        idempotencyKey: `${network}:${lead.externalId}`,
+        payload: lead.raw,
+      });
+      if (!result.duplicate && result.leadId) imported += 1;
+    }
     return {
-      status: "pending_configuration",
-      detail: `${network} authorize stub ok, but live lead ads pull is not implemented — imported=0`,
-      imported: 0,
+      status: "imported",
+      detail: `${pulled.detail}; persisted ${imported} new lead(s)`,
+      imported,
+      setupHints: pulled.setupHints,
     };
   }
 }

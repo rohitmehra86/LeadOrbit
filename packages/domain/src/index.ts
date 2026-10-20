@@ -17,6 +17,7 @@ export * from "./analytics";
 export * from "./white-label";
 export * from "./security";
 export * from "./assistant";
+export * from "./adapters";
 
 
 

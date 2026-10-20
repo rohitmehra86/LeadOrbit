@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** Wave 3 — Advanced Postgres/Supabase ports + convert templates  
+**Current focus:** Wave 4 — demand + messaging parity (cred-gated)  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
 ---
@@ -17,65 +17,64 @@
 
 ---
 
-## Wave 3 — Advanced adapters + templates (2026-10-20)
+## Wave 4 — Demand + messaging (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Migration `00014_wave3_advanced_adapters` | **Verified** (applied on LeadOrbit `kqmuxocbmtydkxdvmypy`) | `assignment_rules`, `follow_up_reminders`, `ensure_org_pipelines`, `accept_org_invite`, `seed_convert_workflow_template` |
-| `getCrmStore` / campaigns / workflows / inbox / ingestion mode switch | **Verified** in code | `AUTH_MODE=supabase` → Supabase adapters (cast); `local` unchanged SQLite |
-| CRM board (pipelines/stages/opps/contacts/companies/tasks/reminders/rules) | **Partial** | Supabase CRUD for board path; Expert CSV import/merge/export still honest `unsupported` |
-| Marketing builders (forms/pages/funnels/creatives/events) | **Partial** | List/create/update/publish on Postgres; duplicate + ad authorize blocked honestly |
-| Workflows + convert_loop template | **Verified** (local unit) | Domain `convertLoopWorkflow`; API `template: "convert_loop"`; Supabase seed RPC |
-| Inbox | **Partial** | Conversations/messages/templates durable; outbound send `pending_configuration` without provider keys (no fake success) |
-| Ingestion/attribution after public form | **Partial** | Hooks run in both modes; Meta/Google lead-ads / token `public/leads` still blocked |
-| Team invites (Supabase) | **Verified** in code | `createInvite` writes `invites`; `acceptInvite` → `accept_org_invite` RPC |
-| AI shell polish | **Verified** (local UI) | Starter chips, tool result list, typing state; ink/saffron retained |
-| Staging Playwright vs Supabase | **Blocked here** | Agent cannot hit Vercel egress; needs Redeploy + session |
+| Lead ads adapters (`packages/domain/src/adapters/lead-ads.ts`) | **Verified** (unit + local fixture ingest) | Authorize/setup hints; pull never invents live leads; fixture path for tests only |
+| Messaging adapters + WhatsApp verify | **Verified** (unit) | `deliverOutboundMessage` / webhook challenge; outbound stays `pending_configuration` without keys |
+| Calendar OAuth start + callback | **Scaffolded** | Start URL when client IDs set; callback never claims connect success without token exchange |
+| Ad spend on Results | **Verified** (unit + UI) | Unavailable vs zero vs reported — never invents zero |
+| `public/leads` on Supabase | **Partial** | Migration `00015` applied (`ingest_public_lead`, `org_capture_tokens`); route wired; needs Redeploy + service role to exercise live |
+| Meta/Google Insights live HTTP | **Blocked** | Creds + verified API clients |
+| Live WhatsApp/email/SMS send | **Blocked** | Provider keys + HTTP adapters |
+| Live calendar event sync | **Blocked** | OAuth tokens stored + Graph/Google verify |
 
 ### Mode split
 
 | Surface | `local` | `supabase` |
 |---------|---------|------------|
-| AI shell, Launch Pack, Leads/Results/Sales, public form/page | SQLite | Postgres |
-| Advanced CRM board, marketing builders, workflows, inbox, ingestion | SQLite | **Postgres** (Wave 3) |
-| Expert CSV merge/import, ad OAuth, messaging providers | SQLite / stubs | Honest errors / pending_configuration |
+| Lead ads authorize/pull | SQLite adapters | Channel adapters + honest pull status |
+| Inbox outbound | Queue + pending_configuration | Same honesty |
+| `public/leads` | SQLite ingest | RPC + token hash (DEV_CAPTURE_TOKEN bootstrap via service role) |
+| Results ad spend | Event-derived | Event-derived when marketing_events listed |
 
 ---
 
-## Wave 2 — Durable adapters + convert loop (still current)
+## Wave 3 — Advanced adapters (still current)
 
 | Item | Status |
 |------|--------|
-| `00013` RPCs + Launch Pack domain adapters | Verified |
-| Convert tools (qualify/assign/task/book) | Verified (local) |
-| Meta/Google/WhatsApp/Stripe | Blocked |
+| CRM/marketing/workflows/inbox/ingestion Postgres | Partial / verified in code |
+| Invites + convert_loop | Verified |
+| Local Playwright E2E | Verified (system Chrome) |
 
 ---
 
 ## Credentials still needed
 
-1. Vercel `leadorbit`: Redeploy `main`; `AUTH_MODE=supabase`; URL/anon/`SUPABASE_SERVICE_ROLE_KEY`  
-2. Optional LLM keys for non-deterministic copy  
-3. Meta/Google/WhatsApp/calendar OAuth/Stripe|Razorpay for live providers  
-4. Egress `api.vercel.com` if agent should manage deploys  
-5. Playwright staging: browser session against deployed Vercel + Supabase project  
+1. Vercel Redeploy `main` with `AUTH_MODE=supabase` + Supabase URL/anon/`SUPABASE_SERVICE_ROLE_KEY`  
+2. Meta: `META_ADS_ACCESS_TOKEN` (+ page/account for live pull); WhatsApp: `WHATSAPP_*`  
+3. Google Ads: `GOOGLE_ADS_DEVELOPER_TOKEN` (+ OAuth client/refresh for live)  
+4. Email/SMS: `RESEND_API_KEY`/`SMTP_URL`, `TWILIO_*`  
+5. Calendar: `GOOGLE_CALENDAR_CLIENT_*`, `MICROSOFT_CALENDAR_CLIENT_*`  
+6. Optional LLM keys  
 
 Linkbook: **untouched**.
 
 ### Local runtime
 
 - Web: http://127.0.0.1:43127  
-- Worker: http://127.0.0.1:43128/health  
 
-### Tests (Wave 3)
+### Tests (Wave 4)
 
-- `packages/domain` convert-loop template unit — expected pass  
-- `apps/web` launch-pack + convert-loop + wave3-adapters — expected pass  
-- Playwright local e2e — when server up; Supabase staging e2e **blocked**  
+- Domain adapters — pass (82 total domain tests)  
+- Web lead-ads fixture + pending — pass  
+- Typecheck — clean  
 
-### Next (Wave 4)
+### Next (Wave 5)
 
-- Meta/Google lead ads sync (replace stubs)  
-- WhatsApp/SMS/email delivery adapters  
-- Calendar OAuth  
-- Ad spend reporting pull  
+- Live Stripe + Razorpay checkout  
+- White-label domains + email  
+- Platform admin ops  
+- Usage metering + soft limits  

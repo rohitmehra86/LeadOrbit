@@ -177,6 +177,44 @@ export function CalendarConsole(props: Props) {
         <Badge>
           outbound legal: {props.policy.legalOutboundAllowed ? "yes" : "no"}
         </Badge>
+        <Button
+          type="button"
+          onClick={async () => {
+            const res = await fetch(
+              `/api/v1/orgs/${props.orgId}/calendar/oauth/google/start`,
+              { method: "POST" },
+            );
+            const data = (await res.json()) as {
+              item: { status: string; detail: string; url: string | null };
+            };
+            if (data.item.url) {
+              window.location.href = data.item.url;
+              return;
+            }
+            setNote(`${data.item.status}: ${data.item.detail}`);
+          }}
+        >
+          Connect Google Calendar
+        </Button>
+        <Button
+          type="button"
+          onClick={async () => {
+            const res = await fetch(
+              `/api/v1/orgs/${props.orgId}/calendar/oauth/microsoft/start`,
+              { method: "POST" },
+            );
+            const data = (await res.json()) as {
+              item: { status: string; detail: string; url: string | null };
+            };
+            if (data.item.url) {
+              window.location.href = data.item.url;
+              return;
+            }
+            setNote(`${data.item.status}: ${data.item.detail}`);
+          }}
+        >
+          Connect Microsoft Calendar
+        </Button>
       </section>
 
       {note ? (

@@ -235,7 +235,8 @@ export interface MarketingEvent {
     | "form_view"
     | "form_submit"
     | "cta_click"
-    | "conversion";
+    | "conversion"
+    | "ad_spend";
   meta: Record<string, unknown>;
   createdAt: string;
 }

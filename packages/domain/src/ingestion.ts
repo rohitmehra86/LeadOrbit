@@ -205,6 +205,7 @@ export function leadAdsSyncStub(
   network: "meta_lead_ads" | "google_lead_ads",
   credentialsPresent: boolean,
 ): { status: "pending_configuration" | "authorized_stub"; detail: string } {
+  // Keep signature for stores; prefer adapters/lead-ads for new call sites.
   if (!credentialsPresent) {
     return {
       status: "pending_configuration",

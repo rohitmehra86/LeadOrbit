@@ -290,11 +290,149 @@ export class SupabaseIngestionStore {
     );
   }
 
-  async ingestLead(): Promise<never> {
-    throw new AuthError(
-      "Token-based public/leads ingest on Supabase is not wired (use published form submit RPC)",
-      "validation",
+  async authorizeLeadAds(
+    _actor: SessionUser,
+    orgId: string,
+    network: "meta_lead_ads" | "google_lead_ads",
+  ) {
+    const { authorizeLeadAdsNetwork } = await import("@leadorbit/domain");
+    const stub = authorizeLeadAdsNetwork(network);
+    const supabase = await client();
+    const status =
+      stub.status === "pending_configuration"
+        ? "pending_configuration"
+        : "ready";
+    const { data, error } = await supabase
+      .from("channel_adapters")
+      .upsert(
+        {
+          org_id: orgId,
+          channel: network,
+          enabled: true,
+          status,
+          last_error: stub.detail,
+          config: { setupHints: stub.setupHints },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "org_id,channel" },
+      )
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId,
+      channel: network,
+      enabled: Boolean(r.enabled),
+      config: (r.config as Record<string, unknown>) ?? {},
+      status: r.status as ChannelAdapter["status"],
+      lastError: (r.last_error as string | null) ?? null,
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  }
+
+  async pullLeadAds(
+    actor: SessionUser,
+    orgId: string,
+    network: "meta_lead_ads" | "google_lead_ads",
+    opts?: { fixtureLeads?: Record<string, unknown>[] },
+  ) {
+    await this.authorizeLeadAds(actor, orgId, network);
+    const { pullLeadAdsFromNetwork } = await import("@leadorbit/domain");
+    const pulled = pullLeadAdsFromNetwork({
+      network,
+      fixtureLeads: opts?.fixtureLeads,
+    });
+    // Live HTTP pull never invents leads. Fixture path is for tests only.
+    if (pulled.status !== "imported" || !opts?.fixtureLeads?.length) {
+      return {
+        status: pulled.status,
+        detail: pulled.detail,
+        imported: 0,
+        setupHints: pulled.setupHints,
+      };
+    }
+    return {
+      status: "imported",
+      detail: `${pulled.detail} (fixture only — persist via local ingest in tests)`,
+      imported: pulled.imported,
+      setupHints: pulled.setupHints,
+    };
+  }
+
+  async ingestLead(input: {
+    orgId: string;
+    channel: IngestionChannel;
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    source?: string;
+    campaignId?: string | null;
+    utm?: Record<string, unknown>;
+    idempotencyKey?: string | null;
+    payload?: Record<string, unknown>;
+  }) {
+    // Prefer public/leads route RPC for public_capture; this path uses authed CRM insert.
+    if (input.channel === "public_capture") {
+      throw new AuthError(
+        "Use POST /api/v1/public/leads with X-Capture-Token for supabase public_capture",
+        "validation",
+      );
+    }
+    const supabase = await client();
+    const { data: pipe, error: pipeErr } = await supabase.rpc(
+      "ensure_org_lead_pipeline",
+      { p_org_id: input.orgId },
     );
+    if (pipeErr) throw new AuthError(pipeErr.message, "validation");
+    const row = (Array.isArray(pipe) ? pipe[0] : pipe) as {
+      pipeline_id: string;
+      stage_id: string;
+    };
+    const { data: lead, error } = await supabase
+      .from("leads")
+      .insert({
+        org_id: input.orgId,
+        email: input.email?.trim().toLowerCase() || null,
+        phone: input.phone ?? null,
+        full_name: (input.fullName ?? "Ingested lead").trim(),
+        source: input.source ?? input.channel,
+        status: "new",
+        lifecycle_stage: "lead",
+        score: 0,
+        pipeline_id: row?.pipeline_id ?? null,
+        stage_id: row?.stage_id ?? null,
+        custom_fields: {
+          utm: input.utm ?? {},
+          ingestionChannel: input.channel,
+        },
+        idempotency_key: input.idempotencyKey
+          ? `${input.channel}:${input.idempotencyKey}`
+          : null,
+        sla_due_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+        sla_state: "ok",
+      })
+      .select("id")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const leadId = String((lead as { id: string }).id);
+    const event = await this.recordPostCreateAttribution({
+      orgId: input.orgId,
+      leadId,
+      channel: input.channel,
+      campaignId: input.campaignId,
+      utm: input.utm,
+      idempotencyKey: input.idempotencyKey,
+      payload: input.payload ?? {},
+    });
+    return {
+      event,
+      leadId,
+      attribution: null,
+      duplicate: event.status === "duplicate",
+    };
   }
 }
 

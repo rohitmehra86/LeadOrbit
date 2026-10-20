@@ -765,11 +765,65 @@ export class SupabaseCampaignStore {
     }));
   }
 
-  async authorizeAdNetwork(): Promise<never> {
-    throw new AuthError(
-      "Ad network authorize blocked: Meta/Google credentials not configured (no fake success)",
-      "validation",
-    );
+  async authorizeAdNetwork(
+    _actor: SessionUser,
+    orgId: string,
+    network: import("@leadorbit/domain").AdNetwork,
+  ) {
+    const { adNetworkAuthorizeStub } = await import("@leadorbit/domain");
+    const creds =
+      network === "meta"
+        ? Boolean(process.env.META_ADS_ACCESS_TOKEN)
+        : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
+    const stub = adNetworkAuthorizeStub(network, creds);
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("ad_integrations")
+      .upsert(
+        {
+          org_id: orgId,
+          network,
+          status: stub.status,
+          last_error: stub.detail,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "org_id,network" },
+      )
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      network: r.network as import("@leadorbit/domain").AdNetwork,
+      status: r.status as import("@leadorbit/domain").IntegrationConfigStatus,
+      externalAccountId: (r.external_account_id as string | null) ?? null,
+      lastError: (r.last_error as string | null) ?? null,
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  }
+
+  async listMarketingEvents(_actor: SessionUser, orgId: string) {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("marketing_events")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      orgId: String(r.org_id),
+      campaignId: (r.campaign_id as string | null) ?? null,
+      pageId: (r.page_id as string | null) ?? null,
+      formId: (r.form_id as string | null) ?? null,
+      eventType: r.event_type as MarketingEvent["eventType"],
+      meta: (r.meta as Record<string, unknown>) ?? {},
+      createdAt: String(r.created_at),
+    }));
   }
 
   async duplicateForm(): Promise<never> {

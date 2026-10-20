@@ -159,10 +159,10 @@ export function IntegrationsConsole(props: Props) {
               Authorize Google Lead Ads
             </Button>
             <Button type="button" onClick={() => pullLeadAds("meta_lead_ads")}>
-              Pull Meta (stub)
+              Pull Meta Lead Ads
             </Button>
             <Button type="button" onClick={() => pullLeadAds("google_lead_ads")}>
-              Pull Google (stub)
+              Pull Google Lead Ads
             </Button>
           </div>
           {leadAdsNote ? (

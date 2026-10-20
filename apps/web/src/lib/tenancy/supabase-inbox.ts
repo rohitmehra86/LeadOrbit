@@ -331,13 +331,44 @@ export class SupabaseInboxStore {
 
   async authorizeChannel(
     _actor: SessionUser,
-    _orgId: string,
-    _channel: InboxChannel,
-  ): Promise<never> {
-    throw new AuthError(
-      "Channel OAuth/provider connect is blocked until WhatsApp/ESP credentials are configured",
-      "validation",
-    );
+    orgId: string,
+    channel: InboxChannel,
+  ) {
+    const { authorizeMessagingChannel, messagingSetupHints, isMessagingProvider } =
+      await import("@leadorbit/domain");
+    const auth = authorizeMessagingChannel(channel);
+    const hints = isMessagingProvider(channel)
+      ? messagingSetupHints(channel)
+      : [];
+    const supabase = await client();
+    const { data, error } = await supabase
+      .from("channel_connections")
+      .upsert(
+        {
+          org_id: orgId,
+          channel,
+          status: auth.status,
+          last_error: auth.detail,
+          config: { setupHints: hints },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "org_id,channel" },
+      )
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    const r = data as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      orgId: String(r.org_id),
+      channel: r.channel as InboxChannel,
+      status: r.status as ProviderConnectionStatus,
+      webhookSecret: (r.webhook_secret as string | null) ?? null,
+      config: (r.config as Record<string, unknown>) ?? {},
+      lastError: (r.last_error as string | null) ?? null,
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
   }
 
   async addOptOut(
@@ -366,9 +397,43 @@ export class SupabaseInboxStore {
     };
   }
 
-  async processInboundWebhook(_input: unknown): Promise<never> {
+  async processInboundWebhook(input: {
+    orgId: string;
+    channel: InboxChannel;
+    rawBody: string;
+    timestamp: string;
+    signature: string;
+  }) {
+    const { verifyMessagingWebhook } = await import("@leadorbit/domain/server");
+    const supabase = await client();
+    const { data: conn } = await supabase
+      .from("channel_connections")
+      .select("*")
+      .eq("org_id", input.orgId)
+      .eq("channel", input.channel)
+      .maybeSingle();
+    const secret =
+      (conn as { webhook_secret?: string | null } | null)?.webhook_secret ??
+      process.env.MESSAGING_WEBHOOK_SECRET ??
+      null;
+    if (!secret) {
+      throw new AuthError(
+        `${input.channel} webhook secret not configured — inbound blocked (no fake success)`,
+        "validation",
+      );
+    }
+    const verified = verifyMessagingWebhook({
+      secret,
+      timestamp: input.timestamp,
+      rawBody: input.rawBody,
+      signature: input.signature,
+    });
+    if (!verified.ok) {
+      throw new AuthError(verified.reason, "unauthorized");
+    }
+    // Signature ok — conversation ingest still requires provider-specific parsers.
     throw new AuthError(
-      "Inbound messaging webhooks on Supabase require provider signatures (Wave 4)",
+      `${input.channel} webhook signature verified, but inbound event ingest not fully wired`,
       "validation",
     );
   }

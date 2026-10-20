@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { getDomainCrm } from "@/lib/tenancy/crm";
 import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
+import { getCampaignStore } from "@/lib/tenancy/campaigns";
+import {
+  deriveAdSpendSnapshot,
+  formatAdSpendForResults,
+} from "@leadorbit/domain";
 import { Button } from "@leadorbit/ui";
 
 type Props = { params: Promise<{ orgId: string }> };
@@ -17,6 +22,27 @@ export default async function ResultsPage({ params }: Props) {
   const pages = await getDomainCampaigns().listPages(user, orgId);
   const publishedPages = pages.filter((p) => p.status === "published");
   const mediumPlus = leads.filter((l) => (l.score ?? 0) >= 45).length;
+
+  let events: Array<{ eventType: string; meta?: Record<string, unknown> | null }> =
+    [];
+  try {
+    const store = getCampaignStore() as {
+      listMarketingEvents?: (
+        a: typeof user,
+        o: string,
+      ) => Promise<Array<{ eventType: string; meta?: Record<string, unknown> }>>;
+    };
+    if (typeof store.listMarketingEvents === "function") {
+      events = await store.listMarketingEvents(user, orgId);
+    }
+  } catch {
+    events = [];
+  }
+
+  const metaSpend = deriveAdSpendSnapshot({ network: "meta", events });
+  const googleSpend = deriveAdSpendSnapshot({ network: "google_ads", events });
+  const metaFmt = formatAdSpendForResults(metaSpend);
+  const googleFmt = formatAdSpendForResults(googleSpend);
 
   return (
     <div className="lo-panel">
@@ -47,7 +73,32 @@ export default async function ResultsPage({ params }: Props) {
           <span className="lo-stat-value">{publishedPages.length}</span>
           <span className="lo-stat-label">Live pages</span>
         </div>
+        <div className="lo-stat">
+          <span
+            className="lo-stat-value"
+            data-tone={metaFmt.tone}
+            title={metaSpend.detail}
+          >
+            {metaFmt.value}
+          </span>
+          <span className="lo-stat-label">{metaFmt.label}</span>
+        </div>
+        <div className="lo-stat">
+          <span
+            className="lo-stat-value"
+            data-tone={googleFmt.tone}
+            title={googleSpend.detail}
+          >
+            {googleFmt.value}
+          </span>
+          <span className="lo-stat-label">{googleFmt.label}</span>
+        </div>
       </div>
+
+      <p className="lo-muted" style={{ marginTop: "0.5rem" }}>
+        Ad spend shows <strong>Unavailable</strong> when Insights pull is not configured —
+        never invents zero. Zero only appears when spend events exist totaling 0.
+      </p>
 
       <section className="lo-section">
         <h2>Live capture links</h2>
@@ -60,7 +111,9 @@ export default async function ResultsPage({ params }: Props) {
             {publishedPages.map((p) => (
               <li key={p.id}>
                 <Link href={`/p/${orgId}/${p.slug}`}>{p.name}</Link>
-                <code>/p/{orgId}/{p.slug}</code>
+                <code>
+                  /p/{orgId}/{p.slug}
+                </code>
               </li>
             ))}
           </ul>
