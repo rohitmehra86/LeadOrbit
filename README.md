@@ -9,6 +9,7 @@ Stack: Next.js App Router · TypeScript · Tailwind · Supabase · Vercel · dur
 | Document | Path |
 |----------|------|
 | Friend demos (overview + walkthroughs) | [`docs/demo/OVERVIEW.md`](./docs/demo/OVERVIEW.md) |
+| Broker meeting script (live laptop demo) | [`docs/demo/BROKER_MEETING_SCRIPT.md`](./docs/demo/BROKER_MEETING_SCRIPT.md) |
 | Competitor feature matrix (AI-first) | [`docs/product/COMPETITOR_FEATURE_MATRIX.md`](./docs/product/COMPETITOR_FEATURE_MATRIX.md) |
 | Competitive differentiation | [`docs/product/COMPETITIVE_DIFFERENTIATION.md`](./docs/product/COMPETITIVE_DIFFERENTIATION.md) |
 | Feature superiority roadmap | [`docs/product/FEATURE_SUPERIORITY_ROADMAP.md`](./docs/product/FEATURE_SUPERIORITY_ROADMAP.md) |

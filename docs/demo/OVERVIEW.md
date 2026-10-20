@@ -47,3 +47,5 @@ Pre-seeded accounts (share one path per friend): see [`DEMO_ACCOUNTS.md`](./DEMO
 
 1. **Marketing** — Launch Pack → publish → public form → lead → Results → [`WALKTHROUGH_MARKETING.md`](./WALKTHROUGH_MARKETING.md)
 2. **Broker** — Advanced → Real estate → inventory → enquiry → site visit → Sales → [`WALKTHROUGH_REAL_ESTATE.md`](./WALKTHROUGH_REAL_ESTATE.md)
+
+**Live broker meeting (Rohit’s laptop):** [`BROKER_MEETING_SCRIPT.md`](./BROKER_MEETING_SCRIPT.md) — pitch, objections, Mac setup, what to say.
