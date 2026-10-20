@@ -21,7 +21,7 @@
 - Monorepo, local SQLite domain stores, worker queue, RLS SQL migrations, auth (local + Supabase session path)
 - **Gap:** domain data not on Supabase adapters yet
 
-### Wave 1 — AI-first shell + Launch Pack E2E (**this ship**)
+### Wave 1 — AI-first shell + Launch Pack E2E ✅
 
 | Item | Outcome |
 |------|---------|
@@ -33,19 +33,23 @@
 | Visual system | Distinctive brand (not Inter/purple/cream clichés) |
 | Tests | Launch Pack + assistant tool unit/API tests |
 
-### Wave 2 — Durable cloud + invitations
+### Wave 2 — Durable cloud + convert loop ✅ (partial)
 
-- Supabase repository adapters for CRM, campaigns, forms, workflows, AI, analytics
-- Invites on Supabase tenancy
-- Staging E2E Playwright against durable project
-- Fix `public/leads` 501 on supabase mode
+- [x] Supabase adapters for Launch Pack domain (campaigns/forms/pages/leads) via `getDomain*`
+- [x] Migration RPCs: `submit_public_form`, `ensure_org_lead_pipeline`, `book_lead_appointment`
+- [x] Convert tools: qualify→score, assign, follow-up task, book appointment/site visit
+- [x] Sales simple view shows hot leads + open tasks
+- [ ] Invites on Supabase tenancy
+- [ ] Staging Playwright E2E against durable project
+- [ ] Advanced CRM/Marketing/Workflows/Inbox Postgres adapters (still SQLite)
+- [ ] Fix `public/leads` 501 token capture on supabase mode
 
-### Wave 3 — Convert loop
+### Wave 3 — Depth + templates
 
-- Appointment booking in Simple Sales view (local already exists — surface it)
-- Workflow templates: form submit → qualify → task → reminder
+- Workflow templates: form submit → qualify → task → reminder (Supabase-durable)
 - Inbox send when WhatsApp/ESP keys present (explicit blocked until then)
 - Optional LLM qualify/copy when `OPENAI_API_KEY` / gateway configured
+- Finish Advanced module Postgres ports + invites
 
 ### Wave 4 — Demand + messaging parity (cred-gated)
 

@@ -1,0 +1,480 @@
+import { createClient } from "@supabase/supabase-js";
+import { AuthError, isSupabaseConfigured, type SessionUser } from "@leadorbit/db";
+import {
+  buildUtmParams,
+  leadGenFormTemplate,
+  sanitizePageDocument,
+  type Campaign,
+  type FormDefinition,
+  type FormSubmission,
+  type LandingPage,
+  type PageDocument,
+  type PublishStatus,
+  type UtmParams,
+} from "@leadorbit/domain";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function anonClient() {
+  if (!isSupabaseConfigured()) {
+    throw new AuthError("Supabase is not configured", "validation");
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
+
+async function authed() {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) throw new AuthError("Supabase is not configured", "validation");
+  return supabase;
+}
+
+function mapCampaign(row: Record<string, unknown>): Campaign {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    name: String(row.name),
+    objective: row.objective as Campaign["objective"],
+    status: row.status as Campaign["status"],
+    audience: (row.audience as Campaign["audience"]) ?? {
+      segments: [],
+      territories: [],
+      notes: "",
+    },
+    adCopy: String(row.ad_copy ?? ""),
+    landingPageId: (row.landing_page_id as string | null) ?? null,
+    formId: (row.form_id as string | null) ?? null,
+    utm: (row.utm as UtmParams) ?? { utmSource: "", utmMedium: "", utmCampaign: "" },
+    budget: (row.budget as Campaign["budget"]) ?? {
+      currency: "USD",
+      dailyCents: null,
+      totalCents: null,
+    },
+    scheduleStart: (row.schedule_start as string | null) ?? null,
+    scheduleEnd: (row.schedule_end as string | null) ?? null,
+    templateKey: (row.template_key as string | null) ?? null,
+    abTestEnabled: Boolean(row.ab_test_enabled),
+    abVariants: (row.ab_variants as Campaign["abVariants"]) ?? [],
+    attributionModel: (row.attribution_model as Campaign["attributionModel"]) ?? "last_touch",
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapForm(row: Record<string, unknown>): FormDefinition {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    campaignId: (row.campaign_id as string | null) ?? null,
+    name: String(row.name),
+    status: row.status as PublishStatus,
+    fields: (row.fields as FormDefinition["fields"]) ?? [],
+    multiStep: Boolean(row.multi_step),
+    spamHoneypotEnabled: Boolean(row.spam_honeypot_enabled),
+    duplicateDetection: Boolean(row.duplicate_detection),
+    consentText: (row.consent_text as string | null) ?? null,
+    webhookUrl: (row.webhook_url as string | null) ?? null,
+    embedEnabled: Boolean(row.embed_enabled),
+    version: Number(row.version ?? 1),
+    templateKey: (row.template_key as string | null) ?? null,
+    thankYouMessage: String(row.thank_you_message ?? "Thank you"),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapPage(row: Record<string, unknown>): LandingPage {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    campaignId: (row.campaign_id as string | null) ?? null,
+    formId: (row.form_id as string | null) ?? null,
+    name: String(row.name),
+    slug: String(row.slug),
+    status: row.status as PublishStatus,
+    document: sanitizePageDocument(row.document),
+    templateKey: (row.template_key as string | null) ?? null,
+    version: Number(row.version ?? 1),
+    publishedAt: (row.published_at as string | null) ?? null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
+}
+
+/** Durable campaigns/forms/pages for AUTH_MODE=supabase. */
+export class SupabaseCampaignStore {
+  async listCampaigns(_actor: SessionUser, orgId: string): Promise<Campaign[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map(mapCampaign);
+  }
+
+  async getCampaign(
+    _actor: SessionUser,
+    orgId: string,
+    campaignId: string,
+  ): Promise<Campaign | null> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", campaignId)
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    return data ? mapCampaign(data as Record<string, unknown>) : null;
+  }
+
+  async createCampaign(
+    _actor: SessionUser,
+    orgId: string,
+    input: {
+      name: string;
+      objective?: Campaign["objective"];
+      adCopy?: string;
+      status?: Campaign["status"];
+      audience?: Campaign["audience"];
+      budget?: Campaign["budget"];
+      utmSource?: string;
+      utmMedium?: string;
+    },
+  ): Promise<Campaign> {
+    const supabase = await authed();
+    const utm = buildUtmParams({
+      source: input.utmSource ?? "leadorbit",
+      medium: input.utmMedium ?? "campaign",
+      campaign: input.name,
+    });
+    const { data, error } = await supabase
+      .from("campaigns")
+      .insert({
+        org_id: orgId,
+        name: input.name.trim(),
+        objective: input.objective ?? "lead_gen",
+        status: input.status ?? "draft",
+        audience: input.audience ?? { segments: [], territories: [], notes: "" },
+        ad_copy: input.adCopy ?? "",
+        utm,
+        budget: input.budget ?? { currency: "USD", dailyCents: null, totalCents: null },
+        attribution_model: "last_touch",
+        ab_test_enabled: false,
+        ab_variants: [],
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapCampaign(data as Record<string, unknown>);
+  }
+
+  async updateCampaign(
+    actor: SessionUser,
+    orgId: string,
+    campaignId: string,
+    patch: Partial<{
+      formId: string | null;
+      landingPageId: string | null;
+      status: Campaign["status"];
+      adCopy: string;
+    }>,
+  ): Promise<Campaign> {
+    const supabase = await authed();
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.formId !== undefined) updates.form_id = patch.formId;
+    if (patch.landingPageId !== undefined) updates.landing_page_id = patch.landingPageId;
+    if (patch.status !== undefined) updates.status = patch.status;
+    if (patch.adCopy !== undefined) updates.ad_copy = patch.adCopy;
+    const { data, error } = await supabase
+      .from("campaigns")
+      .update(updates)
+      .eq("org_id", orgId)
+      .eq("id", campaignId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    void actor;
+    return mapCampaign(data as Record<string, unknown>);
+  }
+
+  async createForm(
+    _actor: SessionUser,
+    orgId: string,
+    input: {
+      name: string;
+      campaignId?: string | null;
+      templateKey?: string | null;
+      consentText?: string | null;
+    },
+  ): Promise<FormDefinition> {
+    const supabase = await authed();
+    const fields = leadGenFormTemplate();
+    const { data, error } = await supabase
+      .from("forms")
+      .insert({
+        org_id: orgId,
+        campaign_id: input.campaignId ?? null,
+        name: input.name.trim(),
+        status: "draft",
+        fields,
+        multi_step: true,
+        spam_honeypot_enabled: true,
+        duplicate_detection: true,
+        consent_text: input.consentText ?? "I agree to be contacted about this offer.",
+        embed_enabled: true,
+        version: 1,
+        template_key: input.templateKey ?? "lead_gen",
+        thank_you_message: "Thanks — we will be in touch shortly.",
+      })
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapForm(data as Record<string, unknown>);
+  }
+
+  async getForm(
+    _actor: SessionUser,
+    orgId: string,
+    formId: string,
+  ): Promise<FormDefinition | null> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", formId)
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    return data ? mapForm(data as Record<string, unknown>) : null;
+  }
+
+  getPublishedForm(orgId: string, formId: string): FormDefinition | null {
+    // Sync API surface for local parity — prefer async path in supabase mode.
+    void orgId;
+    void formId;
+    return null;
+  }
+
+  async getPublishedFormAsync(
+    orgId: string,
+    formId: string,
+  ): Promise<FormDefinition | null> {
+    const supabase = anonClient();
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", formId)
+      .eq("status", "published")
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    return data ? mapForm(data as Record<string, unknown>) : null;
+  }
+
+  async updateForm(
+    _actor: SessionUser,
+    orgId: string,
+    formId: string,
+    patch: Partial<{ status: PublishStatus; name: string }>,
+  ): Promise<FormDefinition> {
+    const supabase = await authed();
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.status) updates.status = patch.status;
+    if (patch.name) updates.name = patch.name;
+    const { data, error } = await supabase
+      .from("forms")
+      .update(updates)
+      .eq("org_id", orgId)
+      .eq("id", formId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    return mapForm(data as Record<string, unknown>);
+  }
+
+  async createPage(
+    _actor: SessionUser,
+    orgId: string,
+    input: {
+      name: string;
+      slug?: string;
+      campaignId?: string | null;
+      formId?: string | null;
+      templateKey?: string | null;
+      document?: PageDocument;
+    },
+  ): Promise<LandingPage> {
+    const supabase = await authed();
+    const slug =
+      slugify(input.slug ?? input.name) || `page-${Math.random().toString(36).slice(2, 8)}`;
+    const document =
+      input.document ??
+      sanitizePageDocument({
+        version: 1,
+        seo: { title: input.name, description: "", ogImage: null },
+        consentNotice: "By continuing you agree to our privacy notice.",
+        blocks: [
+          {
+            id: "hero",
+            type: "hero",
+            props: {
+              headline: input.name,
+              subheadline: "Capture demand with LeadOrbit.",
+              ctaLabel: "Get started",
+            },
+          },
+          { id: "form", type: "form", props: { heading: "Contact us" } },
+        ],
+      });
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .insert({
+        org_id: orgId,
+        campaign_id: input.campaignId ?? null,
+        form_id: input.formId ?? null,
+        name: input.name.trim(),
+        slug,
+        status: "draft",
+        document,
+        template_key: input.templateKey ?? null,
+        version: 1,
+      })
+      .select("*")
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new AuthError("Slug already exists", "conflict");
+      throw new AuthError(error.message, "validation");
+    }
+    return mapPage(data as Record<string, unknown>);
+  }
+
+  async listPages(_actor: SessionUser, orgId: string): Promise<LandingPage[]> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw new AuthError(error.message, "validation");
+    return ((data ?? []) as Record<string, unknown>[]).map(mapPage);
+  }
+
+  async getPage(
+    _actor: SessionUser,
+    orgId: string,
+    pageId: string,
+  ): Promise<LandingPage | null> {
+    const supabase = await authed();
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", pageId)
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    return data ? mapPage(data as Record<string, unknown>) : null;
+  }
+
+  getPublishedPageBySlug(orgId: string, slug: string): LandingPage | null {
+    void orgId;
+    void slug;
+    return null;
+  }
+
+  async getPublishedPageBySlugAsync(
+    orgId: string,
+    slug: string,
+  ): Promise<LandingPage | null> {
+    const supabase = anonClient();
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("slug", slug)
+      .eq("status", "published")
+      .maybeSingle();
+    if (error) throw new AuthError(error.message, "validation");
+    return data ? mapPage(data as Record<string, unknown>) : null;
+  }
+
+  async publishPage(
+    actor: SessionUser,
+    orgId: string,
+    pageId: string,
+  ): Promise<LandingPage> {
+    const supabase = await authed();
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("landing_pages")
+      .update({ status: "published", published_at: now, updated_at: now })
+      .eq("org_id", orgId)
+      .eq("id", pageId)
+      .select("*")
+      .single();
+    if (error) throw new AuthError(error.message, "validation");
+    void actor;
+    return mapPage(data as Record<string, unknown>);
+  }
+
+  async submitFormPublic(input: {
+    orgId: string;
+    formId: string;
+    payload: Record<string, unknown>;
+    honeypot?: string;
+    utm?: Partial<UtmParams>;
+    campaignId?: string | null;
+  }): Promise<FormSubmission> {
+    const supabase = anonClient();
+    const { data, error } = await supabase.rpc("submit_public_form", {
+      p_org_id: input.orgId,
+      p_form_id: input.formId,
+      p_payload: input.payload,
+      p_utm: input.utm ?? {},
+      p_campaign_id: input.campaignId ?? null,
+      p_honeypot: input.honeypot ?? null,
+    });
+    if (error) throw new AuthError(error.message, "validation");
+    const result = data as {
+      submissionId: string;
+      leadId: string | null;
+      campaignId: string | null;
+      duplicateOfId: string | null;
+      formId: string;
+    };
+    return {
+      id: result.submissionId,
+      orgId: input.orgId,
+      formId: result.formId,
+      campaignId: result.campaignId,
+      leadId: result.leadId,
+      payload: input.payload,
+      utm: {
+        utmSource: String(input.utm?.utmSource ?? ""),
+        utmMedium: String(input.utm?.utmMedium ?? ""),
+        utmCampaign: String(input.utm?.utmCampaign ?? ""),
+      },
+      fingerprint: "",
+      duplicateOfId: result.duplicateOfId,
+      createdAt: new Date().toISOString(),
+    };
+  }
+}
+
+let singleton: SupabaseCampaignStore | null = null;
+export function getSupabaseCampaignStore(): SupabaseCampaignStore {
+  if (!singleton) singleton = new SupabaseCampaignStore();
+  return singleton;
+}

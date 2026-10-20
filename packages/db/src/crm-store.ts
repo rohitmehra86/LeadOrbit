@@ -15,6 +15,7 @@ import {
   type CustomFieldDef,
   type FollowUpReminder,
   type Lead,
+  type LeadStatus,
   type Note,
   type Opportunity,
   type OwnershipHistoryEntry,
@@ -407,6 +408,35 @@ export class CrmStore {
       assignReason,
     });
     return this.getLead(actor, orgId, id);
+  }
+
+  async updateLeadScore(
+    actor: SessionUser,
+    orgId: string,
+    leadId: string,
+    score: number,
+    status?: LeadStatus,
+  ): Promise<Lead> {
+    await this.gate(actor, orgId, "crm:write");
+    await this.getLead(actor, orgId, leadId);
+    const ts = nowIso();
+    const nextScore = Math.max(0, Math.min(100, Math.round(score)));
+    if (status) {
+      this.db
+        .prepare(
+          `update leads set score = ?, status = ?, updated_at = ? where id = ? and org_id = ?`,
+        )
+        .run(nextScore, status, ts, leadId, orgId);
+    } else {
+      this.db
+        .prepare(`update leads set score = ?, updated_at = ? where id = ? and org_id = ?`)
+        .run(nextScore, ts, leadId, orgId);
+    }
+    this.addActivity(orgId, actor.id, "lead", leadId, "lead.scored", `Score → ${nextScore}`, {
+      score: nextScore,
+      status: status ?? null,
+    });
+    return this.getLead(actor, orgId, leadId);
   }
 
   async updateLeadStage(

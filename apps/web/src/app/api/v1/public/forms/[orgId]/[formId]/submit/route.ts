@@ -1,5 +1,6 @@
+import { getAuthMode } from "@leadorbit/db";
 import { fromAuthError, jsonOk } from "@/lib/api/http";
-import { getCampaignStore } from "@/lib/tenancy/campaigns";
+import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 import { getIngestionStore } from "@/lib/tenancy/ingestion";
 import { getWorkflowStore } from "@/lib/tenancy/workflows";
 import type { UtmParams } from "@leadorbit/domain";
@@ -16,7 +17,7 @@ export async function POST(request: Request, ctx: Ctx) {
       campaignId?: string | null;
       pageId?: string | null;
     };
-    const item = await getCampaignStore().submitFormPublic({
+    const item = await getDomainCampaigns().submitFormPublic({
       orgId,
       formId,
       payload: body.payload ?? {},
@@ -24,7 +25,9 @@ export async function POST(request: Request, ctx: Ctx) {
       utm: body.utm,
       campaignId: body.campaignId,
     });
-    if (item.leadId) {
+
+    // Attribution + workflow hooks remain SQLite-local until those adapters ship.
+    if (item.leadId && getAuthMode() === "local") {
       getIngestionStore().recordPostCreateAttribution({
         orgId,
         leadId: item.leadId,

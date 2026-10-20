@@ -33,4 +33,12 @@ describe("assistant planner", () => {
     assert.equal(tool.requiresApproval, true);
     assert.equal(tool.risk, "publish");
   });
+
+  it("plans appointment booking with approval", () => {
+    const plan = planAssistantIntent({
+      message: "Book meeting for lead 11111111-1111-1111-1111-111111111111",
+    });
+    assert.equal(plan.steps[0]?.tool, "book_appointment");
+    assert.equal(plan.requiresApproval, true);
+  });
 });

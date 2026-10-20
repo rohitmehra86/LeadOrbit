@@ -2,8 +2,8 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { getLocalTenancyStore } from "@leadorbit/db";
 import { createLaunchPack, publishLaunchPack } from "./launch-pack";
-import { getCampaignStore } from "@/lib/tenancy/campaigns";
-import { getCrmStore } from "@/lib/tenancy/crm";
+import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
+import { getDomainCrm } from "@/lib/tenancy/crm";
 
 describe("launch pack E2E slice", () => {
   let userId = "";
@@ -34,7 +34,7 @@ describe("launch pack E2E slice", () => {
     const published = await publishLaunchPack(actor, orgId, pack);
     assert.equal(published.published, true);
 
-    const campaigns = getCampaignStore();
+    const campaigns = getDomainCampaigns();
     const form = campaigns.getPublishedForm(orgId, pack.formId);
     assert.ok(form);
 
@@ -54,7 +54,7 @@ describe("launch pack E2E slice", () => {
     });
     assert.ok(submission.leadId);
 
-    const lead = await getCrmStore().getLead(actor, orgId, submission.leadId!);
+    const lead = await getDomainCrm().getLead(actor, orgId, submission.leadId!);
     assert.equal(lead.email, email);
     assert.ok(lead.id);
   });

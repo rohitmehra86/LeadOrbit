@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
-import { getCrmStore } from "@/lib/tenancy/crm";
+import { getDomainCrm } from "@/lib/tenancy/crm";
 import { Badge, Button } from "@leadorbit/ui";
 
 type Props = { params: Promise<{ orgId: string }> };
@@ -11,10 +11,10 @@ export default async function LeadsSimplePage({ params }: Props) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  let leads: Awaited<ReturnType<ReturnType<typeof getCrmStore>["listLeads"]>> = [];
+  let leads: Awaited<ReturnType<ReturnType<typeof getDomainCrm>["listLeads"]>> = [];
   let error: string | null = null;
   try {
-    leads = await getCrmStore().listLeads(user, orgId);
+    leads = await getDomainCrm().listLeads(user, orgId);
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load leads";
   }

@@ -1,5 +1,5 @@
 import type { SessionUser } from "@leadorbit/db";
-import { getCampaignStore } from "@/lib/tenancy/campaigns";
+import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 
 export type LaunchPack = {
   campaignId: string;
@@ -23,7 +23,7 @@ export async function createLaunchPack(
   orgId: string,
   input: { goal: string; location?: string | null; offer?: string | null },
 ): Promise<LaunchPack> {
-  const campaigns = getCampaignStore();
+  const campaigns = getDomainCampaigns();
   const name = packNameFromGoal(input.goal);
   const location = input.location?.trim() || null;
   const offer = input.offer?.trim() || null;
@@ -113,7 +113,7 @@ export async function publishLaunchPack(
   orgId: string,
   pack: { formId: string; pageId: string; pageSlug: string },
 ): Promise<LaunchPack & { published: true }> {
-  const campaigns = getCampaignStore();
+  const campaigns = getDomainCampaigns();
   await campaigns.updateForm(actor, orgId, pack.formId, { status: "published" });
   const page = await campaigns.publishPage(actor, orgId, pack.pageId);
   const form = await campaigns.getForm(actor, orgId, pack.formId);

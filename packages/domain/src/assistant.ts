@@ -10,6 +10,9 @@ export type AssistantToolName =
   | "list_leads"
   | "get_results_summary"
   | "qualify_lead"
+  | "assign_lead"
+  | "create_follow_up_task"
+  | "book_appointment"
   | "create_launch_pack"
   | "publish_launch_pack";
 
@@ -56,10 +59,31 @@ export const ASSISTANT_TOOLS: readonly AssistantToolDef[] = [
   },
   {
     name: "qualify_lead",
-    description: "Run deterministic qualification on a lead message",
+    description: "Run deterministic qualification and persist score on a lead",
     permission: "ai:run",
     risk: "write",
     requiresApproval: false,
+  },
+  {
+    name: "assign_lead",
+    description: "Assign a lead to a teammate (owner)",
+    permission: "crm:assign",
+    risk: "write",
+    requiresApproval: true,
+  },
+  {
+    name: "create_follow_up_task",
+    description: "Create a follow-up CRM task for a lead",
+    permission: "crm:write",
+    risk: "write",
+    requiresApproval: true,
+  },
+  {
+    name: "book_appointment",
+    description: "Book a meeting or site visit for a lead",
+    permission: "appointments:write",
+    risk: "appointment",
+    requiresApproval: true,
   },
   {
     name: "create_launch_pack",
@@ -140,17 +164,106 @@ export function planAssistantIntent(input: {
   }
 
   if (/\bqualif/.test(lower)) {
+    const leadId =
+      text.match(/\blead\s+([0-9a-f-]{36})\b/i)?.[1] ??
+      text.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)?.[1] ??
+      null;
     return {
-      summary: "Qualify lead text",
+      summary: "Qualify lead",
       steps: [
         {
           tool: "qualify_lead",
-          args: { text },
+          args: { text, leadId },
           reason: "User asked to qualify a lead message",
         },
       ],
       needsClarification: null,
       requiresApproval: false,
+    };
+  }
+
+  if (/\bassign\b/.test(lower) && /\blead\b/.test(lower)) {
+    const leadId =
+      text.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)?.[1] ??
+      null;
+    if (!leadId) {
+      return {
+        summary: "Need lead id to assign",
+        steps: [],
+        needsClarification: "Which lead id should I assign, and to which user id?",
+        requiresApproval: false,
+      };
+    }
+    return {
+      summary: "Assign lead",
+      steps: [
+        {
+          tool: "assign_lead",
+          args: { leadId, ownerUserId: null },
+          reason: "User asked to assign a lead",
+        },
+      ],
+      needsClarification: null,
+      requiresApproval: true,
+    };
+  }
+
+  if (/\b(follow[- ]?up|task)\b/.test(lower) && /\blead\b/.test(lower)) {
+    const leadId =
+      text.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)?.[1] ??
+      null;
+    if (!leadId) {
+      return {
+        summary: "Need lead id for follow-up",
+        steps: [],
+        needsClarification: "Provide the lead id for the follow-up task.",
+        requiresApproval: false,
+      };
+    }
+    return {
+      summary: "Create follow-up task",
+      steps: [
+        {
+          tool: "create_follow_up_task",
+          args: { leadId, title: "Follow up with lead", dueInHours: 24 },
+          reason: "User asked for a follow-up task",
+        },
+      ],
+      needsClarification: null,
+      requiresApproval: true,
+    };
+  }
+
+  if (/\b(book|schedule|appointment|site visit|meeting)\b/.test(lower)) {
+    const leadId =
+      text.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)?.[1] ??
+      null;
+    if (!leadId) {
+      return {
+        summary: "Need lead id to book",
+        steps: [],
+        needsClarification:
+          "Provide the lead id and preferred time (ISO). Example: book meeting for lead <uuid> tomorrow.",
+        requiresApproval: false,
+      };
+    }
+    const kind = /\bsite visit\b/.test(lower) ? "site_visit" : "meeting";
+    return {
+      summary: kind === "site_visit" ? "Book site visit" : "Book meeting",
+      steps: [
+        {
+          tool: "book_appointment",
+          args: {
+            leadId,
+            kind,
+            startsAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+            durationMinutes: 30,
+          },
+          reason: "User asked to book an appointment",
+        },
+      ],
+      needsClarification: null,
+      requiresApproval: true,
     };
   }
 

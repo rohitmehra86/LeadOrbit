@@ -1,7 +1,7 @@
 # LeadOrbit — Implementation Status
 
 **Last updated:** 2026-10-20  
-**Current focus:** AI-first shell + Launch Pack E2E (Wave 1)  
+**Current focus:** Wave 2 — durable Supabase domain adapters + convert loop  
 **Honesty policy:** Verified vs blocked vs not-deployed only. No fabricated parity claims. **Not commercially production-ready.**
 
 ---
@@ -12,64 +12,68 @@
 |--------|---------|
 | **Verified** | Exercised here with evidence |
 | **Blocked** | Needs credentials / vendor / network |
-| **Partial** | Real code path; incomplete or non-durable on staging |
+| **Partial** | Real code path; incomplete coverage |
 | **Scaffolded** | Config/docs/code ready; not live-verified |
-| **UI-only / stub** | Not claimed complete |
 
 ---
 
-## Wave 1 — AI-first shell (2026-10-20)
+## Wave 2 — Durable adapters + convert loop (2026-10-20)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Product docs (`docs/product/*`) | Verified | Matrix, differentiation, roadmap |
-| Org shell nav (6 primary) | Verified (local) | Assistant · Leads · Marketing · Sales · Results · Settings |
-| Simple / Advanced / Expert modes | Verified (local) | Cookie `lo_ux_mode` |
-| NL Assistant (typed tools + approval) | Verified (local) | `POST .../assistant/chat`; publish requires approval |
-| Launch Pack (campaign+form+page) | Verified (local) | `POST .../launch` + assistant tools; test `launch-pack.test.ts` |
-| Capture → CRM lead | Verified (local) | Public form submit |
-| Results signals | Verified (local) | Lead/campaign/page counts |
-| Visual refresh | Verified (local) | Fraunces + Manrope; ink/saffron system |
-| Live LLM copy/qualify | **Blocked** | Gateway pending keys |
-| Durable Supabase domain data | **Partial** | Auth/org OK; CRM/marketing still SQLite adapters |
-| Meta/Google/WhatsApp/Stripe | **Blocked** | Stubs / pending_configuration |
+| Migration `00013_wave2_domain_adapters` | **Verified** (applied on LeadOrbit `kqmuxocbmtydkxdvmypy`) | `submit_public_form`, `ensure_org_lead_pipeline`, `book_lead_appointment`; anon read published forms/pages |
+| `SupabaseCrmStore` (leads/tasks/assign/score/book) | **Verified** in code + typecheck | Used when `AUTH_MODE=supabase` via `getDomainCrm()` |
+| `SupabaseCampaignStore` (campaigns/forms/pages/public submit) | **Verified** in code + typecheck | Used via `getDomainCampaigns()` |
+| AUTH_MODE=local unchanged | **Verified** | Launch Pack + convert-loop tests pass on SQLite |
+| Live staging E2E (signup→launch→submit on Vercel) | **Partial / blocked here** | Needs Redeploy + session against Supabase; agent cannot hit Vercel egress |
+| Advanced CRM/Marketing UIs | **Partial** | Still call local `getCrmStore()` / `getCampaignStore()` — Expert modules not fully Postgres yet |
+| Ingestion/workflow hooks after public submit | **Partial** | Run on local only; skipped in supabase mode until those adapters ship |
+| Convert tools (qualify/assign/task/book) | **Verified** (local) | Assistant approvals; calendar OAuth still blocked |
+| Meta/Google/WhatsApp/Stripe | **Blocked** | Unchanged stubs |
 
-### Verify locally
+### Mode split (important)
 
-```bash
-pnpm local:demo
-# signup → create workspace → Assistant:
-# “Launch a campaign for condo leads in Bangalore” → Approve
-# open publicPath → submit form → Leads / Results
-```
+| Surface | `local` | `supabase` |
+|---------|---------|------------|
+| AI shell, Launch Pack, Leads/Results/Sales simple, public form/page | SQLite | **Postgres** |
+| Advanced CRM board, full marketing builders, inbox, workflows UI | SQLite | Still SQLite (non-durable on Vercel) |
 
 ---
 
-## Platform summary M1–M12 + Wave 1
+## Wave 1 — AI-first shell (still current)
 
-| Area | Status |
+| Item | Status |
 |------|--------|
-| Auth local | Verified |
-| Auth Supabase signup/session | Partial (code on `main`; Redeploy + `SUPABASE_SERVICE_ROLE_KEY` required on Vercel) |
-| CRM / marketing / workflows / RE (local SQLite) | Verified |
-| Inbox send / ads / calendar OAuth / voice / payments | Blocked (creds) |
-| AI deterministic qualify | Verified |
-| AI assistant tools | Verified (local) |
-| Worker queue | Verified (local) |
-| Vercel `leadorbit-delta` | Partial — keep only project `leadorbit`; Redeploy `main` |
-| Linkbook | **Out of scope** — untouched |
+| 6-nav + Simple/Advanced/Expert | Verified (local) |
+| Assistant typed tools + approval | Verified (local); convert tools added |
+| Launch Pack E2E | Verified (local) |
+| Product docs under `docs/product/` | Verified |
 
-### Cross-cutting blockers
+---
 
-1. Domain stores not on Supabase → staging product data non-durable  
-2. Provider credentials unset  
-3. Agent egress blocks Vercel API / some competitor sites  
-4. Dependency audit high advisories (transitive)
+## Credentials still needed
+
+1. Vercel `leadorbit`: Redeploy `main`; `AUTH_MODE=supabase`; URL/anon/`SUPABASE_SERVICE_ROLE_KEY`  
+2. Optional LLM keys for non-deterministic copy  
+3. Meta/Google/WhatsApp/calendar OAuth/Stripe|Razorpay for live providers  
+4. Egress `api.vercel.com` if agent should manage deploys  
+
+Linkbook: **untouched**.
 
 ### Local runtime
 
 - Web: http://127.0.0.1:43127  
 - Worker: http://127.0.0.1:43128/health  
-- SQLite: `.data/leadorbit.sqlite`
 
-See also: `docs/product/FEATURE_SUPERIORITY_ROADMAP.md`, inventory handoff in agent store.
+### Tests (Wave 2)
+
+- `packages/domain/src/assistant.test.ts` — pass  
+- `apps/web/src/lib/launch/launch-pack.test.ts` — pass  
+- `apps/web/src/lib/assistant/convert-loop.test.ts` — pass  
+
+### Next (Wave 3)
+
+- Supabase adapters for Advanced CRM/marketing/workflows/inbox/ingestion  
+- Guided onboarding checklist persistence  
+- Workflow templates in Simple mode  
+- Optional LLM when keyed  

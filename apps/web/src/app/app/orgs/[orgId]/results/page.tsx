@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
-import { getCrmStore } from "@/lib/tenancy/crm";
-import { getCampaignStore } from "@/lib/tenancy/campaigns";
+import { getDomainCrm } from "@/lib/tenancy/crm";
+import { getDomainCampaigns } from "@/lib/tenancy/campaigns";
 import { Button } from "@leadorbit/ui";
 
 type Props = { params: Promise<{ orgId: string }> };
@@ -12,9 +12,9 @@ export default async function ResultsPage({ params }: Props) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const leads = await getCrmStore().listLeads(user, orgId);
-  const campaigns = await getCampaignStore().listCampaigns(user, orgId);
-  const pages = await getCampaignStore().listPages(user, orgId);
+  const leads = await getDomainCrm().listLeads(user, orgId);
+  const campaigns = await getDomainCampaigns().listCampaigns(user, orgId);
+  const pages = await getDomainCampaigns().listPages(user, orgId);
   const publishedPages = pages.filter((p) => p.status === "published");
   const mediumPlus = leads.filter((l) => (l.score ?? 0) >= 45).length;
 
