@@ -35,8 +35,8 @@ export default async function MarketingPage({ params }: Props) {
         <div>
           <h1>Marketing</h1>
           <p>
-            Launch capture pages, share landing links, and track Results. Keep
-            Simple mode for demos — Advanced adds channels and builders.
+            Launch capture pages, share landing links, and track Results. Ad
+            channels stay behind “Show advanced tools” — never on first paint.
           </p>
         </div>
         <Link href={`/app/orgs/${orgId}/results`}>

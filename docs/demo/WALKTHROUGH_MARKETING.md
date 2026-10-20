@@ -22,12 +22,13 @@
 
 ## Click path
 
-Keep mode **Simple** (bottom of sidebar — default).
+Marketing **always opens Simple** (Launch Pack first). Sidebar Simple/Advanced does not change that. Ad channels only after **Show advanced tools**.
 
 1. Sidebar → **Marketing**  
-   - Pre-seeded: campaign **Generate qualified inbound leads** with a short landing name + **Copy link**.  
-   - Or use **Launch Pack** on the page (goal → Launch & publish).  
-   - Own account: same Launch Pack, or AI Assistant → *“Create a lead gen Launch Pack and publish it”*.
+   - You should see Launch Pack + campaign list — **not** Connect Meta/Google.  
+   - If you see Connect Meta / pending_configuration / Creative library on first paint → hard-refresh or ask Rohit to Redeploy `main`.  
+   - Pre-seeded: campaign **Generate qualified inbound leads** with landing name + **Copy link**.  
+   - Or use **Launch Pack** (goal → Launch & publish).
 
 2. **Public capture page** (pre-seeded):  
    https://leadorbit-delta.vercel.app/p/33333333-3333-4333-8333-333333333333/launch-friend-demo  

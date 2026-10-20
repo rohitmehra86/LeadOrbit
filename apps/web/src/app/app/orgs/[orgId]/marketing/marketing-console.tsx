@@ -13,7 +13,6 @@ import type {
   LandingPage,
 } from "@leadorbit/domain";
 import { Badge, Button } from "@leadorbit/ui";
-import { useUxMode } from "@/components/shell/ux-mode";
 
 type Props = {
   orgId: string;
@@ -129,10 +128,8 @@ function AdChannelCard({
 
 export function MarketingConsole(props: Props) {
   const router = useRouter();
-  const { mode } = useUxMode();
-  const isSimple = mode === "simple";
-  const showAdvanced = mode === "advanced" || mode === "expert";
-  const showExpert = mode === "expert";
+  /** Marketing always opens Simple — independent of global Simple/Advanced nav cookie. */
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [launchNote, setLaunchNote] = useState<string | null>(null);
@@ -400,7 +397,7 @@ export function MarketingConsole(props: Props) {
                 View Results
               </Button>
             </Link>
-            {showAdvanced ? (
+            {showAdvancedTools ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -412,7 +409,7 @@ export function MarketingConsole(props: Props) {
           </div>
         </div>
 
-        {showAdvanced && showNewCampaign ? (
+        {showAdvancedTools && showNewCampaign ? (
           <form onSubmit={createCampaign} className="lo-advanced-form mb-4">
             <h3 className="text-sm font-semibold">Manual campaign</h3>
             <label className="lo-field">
@@ -443,34 +440,30 @@ export function MarketingConsole(props: Props) {
               Ad copy
               <textarea name="adCopy" rows={2} placeholder="Short offer copy" />
             </label>
-            {showExpert ? (
-              <div className="grid gap-3 sm:grid-cols-3">
+            <input type="hidden" name="utmSource" value="leadorbit" />
+            <input type="hidden" name="utmMedium" value="campaign" />
+            <details className="lo-disclose">
+              <summary>UTM &amp; budget (optional)</summary>
+              <div className="lo-disclose-body grid gap-3 sm:grid-cols-3">
                 <label className="lo-field">
                   UTM source
-                  <input name="utmSource" defaultValue="leadorbit" />
+                  <input name="utmSourceVisible" defaultValue="leadorbit" disabled />
                 </label>
                 <label className="lo-field">
                   UTM medium
-                  <input name="utmMedium" defaultValue="campaign" />
+                  <input name="utmMediumVisible" defaultValue="campaign" disabled />
                 </label>
                 <label className="lo-field">
                   Daily budget (USD)
                   <input name="dailyBudget" type="number" min={0} />
                 </label>
               </div>
-            ) : (
-              <>
-                <input type="hidden" name="utmSource" value="leadorbit" />
-                <input type="hidden" name="utmMedium" value="campaign" />
-              </>
-            )}
+            </details>
             <div className="flex flex-wrap gap-2">
               <Button type="submit">Create draft</Button>
-              {showExpert ? (
-                <Button type="button" variant="ghost" onClick={suggestCopy}>
-                  AI copy suggestions
-                </Button>
-              ) : null}
+              <Button type="button" variant="ghost" onClick={suggestCopy}>
+                AI copy suggestions
+              </Button>
             </div>
             {aiNote ? <p className="lo-muted text-xs">{aiNote}</p> : null}
           </form>
@@ -543,7 +536,7 @@ export function MarketingConsole(props: Props) {
                         Pause
                       </Button>
                     )}
-                    {showAdvanced ? (
+                    {showAdvancedTools ? (
                       <Button
                         type="button"
                         variant="ghost"
@@ -560,15 +553,23 @@ export function MarketingConsole(props: Props) {
         )}
       </section>
 
-      {isSimple ? (
-        <p className="lo-muted text-xs">
-          Ad channels, creative library, and funnel builder stay in{" "}
-          <strong className="font-medium text-[var(--lo-fg)]">Advanced</strong>{" "}
-          mode. Meta/Google never show as connected without credentials.
-        </p>
-      ) : null}
+      <div className="lo-marketing-tools-toggle">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setShowAdvancedTools((v) => !v)}
+        >
+          {showAdvancedTools ? "Hide advanced tools" : "Show advanced tools"}
+        </Button>
+        {!showAdvancedTools ? (
+          <p className="lo-muted text-xs">
+            Optional channel setup stays hidden until you opt in. Nothing is
+            shown as connected without credentials.
+          </p>
+        ) : null}
+      </div>
 
-      {showAdvanced ? (
+      {showAdvancedTools ? (
         <section className="lo-section">
           <h2>Ad channels</h2>
           <p className="lo-muted mb-3 text-sm">
@@ -592,8 +593,8 @@ export function MarketingConsole(props: Props) {
         </section>
       ) : null}
 
-      {showAdvanced ? (
-        <details className="lo-disclose">
+      {showAdvancedTools ? (
+        <details className="lo-disclose" open>
           <summary>Creative library & funnels</summary>
           <div className="lo-disclose-body grid gap-6 lg:grid-cols-2">
             <div>
@@ -665,7 +666,7 @@ export function MarketingConsole(props: Props) {
         </details>
       ) : null}
 
-      {showAdvanced ? (
+      {showAdvancedTools ? (
         <div className="lo-card-actions">
           <Link href={`/app/orgs/${props.orgId}/marketing/forms`}>
             <Button type="button" variant="ghost">

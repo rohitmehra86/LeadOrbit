@@ -974,3 +974,12 @@ a {
   padding-top: 0.75rem;
   border-top: 1px solid var(--lo-border);
 }
+
+.lo-marketing-tools-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--lo-border);
+}
