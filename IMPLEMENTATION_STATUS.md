@@ -16,6 +16,7 @@
 | Marketing campaign list | **Verified** (local) | Table density; ad status stays honest |
 | Settings (brand, team, integrations status) | **Verified** (local) | No fake Meta/WhatsApp connected |
 | Screenshots before/after | **Verified** | `/cursor/stores/self/media/pro-ui-*.png` |
+| Optimizer login reference fetch | **Blocked** | Cloudflare/egress from VM; see `media/BLOCKER-optimizer-ui-reference.md` — polish used GHL/HubSpot-class bar instead |
 | Handoff | **Verified** | `/cursor/stores/self/internal/pro-ui-polish-handoff.md` |
 | Vercel production UI after push | **Not verified here** | Redeploy `main`; Root=`apps/web` + Supabase env still required if host unreachable |
 
