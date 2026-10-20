@@ -1,9 +1,11 @@
+import { NextRequest } from "next/server";
 import { getAuthMode, getLocalTenancyStore } from "@leadorbit/db";
-import { setLocalSessionCookie, getSessionUser } from "@/lib/auth/session";
+import { setLocalSessionCookie } from "@/lib/auth/session";
+import { sessionUserFromSupabase } from "@/lib/auth/supabase-session-user";
 import { fromAuthError, jsonOk, jsonProblem } from "@/lib/api/http";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { email?: string; password?: string };
     const email = (body.email ?? "").trim().toLowerCase();
@@ -19,20 +21,22 @@ export async function POST(request: Request) {
       return jsonOk({ user });
     }
 
-    const supabase = await createSupabaseServerClient();
-    if (!supabase) {
+    const route = createSupabaseRouteClient(request);
+    if (!route) {
       return jsonProblem(503, "Misconfigured", "Supabase credentials are missing");
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      return jsonProblem(401, "Unauthorized", error.message || "Invalid credentials");
+    const { supabase, withCookies } = route;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      return jsonProblem(401, "Unauthorized", error?.message || "Invalid credentials");
     }
-    await supabase.rpc("maybe_bootstrap_platform_admin");
-    const user = await getSessionUser();
-    if (!user) {
+
+    const sessionUser = await sessionUserFromSupabase(supabase, data.user);
+    if (!sessionUser) {
       return jsonProblem(500, "Internal Server Error", "Session not established after login");
     }
-    return jsonOk({ user });
+    return withCookies(jsonOk({ user: sessionUser }));
   } catch (err) {
     return fromAuthError(err);
   }

@@ -26,8 +26,16 @@ Do **not** paste Linkbook project keys.
 
 ## Why signup failed before
 
-With Supabase URL/anon set, the app runs `AUTH_MODE=supabase`, but signup/login APIs returned **501 Not Implemented**. That path is now implemented (Supabase Auth + Postgres tenancy). Redeploy `main` after this fix, ensure **`SUPABASE_SERVICE_ROLE_KEY`** is set, then retry `/signup`.
+With Supabase URL/anon set, the app runs `AUTH_MODE=supabase`, but older deploys returned **501** (“Use Supabase Auth client sign-up…”). Current `main` implements:
+
+1. Server signup/login with Supabase Auth (service-role auto-confirm when `SUPABASE_SERVICE_ROLE_KEY` is set)
+2. Cookie session attached on the auth response
+3. Browser Auth fallback in the signup/login UI
+4. Org create via `create_organization_with_owner` RPC (migration `auth_bootstrap`)
 
 ## After env is set
 
-Deployments → **Redeploy** latest `main`. Open `https://leadorbit-delta.vercel.app/signup`.
+1. Confirm **only** project **`leadorbit`** (`leadorbit-delta.vercel.app`) — delete LeadOrbit duplicates (`lead-orbit`, `lead-orbit-xidq`, `link-books-64ie`). Do not touch real LinkBooks projects.
+2. Deployments → open latest **`main`** commit → **Redeploy** (Production).
+3. Open `https://leadorbit-delta.vercel.app/api/v1/health` — expect `"authMode":"supabase"`.
+4. Open `/signup`, create an account, then create a workspace on `/app`.

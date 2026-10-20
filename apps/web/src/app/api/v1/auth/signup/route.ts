@@ -1,11 +1,13 @@
+import { NextRequest } from "next/server";
 import { getAuthMode, getLocalTenancyStore } from "@leadorbit/db";
 import { isValidEmail, sanitizePlainText } from "@leadorbit/domain";
-import { setLocalSessionCookie, getSessionUser } from "@/lib/auth/session";
+import { setLocalSessionCookie } from "@/lib/auth/session";
+import { sessionUserFromSupabase } from "@/lib/auth/supabase-session-user";
 import { fromAuthError, jsonOk, jsonProblem } from "@/lib/api/http";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseRouteClient } from "@/lib/supabase/route-client";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
       email?: string;
@@ -31,11 +33,11 @@ export async function POST(request: Request) {
       return jsonOk({ user: sessionUser }, { status: 201 });
     }
 
-    // AUTH_MODE=supabase — create Auth user and establish SSR cookie session
-    const supabase = await createSupabaseServerClient();
-    if (!supabase) {
+    const route = createSupabaseRouteClient(request);
+    if (!route) {
       return jsonProblem(503, "Misconfigured", "Supabase credentials are missing");
     }
+    const { supabase, withCookies } = route;
 
     const admin = createSupabaseAdminClient();
     if (admin) {
@@ -53,10 +55,6 @@ export async function POST(request: Request) {
       if (!created.user) {
         return jsonProblem(500, "Internal Server Error", "User was not created");
       }
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInErr) {
-        return jsonProblem(401, "Unauthorized", signInErr.message);
-      }
     } else {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -68,22 +66,33 @@ export async function POST(request: Request) {
         const conflict = /already|registered|exists/i.test(msg);
         return jsonProblem(conflict ? 409 : 400, conflict ? "Conflict" : "Validation Error", msg);
       }
-      if (!data.session) {
+      if (!data.session || !data.user) {
         return jsonProblem(
           400,
           "Confirm Email",
-          "Account created. Confirm your email, then sign in. Set SUPABASE_SERVICE_ROLE_KEY on Vercel to auto-confirm staging users.",
+          "Account created. Confirm your email, then sign in. Set SUPABASE_SERVICE_ROLE_KEY on the leadorbit Vercel project to auto-confirm staging users.",
         );
       }
+      const sessionUser = await sessionUserFromSupabase(supabase, data.user);
+      if (!sessionUser) {
+        return jsonProblem(500, "Internal Server Error", "Session not established after sign-up");
+      }
+      return withCookies(jsonOk({ user: sessionUser }, { status: 201 }));
     }
 
-    // Bootstrap first platform admin + ensure profile via RPC/trigger
-    await supabase.rpc("maybe_bootstrap_platform_admin");
-    const user = await getSessionUser();
-    if (!user) {
+    const { data: signedIn, error: signInErr } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInErr || !signedIn.user) {
+      return jsonProblem(401, "Unauthorized", signInErr?.message || "Sign-in after sign-up failed");
+    }
+
+    const sessionUser = await sessionUserFromSupabase(supabase, signedIn.user);
+    if (!sessionUser) {
       return jsonProblem(500, "Internal Server Error", "Session not established after sign-up");
     }
-    return jsonOk({ user }, { status: 201 });
+    return withCookies(jsonOk({ user: sessionUser }, { status: 201 }));
   } catch (err) {
     return fromAuthError(err);
   }

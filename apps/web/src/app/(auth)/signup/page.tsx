@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Button } from "@leadorbit/ui";
+import { clientSignUp } from "@/lib/auth/client-auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,19 +16,14 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const res = await fetch("/api/v1/auth/signup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: fd.get("email"),
-        password: fd.get("password"),
-        fullName: fd.get("fullName"),
-      }),
+    const result = await clientSignUp({
+      email: String(fd.get("email") ?? ""),
+      password: String(fd.get("password") ?? ""),
+      fullName: String(fd.get("fullName") ?? "") || undefined,
     });
     setLoading(false);
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { detail?: string } | null;
-      setError(body?.detail ?? "Sign-up failed");
+    if (!result.ok) {
+      setError(result.detail);
       return;
     }
     router.push("/app");
