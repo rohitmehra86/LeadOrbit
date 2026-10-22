@@ -1,47 +1,100 @@
 # Meta Ads setup (LeadOrbit)
 
-Meta-first guided launch. Google Ads is out of scope for this slice.  
-**Never silent spend** — Approve is required before Marketing API create.  
+Meta-first guided launch. Google Ads is out of scope for this slice.
+
+**Never silent spend** — Approve is required before any Marketing API create.  
 Without credentials, launches stay `pending_configuration` (draft only — never faked “live”).
 
-## For Rohit — Meta Developer steps
+---
 
-1. Go to [developers.facebook.com](https://developers.facebook.com/) → **My Apps** → **Create App**.
-2. Choose **Business** / type that supports **Marketing API**.
-3. Add product **Marketing API**.
-4. In **Meta Business Suite / Business Settings**:
-   - Create or pick an **Ad Account** (note `act_…` id).
-   - Pick the **Facebook Page** that will own ads (note Page ID).
-   - Create a **System User**, assign Ad Account + Page assets with `ads_management` (and pages as needed).
-   - Generate a **long-lived System User token**.
-5. (Optional later) Configure **OAuth** redirect on the Meta App to your LeadOrbit domain; until then env token is enough.
-6. Put secrets in **Vercel → Project → Settings → Environment Variables → Production** (names below). Redeploy after saving.
+## 1. Create a Meta Business app
 
-## Vercel env names (values from Meta — do not invent)
+1. Open [developers.facebook.com](https://developers.facebook.com/) → log in.
+2. **My Apps** → **Create App**.
+3. Choose a type that supports ads / **Business** (not a consumer-only toy app).
+4. Name the app (e.g. `LeadOrbit Ads`) and create it.
+5. Note **App ID** and **App Secret** (App settings → Basic). You will paste these into Vercel later — never into LeadOrbit UI fields.
 
-| Name | Purpose |
-|------|---------|
+---
+
+## 2. Add Marketing API
+
+1. In the app dashboard, find **Add products**.
+2. Add **Marketing API**.
+3. Keep the app in Development while testing with roles that have access to your ad account. For broad production use by other businesses, see [App review](#7-app-review-notes-production) below.
+
+---
+
+## 3. Ad account, Page, and System User token
+
+In [Meta Business Suite → Business Settings](https://business.facebook.com/settings):
+
+1. **Ad accounts** — create or select one. Copy the id (`act_123…` or numeric).
+2. **Pages** — select the Facebook Page that will own ads. Copy **Page ID**.
+3. **Users → System users** — create a System User (e.g. `leadorbit-ads`).
+4. Assign assets:
+   - Ad Account → permission that includes ads management
+   - Page → appropriate page role for ads/creatives
+5. **Generate token** for that System User:
+   - Include `ads_management` (and page-related scopes as required by Meta for your creatives path)
+   - Prefer a **long-lived** token
+6. Store the token only in Vercel — never commit it, never put it in docs.
+
+Optional later: OAuth redirect URI on the Meta App pointing at your LeadOrbit domain. Until then, the System User token is enough.
+
+---
+
+## 4. Vercel environment variables (exact names)
+
+**Vercel → Project (leadorbit) → Settings → Environment Variables → Production**
+
+| Name | What to paste |
+|------|----------------|
 | `META_ADS_APP_ID` | Meta App ID |
 | `META_ADS_APP_SECRET` | Meta App Secret |
-| `META_ADS_ACCESS_TOKEN` | Long-lived System User (or OAuth) token with ads_management |
+| `META_ADS_ACCESS_TOKEN` | Long-lived System User (or OAuth) token with `ads_management` |
 | `META_ADS_AD_ACCOUNT_ID` | Ad account id (`act_123…` or numeric) |
-| `META_ADS_PAGE_ID` | Page id for creatives / lead ads ownership |
+| `META_ADS_PAGE_ID` | Page id for creatives / ownership |
 
-Optional app URL (already used elsewhere): `NEXT_PUBLIC_APP_URL`.
+Also keep `NEXT_PUBLIC_APP_URL` set to your production URL (e.g. `https://leadorbit-delta.vercel.app`).
 
-## In-product flow
+Do **not** invent values. Do **not** paste secrets into chat or into the Connect Meta UI (that UI only shows set/missing).
 
-1. **Marketing (Simple)** → primary **Launch with Meta (AI)** (or Assistant: “Launch Meta ads for …”).
-2. Enter essentials: business/offer, geo, budget, daily/lifetime, audience/copy optional.
-3. LeadOrbit proposes plan + local published capture page.
+---
+
+## 5. Redeploy and test
+
+1. After saving env vars → **Deployments** → **Redeploy** Production (turn **OFF** build cache).
+2. Confirm Root Directory = `apps/web`.
+3. Sign in as owner → **Marketing**.
+4. Click **Launch with Meta (AI)**.
+5. Fill essentials → **Propose Meta plan** → review → **Approve Meta launch**.
+6. Expect:
+   - **With credentials:** Meta objects created (`PAUSED` unless you checked Enable spend) + Results link.
+   - **Without credentials:** `pending_configuration` + checklist — never “ad is live”.
+
+Connect Meta checklist (env key names only) appears under **Show advanced tools**.
+
+---
+
+## 6. In-product flow (recap)
+
+1. Marketing Simple → **Launch with Meta (AI)** (or Assistant: “Launch Meta ads for …”).
+2. Essentials: business/offer, geo, budget, daily/lifetime, audience/copy optional.
+3. LeadOrbit proposes plan + local capture page.
 4. **Approve / Edit / Cancel** — no Meta create until Approve.
-5. **With credentials:** Graph API creates campaign / ad set / ad (`PAUSED` unless “Enable spend” checked).
-6. **Without credentials:** draft saved; status `pending_configuration` + checklist to add `META_ADS_*`. Results never claim “ad is live”.
+5. Credentials present → Graph API create; missing → honest draft.
 
-## Connect Meta UI
+---
 
-Hidden until **Show advanced tools** (or open the Meta AI wizard). Shows which env keys are set (boolean only) vs pending — never displays secret values.
+## 7. App review notes (production)
+
+- **Development mode:** fine for you and roles added to the app/Business — enough to validate LeadOrbit → Marketing API.
+- **Going live for other advertisers / public customers:** Meta may require **App Review** for Marketing API permissions, Business verification, and ads-related policies. Start that when you onboard external ad accounts; do not block your own System User test on review.
+- Advanced Access / Standard Access rules change over time — follow Meta’s current Marketing API and App Review docs when you scale past owner-only use.
+
+---
 
 ## Friend / demo note
 
-Live Meta publish is **owner-only** until Rohit connects Production env. Friends can run the guided flow and get honest drafts. See `/cursor/stores/self/docs/friend-access.md`.
+Live Meta publish is **owner-only** until Production `META_ADS_*` is set. Friends can run the guided flow and get honest drafts. See `/cursor/stores/self/docs/friend-access.md` and `/cursor/stores/self/docs/meta-credentials-setup.md`.
