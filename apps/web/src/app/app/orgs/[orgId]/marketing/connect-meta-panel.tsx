@@ -53,7 +53,7 @@ export function ConnectMetaPanel({
     status?.credentialStatus ??
     (status as MetaStatus & { status?: string } | null)?.status ??
     "pending_configuration";
-  const connected = cred === "ready" || cred === "partial";
+  const connected = cred === "ready";
   const integStatus = integration?.status ?? status?.integration?.status ?? "not_connected";
 
   return (

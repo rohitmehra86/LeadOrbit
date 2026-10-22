@@ -42,6 +42,12 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
   const [enableSpend, setEnableSpend] = useState(false);
   const [resultDetail, setResultDetail] = useState<string | null>(null);
   const [resultStatus, setResultStatus] = useState<string | null>(null);
+  const [metaIds, setMetaIds] = useState<{
+    campaign_id: string | null;
+    adset_id: string | null;
+    ad_id: string | null;
+  } | null>(null);
+  const [httpStatus, setHttpStatus] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -108,18 +114,47 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
       }),
     });
     setLoading(false);
-    if (!res.ok) {
-      setError(await res.text());
+    setHttpStatus(res.status);
+    const data = (await res.json().catch(() => null)) as {
+      status?: string;
+      detail?: string;
+      meta_created?: boolean;
+      campaign_id?: string | null;
+      adset_id?: string | null;
+      ad_id?: string | null;
+      meta?: {
+        campaign_id?: string | null;
+        adset_id?: string | null;
+        ad_id?: string | null;
+      };
+      setupHints?: string[];
+      present?: Record<string, boolean>;
+      item?: { status?: string; detail?: string };
+    } | null;
+
+    // 201 = Meta created; 409 = pending_configuration; 502 = Meta API error
+    if (res.status === 201 || res.status === 409 || res.status === 502) {
+      const st = data?.status ?? data?.item?.status ?? "error";
+      setResultStatus(st);
+      setResultDetail(data?.detail ?? data?.item?.detail ?? res.statusText);
+      setMetaIds({
+        campaign_id: data?.campaign_id ?? data?.meta?.campaign_id ?? null,
+        adset_id: data?.adset_id ?? data?.meta?.adset_id ?? null,
+        ad_id: data?.ad_id ?? data?.meta?.ad_id ?? null,
+      });
+      if (data?.setupHints && status) {
+        setStatus({ ...status, setupHints: data.setupHints, present: data.present ?? status.present });
+      }
+      setStep("done");
+      router.refresh();
       return;
     }
-    const data = (await res.json()) as {
-      item: { status: string; detail: string };
-      status: string;
-    };
-    setResultStatus(data.item.status);
-    setResultDetail(data.item.detail);
-    setStep("done");
-    router.refresh();
+
+    setError(
+      data?.detail ??
+        (data ? JSON.stringify(data) : null) ??
+        `HTTP ${res.status}`,
+    );
   }
 
   function reset() {
@@ -130,6 +165,8 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
     setEnableSpend(false);
     setResultDetail(null);
     setResultStatus(null);
+    setMetaIds(null);
+    setHttpStatus(null);
   }
 
   if (!open) {
@@ -160,13 +197,11 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
           <span className="lo-channel-status">
             <span
               className={`lo-status-dot ${
-                status.credentialStatus === "ready" ||
-                status.credentialStatus === "partial"
-                  ? "is-ok"
-                  : "is-warn"
+                status.credentialStatus === "ready" ? "is-ok" : "is-warn"
               }`}
             />
-            Meta: {(status.credentialStatus ?? "pending_configuration").replace(
+            Meta creds:{" "}
+            {(status.credentialStatus ?? "pending_configuration").replace(
               /_/g,
               " ",
             )}
@@ -296,10 +331,16 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
               <li key={c}>{c}</li>
             ))}
           </ul>
-          {status?.credentialStatus === "pending_configuration" ? (
-            <p className="lo-muted mt-3 text-sm">
-              Credentials not configured — Approve will save a draft and keep
-              Meta as pending_configuration (not live).
+          <p className="lo-muted mt-3 text-sm">
+            <strong>Local:</strong> capture page already published for this plan.
+            That is not a Meta ad. <strong>Meta:</strong> only created after
+            Approve when all META_ADS_* are set (HTTP 201 + campaign_id).
+          </p>
+          {status?.credentialStatus !== "ready" ? (
+            <p className="lo-muted mt-2 text-sm">
+              Credentials incomplete — Approve returns HTTP 409{" "}
+              <code>pending_configuration</code> (Meta API not called). Not a
+              successful create.
             </p>
           ) : (
             <label className="mt-3 flex items-start gap-2 text-sm">
@@ -335,19 +376,62 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
       {step === "done" ? (
         <div className="lo-meta-review">
           <div className="flex flex-wrap items-center gap-2">
-            <strong>Launch result</strong>
+            <strong>Meta launch result</strong>
             {resultStatus ? <Badge>{resultStatus}</Badge> : null}
+            {httpStatus != null ? (
+              <span className="lo-muted text-xs">HTTP {httpStatus}</span>
+            ) : null}
           </div>
           <p className="mt-2 text-sm">{resultDetail}</p>
+          {draft ? (
+            <p className="lo-muted mt-2 text-xs">
+              Local Launch Pack campaign id: <code>{draft.local.campaignId}</code>{" "}
+              (LeadOrbit only — separate from Meta).
+            </p>
+          ) : null}
+          {metaIds &&
+          (metaIds.campaign_id || metaIds.adset_id || metaIds.ad_id) ? (
+            <dl className="lo-meta-dl mt-3">
+              <div>
+                <dt>campaign_id</dt>
+                <dd>
+                  <code>{metaIds.campaign_id ?? "—"}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>adset_id</dt>
+                <dd>
+                  <code>{metaIds.adset_id ?? "—"}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>ad_id</dt>
+                <dd>
+                  <code>{metaIds.ad_id ?? "—"}</code>
+                </dd>
+              </div>
+            </dl>
+          ) : null}
           {resultStatus === "pending_configuration" && status ? (
             <div className="mt-3">
-              <p className="lo-muted text-sm">Checklist — add on Vercel (Production):</p>
+              <p className="lo-muted text-sm">
+                Meta was <strong>not</strong> created. Add on Vercel Production,
+                Redeploy, Approve again:
+              </p>
               <ul className="lo-muted mt-1 list-disc pl-5 text-xs">
                 {status.setupHints.map((h) => (
                   <li key={h}>{h}</li>
                 ))}
               </ul>
             </div>
+          ) : null}
+          {resultStatus === "created_paused" ||
+          resultStatus === "created_active" ? (
+            <p className="mt-2 text-sm text-[var(--lo-success)]">
+              Confirm the new row in Meta Ads Manager (search by campaign name or
+              campaign_id). PAUSED ads are easy to miss if the UI filters Active
+              only.
+            </p>
           ) : null}
           <div className="lo-card-actions">
             <Link href={`/app/orgs/${orgId}/results`}>

@@ -13,7 +13,7 @@ function appOrigin(request: Request): string {
   return new URL(request.url).origin;
 }
 
-/** POST prepare: collect brief → local Launch Pack + Meta plan (needs later approve). */
+/** POST prepare: local Launch Pack + Meta plan (needs later approve). Approve maps HTTP by Meta outcome. */
 export async function POST(request: Request, ctx: Ctx) {
   try {
     const { orgId } = await ctx.params;
@@ -62,8 +62,15 @@ export async function POST(request: Request, ctx: Ctx) {
         {
           item: draft,
           status: "needs_approval",
+          meta_created: false,
+          local: {
+            campaign_id: draft.local.campaignId,
+            page_slug: draft.local.pageSlug,
+            public_path: draft.local.publicPath,
+            published: draft.local.published,
+          },
           message:
-            "Review the Meta plan. Approve to create on Meta (or save draft if credentials missing). Never spends without approval.",
+            "Local Launch Pack drafted/published. Meta is NOT created yet — Approve required. Incomplete META_ADS_* → pending_configuration (not success).",
         },
         { status: 201 },
       );
@@ -86,10 +93,42 @@ export async function POST(request: Request, ctx: Ctx) {
         approved: true,
         enableSpend: Boolean(body.enableSpend),
       });
-      return jsonOk({
-        item: result,
+
+      const payload = {
         status: result.status,
-      });
+        meta_created: result.metaCreated,
+        detail: result.detail,
+        campaign_id: result.campaign_id,
+        adset_id: result.adset_id,
+        ad_id: result.ad_id,
+        meta: {
+          campaign_id: result.campaign_id,
+          adset_id: result.adset_id,
+          ad_id: result.ad_id,
+        },
+        local: {
+          campaign_id: result.localCampaignId,
+          status:
+            result.status === "created_active"
+              ? "active"
+              : result.status === "created_paused"
+                ? "paused"
+                : "draft",
+        },
+        setupHints: result.setupHints,
+        present: result.present,
+        item: result,
+      };
+
+      if (result.status === "pending_configuration") {
+        // Not a successful Meta create — explicit non-2xx so Network ≠ “created”
+        return jsonOk(payload, { status: 409 });
+      }
+      if (result.status === "error") {
+        return jsonOk(payload, { status: 502 });
+      }
+      // created_paused | created_active
+      return jsonOk(payload, { status: 201 });
     }
 
     return jsonProblem(400, "Validation Error", "Unknown action");

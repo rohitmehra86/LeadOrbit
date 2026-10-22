@@ -405,18 +405,25 @@ export async function runAssistantChat(
             approved: true,
             enableSpend: Boolean(step.args.enableSpend),
           });
+          const metaOk =
+            result.status === "created_paused" ||
+            result.status === "created_active";
           results.push({
             tool: step.tool,
-            ok: result.status !== "error",
+            ok: metaOk,
             detail: result.detail,
             data: {
               status: result.status,
+              meta_created: result.metaCreated,
+              campaign_id: result.campaign_id,
+              adset_id: result.adset_id,
+              ad_id: result.ad_id,
               external: result.external,
               setupHints: result.setupHints,
               localCampaignId: result.localCampaignId,
             },
           });
-          if (result.status !== "error") {
+          if (metaOk || result.status === "pending_configuration") {
             pendingMetaPlan = null;
           }
         }

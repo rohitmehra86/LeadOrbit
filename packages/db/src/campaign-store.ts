@@ -7,6 +7,7 @@ import {
   buildUtmParams,
   hasPermission,
   leadGenFormTemplate,
+  metaAdsReadyForCreate,
   realEstateLandingTemplate,
   sanitizePageDocument,
   slugifyToken,
@@ -1100,7 +1101,7 @@ export class CampaignStore {
     await this.gate(actor, orgId, "campaigns:write");
     const creds =
       network === "meta"
-        ? Boolean(process.env.META_ADS_ACCESS_TOKEN)
+        ? metaAdsReadyForCreate()
         : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
     const stub = adNetworkAuthorizeStub(network, creds);
     const now = nowIso();

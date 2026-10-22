@@ -114,22 +114,49 @@ export async function approveMetaAiLaunch(
   };
   const result = await publishMetaLaunchPlan(plan);
 
-  // Refresh Meta integration row honesty
+  // Refresh Meta integration row honesty (pending if keys incomplete)
   await getCampaignStore().authorizeAdNetwork(actor, orgId, "meta");
 
-  if (result.external?.campaignId) {
+  if (result.metaCreated && result.campaign_id) {
     await getCampaignStore().updateCampaign(actor, orgId, input.campaignId, {
-      status: plan.enableSpend ? "active" : "paused",
+      status:
+        result.status === "created_active"
+          ? "active"
+          : result.status === "created_paused"
+            ? "paused"
+            : "draft",
       adCopy: [
         plan.primaryText,
         "",
-        `[Meta external campaign ${result.external.campaignId}]`,
+        "[Meta Marketing API]",
+        `meta_status=${result.status}`,
+        `campaign_id=${result.campaign_id}`,
+        `adset_id=${result.adset_id ?? ""}`,
+        `ad_id=${result.ad_id ?? ""}`,
         result.detail,
       ].join("\n"),
     });
   } else if (result.status === "pending_configuration") {
     await getCampaignStore().updateCampaign(actor, orgId, input.campaignId, {
       status: "draft",
+      adCopy: [
+        plan.primaryText,
+        "",
+        "[Meta AI — pending_configuration]",
+        "Local Launch Pack only — Meta Marketing API was NOT called.",
+        result.detail,
+      ].join("\n"),
+    });
+  } else if (result.status === "error") {
+    await getCampaignStore().updateCampaign(actor, orgId, input.campaignId, {
+      status: "draft",
+      adCopy: [
+        plan.primaryText,
+        "",
+        "[Meta AI — error]",
+        result.campaign_id ? `campaign_id=${result.campaign_id}` : "campaign_id=",
+        result.detail,
+      ].join("\n"),
     });
   }
 

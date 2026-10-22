@@ -770,10 +770,12 @@ export class SupabaseCampaignStore {
     orgId: string,
     network: import("@leadorbit/domain").AdNetwork,
   ) {
-    const { adNetworkAuthorizeStub } = await import("@leadorbit/domain");
+    const { adNetworkAuthorizeStub, metaAdsReadyForCreate } = await import(
+      "@leadorbit/domain"
+    );
     const creds =
       network === "meta"
-        ? Boolean(process.env.META_ADS_ACCESS_TOKEN)
+        ? metaAdsReadyForCreate()
         : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
     const stub = adNetworkAuthorizeStub(network, creds);
     const supabase = await authed();

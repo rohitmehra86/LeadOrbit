@@ -67,11 +67,17 @@ Do **not** invent values. Do **not** paste secrets into chat or into the Connect
 1. After saving env vars → **Deployments** → **Redeploy** Production (turn **OFF** build cache).
 2. Confirm Root Directory = `apps/web`.
 3. Sign in as owner → **Marketing**.
-4. Click **Launch with Meta (AI)**.
+4. Click **Launch with Meta (AI)** (not “Launch & publish (local)” — that is LeadOrbit-only).
 5. Fill essentials → **Propose Meta plan** → review → **Approve Meta launch**.
-6. Expect:
-   - **With credentials:** Meta objects created (`PAUSED` unless you checked Enable spend) + Results link.
-   - **Without credentials:** `pending_configuration` + checklist — never “ad is live”.
+6. Check Network for `POST .../meta/launch` with `"action":"approve"`:
+
+| HTTP | Body `status` | Meaning |
+|------|---------------|---------|
+| **201** | `created_paused` / `created_active` | Meta created — Response includes `campaign_id`, `adset_id`, `ad_id` |
+| **409** | `pending_configuration` | Env incomplete — Meta API **not** called |
+| **502** | `error` | Meta API rejected the call — read `detail` |
+
+7. Ads Manager: find the new campaign by name or `campaign_id` (include **PAUSED** in filters).
 
 Connect Meta checklist (env key names only) appears under **Show advanced tools**.
 

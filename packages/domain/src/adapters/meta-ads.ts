@@ -44,21 +44,45 @@ export type MetaLaunchPlan = {
   createdAt: string;
 };
 
+export type MetaExternalIds = {
+  campaignId: string | null;
+  adSetId: string | null;
+  adId: string | null;
+};
+
 export type MetaPublishResult = {
   status:
     | "pending_configuration"
     | "created_paused"
     | "created_active"
     | "error";
+  /** True only when Marketing API created at least a campaign id. */
+  metaCreated: boolean;
   detail: string;
   setupHints: string[];
-  external?: {
-    campaignId: string | null;
-    adSetId: string | null;
-    adId: string | null;
-  };
+  present?: Record<string, boolean>;
+  external: MetaExternalIds;
+  /** Snake_case aliases for API clients / Network panel. */
+  campaign_id: string | null;
+  adset_id: string | null;
+  ad_id: string | null;
   plan: MetaLaunchPlan;
 };
+
+function emptyExternal(): MetaExternalIds {
+  return { campaignId: null, adSetId: null, adId: null };
+}
+
+function withIds(
+  external: MetaExternalIds,
+): Pick<MetaPublishResult, "external" | "campaign_id" | "adset_id" | "ad_id"> {
+  return {
+    external,
+    campaign_id: external.campaignId,
+    adset_id: external.adSetId,
+    ad_id: external.adId,
+  };
+}
 
 const GRAPH_VERSION = "v21.0";
 
@@ -105,21 +129,24 @@ export function metaAdsCredentialStatus(
     META_ADS_AD_ACCOUNT_ID: Boolean(c.adAccountId),
     META_ADS_PAGE_ID: Boolean(c.pageId),
   };
-  const requiredOk = Boolean(c.accessToken && c.adAccountId);
-  const allOk = requiredOk && Boolean(c.appId && c.pageId);
+  const allOk = Boolean(
+    c.appId && c.appSecret && c.accessToken && c.adAccountId && c.pageId,
+  );
+  const partialOk = Boolean(c.accessToken && c.adAccountId) && !allOk;
   if (allOk) {
     return {
       status: "ready",
-      detail: "Meta credentials present — launch can call Marketing API after approval",
+      detail:
+        "All META_ADS_* present — Approve will call Marketing API (PAUSED unless spend enabled)",
       present,
       setupHints: metaAdsSetupHints(),
     };
   }
-  if (requiredOk) {
+  if (partialOk) {
     return {
       status: "partial",
       detail:
-        "Access token + ad account present; add APP_ID / PAGE_ID for full creatives path",
+        "Incomplete META_ADS_* — need APP_ID, APP_SECRET, ACCESS_TOKEN, AD_ACCOUNT_ID, and PAGE_ID before create",
       present,
       setupHints: metaAdsSetupHints(),
     };
@@ -132,11 +159,18 @@ export function metaAdsCredentialStatus(
   };
 }
 
+/** True only when create is allowed (all five META_ADS_* set). Partial ≠ ready. */
 export function metaAdsCredentialsPresent(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  const s = metaAdsCredentialStatus(env);
-  return s.status === "ready" || s.status === "partial";
+  return metaAdsCredentialStatus(env).status === "ready";
+}
+
+/** Alias used by API/UI — create requires ready, not partial. */
+export function metaAdsReadyForCreate(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return metaAdsCredentialsPresent(env);
 }
 
 function slugBudgetLabel(amount: number, currency: string, type: "daily" | "lifetime") {
@@ -215,20 +249,24 @@ async function graphPost(
   body: Record<string, unknown>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ ok: boolean; id?: string; error?: string; raw: unknown }> {
-  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${path}`;
-  const res = await fetchImpl(url, {
+  const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`);
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString(), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...body, access_token: accessToken }),
+    body: JSON.stringify(body),
   });
   const raw = (await res.json().catch(() => ({}))) as {
     id?: string;
-    error?: { message?: string };
+    error?: { message?: string; error_user_msg?: string; code?: number };
   };
   if (!res.ok || raw.error) {
     return {
       ok: false,
-      error: raw.error?.message ?? `HTTP ${res.status}`,
+      error:
+        raw.error?.error_user_msg ||
+        raw.error?.message ||
+        `HTTP ${res.status}`,
       raw,
     };
   }
@@ -237,7 +275,8 @@ async function graphPost(
 
 /**
  * Publish approved plan to Meta. Caller must have collected explicit approval.
- * Without credentials → pending_configuration (never claims live).
+ * Incomplete META_ADS_* → pending_configuration (never claims created).
+ * Graph failures → status error with Meta message (caller maps to non-2xx).
  */
 export async function publishMetaLaunchPlan(
   plan: MetaLaunchPlan,
@@ -249,18 +288,22 @@ export async function publishMetaLaunchPlan(
   const hints = metaAdsSetupHints();
   const credStatus = metaAdsCredentialStatus(env);
   const fetchImpl = deps?.fetchImpl ?? fetch;
-  if (!metaAdsCredentialsPresent(env)) {
+  if (!metaAdsReadyForCreate(env)) {
     return {
       status: "pending_configuration",
-      detail: `Draft saved. ${credStatus.detail}. Add META_ADS_* env, then re-approve.`,
+      metaCreated: false,
+      detail: `Meta create blocked — ${credStatus.detail}. Local draft only. Add all META_ADS_* on Vercel Production, Redeploy, then Approve again.`,
       setupHints: hints,
+      present: credStatus.present,
       plan,
+      ...withIds(emptyExternal()),
     };
   }
 
   const creds = readMetaAdsCredentialsFromEnv(env);
   const token = creds.accessToken!;
   const act = normalizeAdAccountId(creds.adAccountId!);
+  const pageId = creds.pageId!;
   const statusOnMeta = plan.enableSpend ? "ACTIVE" : "PAUSED";
   const dailyBudget =
     plan.budgetType === "daily"
@@ -272,6 +315,19 @@ export async function publishMetaLaunchPlan(
       : undefined;
 
   try {
+    if (!plan.landingPageUrl?.trim()) {
+      return {
+        status: "error",
+        metaCreated: false,
+        detail:
+          "Meta create blocked — landingPageUrl missing (needed for lead_gen link ad)",
+        setupHints: hints,
+        present: credStatus.present,
+        plan,
+        ...withIds(emptyExternal()),
+      };
+    }
+
     const campaign = await graphPost(
       `${act}/campaigns`,
       token,
@@ -280,16 +336,19 @@ export async function publishMetaLaunchPlan(
         objective: plan.objective,
         status: statusOnMeta,
         special_ad_categories: [],
+        is_adset_budget_sharing_enabled: false,
       },
       fetchImpl,
     );
     if (!campaign.ok || !campaign.id) {
       return {
         status: "error",
+        metaCreated: false,
         detail: `Meta campaign create failed: ${campaign.error ?? "unknown"}`,
         setupHints: hints,
+        present: credStatus.present,
         plan,
-        external: { campaignId: null, adSetId: null, adId: null },
+        ...withIds(emptyExternal()),
       };
     }
 
@@ -312,75 +371,107 @@ export async function publishMetaLaunchPlan(
     if (!adSet.ok || !adSet.id) {
       return {
         status: "error",
+        metaCreated: true,
         detail: `Meta campaign ${campaign.id} created but ad set failed: ${adSet.error ?? "unknown"}`,
         setupHints: hints,
+        present: credStatus.present,
         plan,
-        external: {
+        ...withIds({
           campaignId: campaign.id,
           adSetId: null,
           adId: null,
-        },
+        }),
       };
     }
 
-    // Creative + ad require page + link; skip if page missing (partial creds)
-    let adId: string | null = null;
-    if (creds.pageId && plan.landingPageUrl) {
-      const creative = await graphPost(
-        `${act}/adcreatives`,
-        token,
-        {
-          name: `${plan.name} — Creative`,
-          object_story_spec: {
-            page_id: creds.pageId,
-            link_data: {
-              message: plan.primaryText,
-              link: plan.landingPageUrl,
-              name: plan.headline,
-              call_to_action: { type: plan.callToAction },
-              ...(plan.creativeImageUrl
-                ? { picture: plan.creativeImageUrl }
-                : {}),
-            },
+    const creative = await graphPost(
+      `${act}/adcreatives`,
+      token,
+      {
+        name: `${plan.name} — Creative`,
+        object_story_spec: {
+          page_id: pageId,
+          link_data: {
+            message: plan.primaryText,
+            link: plan.landingPageUrl,
+            name: plan.headline,
+            call_to_action: { type: plan.callToAction },
+            ...(plan.creativeImageUrl
+              ? { picture: plan.creativeImageUrl }
+              : {}),
           },
         },
-        fetchImpl,
-      );
-      if (creative.ok && creative.id) {
-        const ad = await graphPost(
-          `${act}/ads`,
-          token,
-          {
-            name: `${plan.name} — Ad`,
-            adset_id: adSet.id,
-            creative: { creative_id: creative.id },
-            status: statusOnMeta,
-          },
-          fetchImpl,
-        );
-        if (ad.ok && ad.id) adId = ad.id;
-      }
+      },
+      fetchImpl,
+    );
+    if (!creative.ok || !creative.id) {
+      return {
+        status: "error",
+        metaCreated: true,
+        detail: `Meta campaign ${campaign.id} / ad set ${adSet.id} created but creative failed: ${creative.error ?? "unknown"}`,
+        setupHints: hints,
+        present: credStatus.present,
+        plan,
+        ...withIds({
+          campaignId: campaign.id,
+          adSetId: adSet.id,
+          adId: null,
+        }),
+      };
     }
 
+    const ad = await graphPost(
+      `${act}/ads`,
+      token,
+      {
+        name: `${plan.name} — Ad`,
+        adset_id: adSet.id,
+        creative: { creative_id: creative.id },
+        status: statusOnMeta,
+      },
+      fetchImpl,
+    );
+    if (!ad.ok || !ad.id) {
+      return {
+        status: "error",
+        metaCreated: true,
+        detail: `Meta campaign ${campaign.id} / ad set ${adSet.id} created but ad failed: ${ad.error ?? "unknown"}`,
+        setupHints: hints,
+        present: credStatus.present,
+        plan,
+        ...withIds({
+          campaignId: campaign.id,
+          adSetId: adSet.id,
+          adId: null,
+        }),
+      };
+    }
+
+    const external = {
+      campaignId: campaign.id,
+      adSetId: adSet.id,
+      adId: ad.id,
+    };
     return {
       status: plan.enableSpend ? "created_active" : "created_paused",
+      metaCreated: true,
       detail: plan.enableSpend
-        ? `Meta campaign ${campaign.id} created ACTIVE (${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}). Monitor spend in Ads Manager.`
-        : `Meta campaign ${campaign.id} created PAUSED — enable in Ads Manager or re-approve with spend enabled. Budget planned: ${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}. Geo hint “${plan.geo}” mapped to country ${country} for API targeting.`,
+        ? `Meta created ACTIVE campaign_id=${campaign.id} adset_id=${adSet.id} ad_id=${ad.id} (${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}). Confirm in Ads Manager.`
+        : `Meta created PAUSED campaign_id=${campaign.id} adset_id=${adSet.id} ad_id=${ad.id}. Confirm in Ads Manager (filter PAUSED). Budget ${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}; geo “${plan.geo}” → country ${country}.`,
       setupHints: hints,
+      present: credStatus.present,
       plan,
-      external: {
-        campaignId: campaign.id,
-        adSetId: adSet.id,
-        adId,
-      },
+      ...withIds(external),
     };
   } catch (err) {
     return {
       status: "error",
+      metaCreated: false,
       detail: err instanceof Error ? err.message : "Meta API request failed",
       setupHints: hints,
+      present: credStatus.present,
       plan,
+      ...withIds(emptyExternal()),
     };
   }
 }
