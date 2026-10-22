@@ -41,4 +41,25 @@ describe("assistant planner", () => {
     assert.equal(plan.steps[0]?.tool, "book_appointment");
     assert.equal(plan.requiresApproval, true);
   });
+
+  it("plans Meta AI launch prepare without spend approval", () => {
+    const plan = planAssistantIntent({
+      message: "Launch Meta ads for solar kits in Mumbai, $40/day",
+    });
+    assert.equal(plan.steps[0]?.tool, "prepare_meta_ai_launch");
+    assert.equal(plan.requiresApproval, false);
+    assert.equal(plan.steps[0]?.args.geo, "Mumbai");
+  });
+
+  it("plans Meta approve gate when pending plan exists", () => {
+    const plan = planAssistantIntent({
+      message: "approve",
+      hasPendingMetaPlan: true,
+    });
+    assert.equal(plan.steps[0]?.tool, "approve_meta_ai_launch");
+    assert.equal(plan.requiresApproval, true);
+    const tool = getAssistantTool("approve_meta_ai_launch");
+    assert.ok(tool);
+    assert.equal(tool.risk, "spend");
+  });
 });

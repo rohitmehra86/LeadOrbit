@@ -16,6 +16,11 @@ import { getCalendarStore } from "@/lib/tenancy/calendar";
 import { getSupabaseCrmStore } from "@/lib/tenancy/supabase-crm";
 import { getBillingStore } from "@/lib/tenancy/billing";
 import { createLaunchPack, publishLaunchPack } from "@/lib/launch/launch-pack";
+import {
+  approveMetaAiLaunch,
+  prepareMetaAiLaunch,
+} from "@/lib/meta/meta-ai-launch";
+import type { MetaLaunchPlan } from "@leadorbit/domain";
 import { AuthError } from "@leadorbit/db";
 
 export type AssistantChatRequest = {
@@ -27,6 +32,10 @@ export type AssistantChatRequest = {
     pageSlug: string;
     campaignId: string;
   } | null;
+  pendingMetaPlan?: {
+    plan: MetaLaunchPlan;
+    campaignId: string;
+  } | null;
 };
 
 export type AssistantChatResponse = {
@@ -34,6 +43,7 @@ export type AssistantChatResponse = {
   status: "clarification" | "needs_approval" | "executed" | "denied" | "failed";
   results: AssistantToolResult[];
   pendingPack?: AssistantChatRequest["pendingPack"];
+  pendingMetaPlan?: AssistantChatRequest["pendingMetaPlan"];
   report: string;
 };
 
@@ -80,6 +90,7 @@ export async function runAssistantChat(
       plan: planAssistantIntent({
         message: input.message,
         hasPendingPack: Boolean(input.pendingPack),
+        hasPendingMetaPlan: Boolean(input.pendingMetaPlan),
       }),
       status: "denied",
       results: [],
@@ -90,6 +101,7 @@ export async function runAssistantChat(
   const plan = planAssistantIntent({
     message: input.message,
     hasPendingPack: Boolean(input.pendingPack),
+    hasPendingMetaPlan: Boolean(input.pendingMetaPlan),
   });
 
   if (plan.needsClarification) {
@@ -98,6 +110,7 @@ export async function runAssistantChat(
       status: "clarification",
       results: [],
       pendingPack: input.pendingPack ?? null,
+      pendingMetaPlan: input.pendingMetaPlan ?? null,
       report: plan.needsClarification,
     };
   }
@@ -134,6 +147,7 @@ export async function runAssistantChat(
       status: "needs_approval",
       results: [],
       pendingPack: input.pendingPack ?? null,
+      pendingMetaPlan: input.pendingMetaPlan ?? null,
       report: `Plan ready (approval required): ${plan.summary}. Reply approve or click Approve to continue.`,
     };
   }
@@ -153,8 +167,11 @@ export async function runAssistantChat(
 
   const results: AssistantToolResult[] = [];
   let pendingPack = input.pendingPack ?? null;
+  let pendingMetaPlan = input.pendingMetaPlan ?? null;
   const crm = getDomainCrm();
   const campaigns = getDomainCampaigns();
+  const appOrigin =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || undefined;
 
   for (const step of plan.steps) {
     try {
@@ -332,6 +349,77 @@ export async function runAssistantChat(
             data: { pack: published },
           });
         }
+      } else if (step.tool === "prepare_meta_ai_launch") {
+        const draft = await prepareMetaAiLaunch(
+          actor,
+          orgId,
+          {
+            businessOrOffer: String(step.args.businessOrOffer ?? input.message),
+            geo: String(step.args.geo ?? "your market"),
+            budgetAmount: Number(step.args.budgetAmount ?? 25),
+            budgetType: step.args.budgetType === "lifetime" ? "lifetime" : "daily",
+            currency: String(step.args.currency ?? "USD"),
+            objective: "lead_gen",
+            audienceBasics: (step.args.audienceBasics as string | null) ?? null,
+            creativeText: (step.args.creativeText as string | null) ?? null,
+            landingPageUrl: (step.args.landingPageUrl as string | null) ?? null,
+            enableSpend: false,
+          },
+          { publishLanding: true, appOrigin },
+        );
+        pendingMetaPlan = {
+          plan: draft.plan,
+          campaignId: draft.local.campaignId,
+        };
+        pendingPack = {
+          formId: draft.local.formId,
+          pageId: draft.local.pageId,
+          pageSlug: draft.local.pageSlug,
+          campaignId: draft.local.campaignId,
+        };
+        results.push({
+          tool: step.tool,
+          ok: true,
+          detail: `Meta plan “${draft.plan.name}” ready (${draft.metaStatus.status}). Approve to create on Meta or save draft if credentials missing — never silent spend.`,
+          data: {
+            plan: draft.plan,
+            local: draft.local,
+            metaStatus: draft.metaStatus,
+            pack: {
+              publicPath: draft.local.publicPath,
+              pageSlug: draft.local.pageSlug,
+            },
+          },
+        });
+      } else if (step.tool === "approve_meta_ai_launch") {
+        if (!pendingMetaPlan) {
+          results.push({
+            tool: step.tool,
+            ok: false,
+            detail: "No pending Meta plan to approve",
+          });
+        } else {
+          const result = await approveMetaAiLaunch(actor, orgId, {
+            plan: pendingMetaPlan.plan,
+            campaignId: pendingMetaPlan.campaignId,
+            approved: true,
+            enableSpend: Boolean(step.args.enableSpend),
+          });
+          results.push({
+            tool: step.tool,
+            ok: result.status !== "error",
+            detail: result.detail,
+            data: {
+              status: result.status,
+              external: result.external,
+              setupHints: result.setupHints,
+              localCampaignId: result.localCampaignId,
+            },
+          });
+          if (result.status !== "error") {
+            pendingMetaPlan = null;
+          }
+        }
       } else {
         results.push({
           tool: step.tool,
@@ -356,6 +444,7 @@ export async function runAssistantChat(
     status: failed.length ? "failed" : "executed",
     results,
     pendingPack,
+    pendingMetaPlan,
     report,
   };
 }

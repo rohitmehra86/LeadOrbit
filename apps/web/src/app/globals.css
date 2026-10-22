@@ -983,3 +983,88 @@ a {
   padding-top: 0.25rem;
   border-top: 1px solid var(--lo-border);
 }
+
+.lo-launch-primary-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--lo-border);
+}
+
+.lo-meta-wizard {
+  width: 100%;
+  border: 1px solid var(--lo-border);
+  border-radius: var(--radius-lg);
+  background: var(--lo-surface-elevated, var(--lo-surface));
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.lo-meta-status-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.85rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--lo-border);
+  background: var(--lo-surface);
+}
+
+.lo-meta-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lo-meta-dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1rem;
+  margin: 0.75rem 0 0;
+}
+
+.lo-meta-dl dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lo-fg-muted);
+}
+
+.lo-meta-dl dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 700px) {
+  .lo-meta-dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lo-meta-env-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lo-meta-env-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.lo-meta-env-list code {
+  font-size: 0.72rem;
+}
+
+.lo-connect-meta {
+  max-width: 40rem;
+}

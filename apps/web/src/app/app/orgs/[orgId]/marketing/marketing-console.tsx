@@ -13,6 +13,8 @@ import type {
   LandingPage,
 } from "@leadorbit/domain";
 import { Badge, Button } from "@leadorbit/ui";
+import { MetaAiLaunchWizard } from "./meta-ai-launch-wizard";
+import { ConnectMetaPanel } from "./connect-meta-panel";
 
 type Props = {
   orgId: string;
@@ -343,7 +345,8 @@ export function MarketingConsole(props: Props) {
             <h2>Launch Pack</h2>
             <p className="lo-muted text-sm">
               Describe a goal. LeadOrbit creates campaign, form, and landing page,
-              then publishes so you can share a capture link.
+              then publishes so you can share a capture link — or launch Meta with
+              AI (approval before any spend).
             </p>
           </div>
           <Link href={`/app/orgs/${props.orgId}/assistant`}>
@@ -352,9 +355,16 @@ export function MarketingConsole(props: Props) {
             </Button>
           </Link>
         </div>
+        <div className="lo-launch-primary-cta">
+          <MetaAiLaunchWizard orgId={props.orgId} />
+          <p className="lo-muted text-xs">
+            Guided Meta lead-gen: essentials → plan → Approve. Never goes live
+            without credentials + your OK.
+          </p>
+        </div>
         <form onSubmit={launchPack} className="lo-launch-form">
           <label className="lo-field" style={{ gridColumn: "1 / -1" }}>
-            Goal
+            Goal (local Launch Pack)
             <input
               name="goal"
               required
@@ -371,8 +381,8 @@ export function MarketingConsole(props: Props) {
             <input name="offer" placeholder="Book a consult this week" />
           </label>
           <div className="lo-launch-actions">
-            <Button type="submit" disabled={launching}>
-              {launching ? "Publishing…" : "Launch & publish"}
+            <Button type="submit" disabled={launching} variant="secondary">
+              {launching ? "Publishing…" : "Launch & publish (local)"}
             </Button>
           </div>
         </form>
@@ -574,17 +584,16 @@ export function MarketingConsole(props: Props) {
           <h2>Ad channels</h2>
           <p className="lo-muted mb-3 text-sm">
             Connect when credentials are ready. Nothing is marked live without
-            keys.
+            keys. Google Ads is later — Meta first.
           </p>
-          <div className="lo-channel-grid">
+          <ConnectMetaPanel
+            orgId={props.orgId}
+            integration={meta}
+            onRegisterInterest={() => authorize("meta")}
+          />
+          <div className="lo-channel-grid mt-3">
             <AdChannelCard
-              title="Meta Ads"
-              network="meta"
-              integration={meta}
-              onRegisterInterest={authorize}
-            />
-            <AdChannelCard
-              title="Google Ads"
+              title="Google Ads (later)"
               network="google_ads"
               integration={google}
               onRegisterInterest={authorize}

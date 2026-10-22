@@ -10,19 +10,25 @@ type PendingPack = {
   campaignId: string;
 };
 
+type PendingMetaPlan = {
+  plan: Record<string, unknown>;
+  campaignId: string;
+};
+
 type ChatResult = {
   status: string;
   report: string;
   plan: { summary: string; steps: Array<{ tool: string; reason: string }> };
   pendingPack?: PendingPack | null;
+  pendingMetaPlan?: PendingMetaPlan | null;
   results: Array<{ tool: string; ok: boolean; detail: string; data?: Record<string, unknown> }>;
 };
 
 type Msg = { role: "user" | "assistant"; text: string; meta?: ChatResult };
 
 const STARTERS = [
+  "Launch Meta ads for condo leads in Bangalore, $25/day",
   "Launch a campaign for condo leads in Bangalore",
-  "Qualify my newest lead and book a follow-up",
   "Show hot leads that need attention",
 ];
 
@@ -30,10 +36,13 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      text: "Tell me a goal — Launch Pack, convert a lead, or check Results. I’ll plan tools, ask for approval when publishing, then report exactly what ran.",
+      text: "Tell me a goal — Launch with Meta (AI), local Launch Pack, convert a lead, or check Results. Meta create/spend always needs your Approve.",
     },
   ]);
   const [pendingPack, setPendingPack] = useState<PendingPack | null>(null);
+  const [pendingMetaPlan, setPendingMetaPlan] = useState<PendingMetaPlan | null>(
+    null,
+  );
   const [lastPlan, setLastPlan] = useState<ChatResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +56,7 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
     const res = await fetch(`/api/v1/orgs/${orgId}/assistant/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message, approve, pendingPack }),
+      body: JSON.stringify({ message, approve, pendingPack, pendingMetaPlan }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -57,14 +66,22 @@ export function AssistantConsole({ orgId }: { orgId: string }) {
     }
     const data = (await res.json()) as ChatResult;
     setLastPlan(data);
-    if (data.pendingPack) setPendingPack(data.pendingPack);
+    if (data.pendingPack !== undefined) setPendingPack(data.pendingPack);
+    if (data.pendingMetaPlan !== undefined) setPendingMetaPlan(data.pendingMetaPlan);
     const publicPath = data.results
       .flatMap((r) => {
         const pack = r.data?.pack as { publicPath?: string } | undefined;
         return pack?.publicPath ? [pack.publicPath] : [];
       })
       .at(-1);
-    const text = [data.report, publicPath ? `Open capture page: ${publicPath}` : null]
+    const metaHint = data.pendingMetaPlan
+      ? "Meta plan drafted. Say “approve” (then Approve & run) to create on Meta — or draft stays pending_configuration without credentials."
+      : null;
+    const text = [
+      data.report,
+      publicPath ? `Open capture page: ${publicPath}` : null,
+      metaHint,
+    ]
       .filter(Boolean)
       .join("\n");
     setMessages((m) => [...m, { role: "assistant", text, meta: data }]);

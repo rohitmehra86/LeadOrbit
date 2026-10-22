@@ -1,5 +1,6 @@
 import { fromAuthError, jsonOk, jsonProblem, requireUser } from "@/lib/api/http";
 import { runAssistantChat } from "@/lib/assistant/execute";
+import type { MetaLaunchPlan } from "@leadorbit/domain";
 
 type Ctx = { params: Promise<{ orgId: string }> };
 
@@ -16,6 +17,10 @@ export async function POST(request: Request, ctx: Ctx) {
         pageSlug: string;
         campaignId: string;
       } | null;
+      pendingMetaPlan?: {
+        plan: MetaLaunchPlan;
+        campaignId: string;
+      } | null;
     };
     if (!body.message?.trim()) {
       return jsonProblem(400, "Validation Error", "message is required");
@@ -24,6 +29,7 @@ export async function POST(request: Request, ctx: Ctx) {
       message: body.message,
       approve: Boolean(body.approve),
       pendingPack: body.pendingPack ?? null,
+      pendingMetaPlan: body.pendingMetaPlan ?? null,
     });
     return jsonOk(result);
   } catch (err) {

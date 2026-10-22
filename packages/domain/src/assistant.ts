@@ -14,7 +14,9 @@ export type AssistantToolName =
   | "create_follow_up_task"
   | "book_appointment"
   | "create_launch_pack"
-  | "publish_launch_pack";
+  | "publish_launch_pack"
+  | "prepare_meta_ai_launch"
+  | "approve_meta_ai_launch";
 
 export type AssistantRisk =
   | "read"
@@ -99,6 +101,22 @@ export const ASSISTANT_TOOLS: readonly AssistantToolDef[] = [
     risk: "publish",
     requiresApproval: true,
   },
+  {
+    name: "prepare_meta_ai_launch",
+    description:
+      "Collect Meta lead-gen essentials and draft campaign plan + local Launch Pack (no Meta spend yet)",
+    permission: "campaigns:write",
+    risk: "write",
+    requiresApproval: false,
+  },
+  {
+    name: "approve_meta_ai_launch",
+    description:
+      "After explicit approval, create Meta campaign via Marketing API or save pending_configuration draft",
+    permission: "campaigns:write",
+    risk: "spend",
+    requiresApproval: true,
+  },
 ] as const;
 
 export function getAssistantTool(name: string): AssistantToolDef | undefined {
@@ -131,6 +149,7 @@ export type AssistantToolResult = {
 export function planAssistantIntent(input: {
   message: string;
   hasPendingPack?: boolean;
+  hasPendingMetaPlan?: boolean;
 }): AssistantPlan {
   const text = input.message.trim();
   const lower = text.toLowerCase();
@@ -140,7 +159,57 @@ export function planAssistantIntent(input: {
       summary: "Need a clearer goal",
       steps: [],
       needsClarification:
-        "What outcome do you want? Example: “Get condo leads in Bangalore this month.”",
+        "What outcome do you want? Example: “Get condo leads in Bangalore this month.” Or “Launch Meta ads for solar in Mumbai, $25/day.”",
+      requiresApproval: false,
+    };
+  }
+
+  if (
+    input.hasPendingMetaPlan &&
+    /\b(approve|yes|go ahead|confirm|publish meta|create on meta)\b/.test(lower)
+  ) {
+    return {
+      summary: "Approve Meta AI launch",
+      steps: [
+        {
+          tool: "approve_meta_ai_launch",
+          args: { approved: true, enableSpend: /\b(spend|active|enable spend)\b/.test(lower) },
+          reason: "User approved the pending Meta plan",
+        },
+      ],
+      needsClarification: null,
+      requiresApproval: true,
+    };
+  }
+
+  if (
+    /\bmeta\b/.test(lower) &&
+    /\b(ad|ads|campaign|launch|facebook|instagram)\b/.test(lower)
+  ) {
+    const location =
+      text.match(/\bin\s+([A-Za-z][A-Za-z\s]{1,40})/i)?.[1]?.trim() ?? null;
+    const budgetMatch = text.match(/\$?\s*(\d+(?:\.\d+)?)\s*\/?\s*(day|daily|lifetime)?/i);
+    const budgetAmount = budgetMatch ? Number(budgetMatch[1]) : 25;
+    const budgetType =
+      budgetMatch?.[2] && /lifetime/i.test(budgetMatch[2]) ? "lifetime" : "daily";
+    return {
+      summary: "Prepare Meta AI launch pack (review before Meta create)",
+      steps: [
+        {
+          tool: "prepare_meta_ai_launch",
+          args: {
+            businessOrOffer: text,
+            geo: location ?? "your market",
+            budgetAmount,
+            budgetType,
+            currency: /\binr\b|₹/.test(lower) ? "INR" : "USD",
+            objective: "lead_gen",
+          },
+          reason: "User asked for Meta ads launch",
+        },
+      ],
+      needsClarification: null,
+      // Draft only — spend/create gate is approve_meta_ai_launch
       requiresApproval: false,
     };
   }
@@ -326,7 +395,7 @@ export function planAssistantIntent(input: {
     summary: "Clarify intent",
     steps: [],
     needsClarification:
-      "I can launch a lead campaign, list leads, qualify a message, or show Results. What should we do?",
+      "I can launch Meta ads (AI), create a local Launch Pack, list leads, qualify a message, or show Results. What should we do?",
     requiresApproval: false,
   };
 }
