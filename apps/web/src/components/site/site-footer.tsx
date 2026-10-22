@@ -39,10 +39,10 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
-              <Link href="/privacy">Privacy</Link>
+              <Link href="/privacy-policy">Privacy Policy</Link>
             </li>
             <li>
-              <a href="mailto:hello@leadorbit.dev">Contact</a>
+              <a href="mailto:mehr.rohit86@gmail.com">Contact</a>
             </li>
           </ul>
         </div>
@@ -59,7 +59,7 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
-              <a href="mailto:hello@leadorbit.dev">hello@leadorbit.dev</a>
+              <a href="mailto:mehr.rohit86@gmail.com">mehr.rohit86@gmail.com</a>
             </li>
           </ul>
         </div>

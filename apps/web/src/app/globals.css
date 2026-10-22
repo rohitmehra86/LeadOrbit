@@ -140,6 +140,52 @@ a {
   color: var(--lo-fg);
 }
 
+.lo-legal {
+  color: var(--lo-fg);
+}
+
+.lo-legal section {
+  margin-top: 2rem;
+}
+
+.lo-legal h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+  color: var(--lo-fg);
+}
+
+.lo-legal p,
+.lo-legal li {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--lo-fg-muted);
+}
+
+.lo-legal p {
+  margin: 0 0 0.85rem;
+}
+
+.lo-legal ul {
+  margin: 0 0 0.85rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lo-legal a {
+  color: var(--lo-accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lo-legal code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.8em;
+  color: var(--lo-fg);
+}
+
 .lo-auth-shell {
   display: grid;
   min-height: 100vh;
