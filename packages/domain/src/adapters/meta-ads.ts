@@ -273,9 +273,16 @@ async function graphPost(
   return { ok: true, id: raw.id, raw };
 }
 
+export type MetaPublishCredentialOverride = {
+  accessToken?: string | null;
+  adAccountId?: string | null;
+  pageId?: string | null;
+};
+
 /**
  * Publish approved plan to Meta. Caller must have collected explicit approval.
- * Incomplete META_ADS_* → pending_configuration (never claims created).
+ * Incomplete credentials → pending_configuration (never claims created).
+ * Org OAuth connection overrides env token/account/page; APP_ID/SECRET stay in env.
  * Graph failures → status error with Meta message (caller maps to non-2xx).
  */
 export async function publishMetaLaunchPlan(
@@ -283,16 +290,25 @@ export async function publishMetaLaunchPlan(
   env: NodeJS.ProcessEnv = process.env,
   deps?: {
     fetchImpl?: typeof fetch;
+    orgCredentials?: MetaPublishCredentialOverride | null;
   },
 ): Promise<MetaPublishResult> {
-  const hints = metaAdsSetupHints();
-  const credStatus = metaAdsCredentialStatus(env);
+  // Lazy import to avoid circular init issues with meta-oauth ↔ meta-ads
+  const { resolveMetaAdsCredentials, metaRuntimeCredentialStatus, metaOAuthSetupHints } =
+    await import("./meta-oauth");
+  const hints = [
+    ...metaAdsSetupHints(),
+    ...metaOAuthSetupHints().filter((h) => /OAuth|Connect Meta|Redirect/.test(h)),
+  ];
+  const runtime = resolveMetaAdsCredentials(env, deps?.orgCredentials ?? null);
+  const credStatus = metaRuntimeCredentialStatus(runtime);
   const fetchImpl = deps?.fetchImpl ?? fetch;
-  if (!metaAdsReadyForCreate(env)) {
+  const ready = credStatus.status === "ready";
+  if (!ready) {
     return {
       status: "pending_configuration",
       metaCreated: false,
-      detail: `Meta create blocked — ${credStatus.detail}. Local draft only. Add all META_ADS_* on Vercel Production, Redeploy, then Approve again.`,
+      detail: `Meta create blocked — ${credStatus.detail}. Local draft only. Connect Meta for this org (OAuth) or set META_ADS_* on Vercel, then Approve again.`,
       setupHints: hints,
       present: credStatus.present,
       plan,
@@ -300,10 +316,9 @@ export async function publishMetaLaunchPlan(
     };
   }
 
-  const creds = readMetaAdsCredentialsFromEnv(env);
-  const token = creds.accessToken!;
-  const act = normalizeAdAccountId(creds.adAccountId!);
-  const pageId = creds.pageId!;
+  const token = runtime.accessToken!;
+  const act = normalizeAdAccountId(runtime.adAccountId!);
+  const pageId = runtime.pageId!;
   const statusOnMeta = plan.enableSpend ? "ACTIVE" : "PAUSED";
   const dailyBudget =
     plan.budgetType === "daily"

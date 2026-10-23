@@ -10,6 +10,7 @@ import {
 } from "@leadorbit/domain";
 import { createLaunchPack, publishLaunchPack } from "@/lib/launch/launch-pack";
 import { getCampaignStore } from "@/lib/tenancy/campaigns";
+import { getMetaConnectionSecrets } from "@/lib/meta/meta-connections";
 
 export type MetaAiLaunchDraft = {
   plan: MetaLaunchPlan;
@@ -112,7 +113,16 @@ export async function approveMetaAiLaunch(
     ...input.plan,
     enableSpend: Boolean(input.enableSpend),
   };
-  const result = await publishMetaLaunchPlan(plan);
+  const orgSecrets = await getMetaConnectionSecrets(actor, orgId);
+  const result = await publishMetaLaunchPlan(plan, process.env, {
+    orgCredentials: orgSecrets
+      ? {
+          accessToken: orgSecrets.accessToken,
+          adAccountId: orgSecrets.adAccountId,
+          pageId: orgSecrets.pageId,
+        }
+      : null,
+  });
 
   // Refresh Meta integration row honesty (pending if keys incomplete)
   await getCampaignStore().authorizeAdNetwork(actor, orgId, "meta");

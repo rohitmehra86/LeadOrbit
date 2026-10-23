@@ -50,15 +50,21 @@ Optional later: OAuth redirect URI on the Meta App pointing at your LeadOrbit do
 
 | Name | What to paste |
 |------|----------------|
-| `META_ADS_APP_ID` | Meta App ID |
-| `META_ADS_APP_SECRET` | Meta App Secret |
-| `META_ADS_ACCESS_TOKEN` | Long-lived System User (or OAuth) token with `ads_management` |
-| `META_ADS_AD_ACCOUNT_ID` | Ad account id (`act_123…` or numeric) |
-| `META_ADS_PAGE_ID` | Page id for creatives / ownership |
+| `META_ADS_APP_ID` | Meta App ID (**required** for Connect Meta OAuth) |
+| `META_ADS_APP_SECRET` | Meta App Secret (**required**) |
+| `META_ADS_ACCESS_TOKEN` | Optional demo fallback if org has not Connected Meta |
+| `META_ADS_AD_ACCOUNT_ID` | Optional demo fallback (`act_123…` or numeric) |
+| `META_ADS_PAGE_ID` | Optional demo fallback |
+| `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{NEXT_PUBLIC_APP_URL}/api/v1/meta/oauth/callback` |
+| `META_ADS_TOKEN_ENCRYPTION_KEY` | Recommended stable key for per-org token ciphertext |
 
 Also keep `NEXT_PUBLIC_APP_URL` set to your production URL (e.g. `https://leadorbit-delta.vercel.app`).
 
-Do **not** invent values. Do **not** paste secrets into chat or into the Connect Meta UI (that UI only shows set/missing).
+**Preferred:** customers use **Settings → Connect Meta** (OAuth). Org token/account/page override the three optional env vars above.  
+**Meta App → Facebook Login → Valid OAuth Redirect URIs** must include  
+`https://leadorbit-delta.vercel.app/api/v1/meta/oauth/callback` (and localhost for dev).
+
+Do **not** invent values. Do **not** paste secrets into chat. Connect Meta stores the token encrypted server-side.
 
 ---
 

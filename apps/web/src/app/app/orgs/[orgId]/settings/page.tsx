@@ -149,10 +149,17 @@ export default async function SettingsPage({ params }: Props) {
       </section>
 
       <section className="lo-section">
-        <h2>Integrations status</h2>
-        <p className="lo-muted mb-3 text-sm">
-          Honest status only — never shown as connected without credentials.
-        </p>
+        <div className="lo-panel-head-row mb-3">
+          <div>
+            <h2>Integrations status</h2>
+            <p className="lo-muted text-sm">
+              Honest status only — never shown as connected without credentials.
+            </p>
+          </div>
+          <Link href={`/app/orgs/${orgId}/settings/meta-connect`}>
+            <Button type="button">Connect Meta</Button>
+          </Link>
+        </div>
         <div className="lo-table-wrap">
           <table className="lo-table">
             <thead>

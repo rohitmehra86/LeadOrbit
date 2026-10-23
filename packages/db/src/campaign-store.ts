@@ -1099,9 +1099,11 @@ export class CampaignStore {
     network: AdNetwork,
   ): Promise<AdIntegration> {
     await this.gate(actor, orgId, "campaigns:write");
+    // Meta: platform app keys enable OAuth; full create readiness checked at launch.
     const creds =
       network === "meta"
-        ? metaAdsReadyForCreate()
+        ? Boolean(process.env.META_ADS_APP_ID && process.env.META_ADS_APP_SECRET) ||
+          metaAdsReadyForCreate()
         : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
     const stub = adNetworkAuthorizeStub(network, creds);
     const now = nowIso();

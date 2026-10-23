@@ -387,6 +387,33 @@ create table if not exists ad_integrations (
   unique(org_id, network)
 );
 
+create table if not exists meta_ad_connections (
+  id text primary key,
+  org_id text not null unique,
+  status text not null default 'connected',
+  access_token_ciphertext text not null,
+  ad_account_id text not null,
+  page_id text not null,
+  token_expires_at text,
+  connected_at text not null,
+  connected_by_user_id text,
+  last_error text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists meta_oauth_pending (
+  id text primary key,
+  org_id text not null,
+  user_id text not null,
+  state_nonce text not null unique,
+  access_token_ciphertext text,
+  token_expires_at text,
+  expires_at text not null,
+  created_at text not null
+);
+create index if not exists meta_oauth_pending_org_idx on meta_oauth_pending(org_id);
+
 create table if not exists webhook_endpoints (
   id text primary key,
   org_id text not null,

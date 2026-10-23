@@ -775,7 +775,8 @@ export class SupabaseCampaignStore {
     );
     const creds =
       network === "meta"
-        ? metaAdsReadyForCreate()
+        ? Boolean(process.env.META_ADS_APP_ID && process.env.META_ADS_APP_SECRET) ||
+          metaAdsReadyForCreate()
         : Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
     const stub = adNetworkAuthorizeStub(network, creds);
     const supabase = await authed();
