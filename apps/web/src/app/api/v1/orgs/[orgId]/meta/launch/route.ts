@@ -25,6 +25,11 @@ export async function POST(request: Request, ctx: Ctx) {
       campaignId?: string;
       approved?: boolean;
       enableSpend?: boolean;
+      resumeMeta?: {
+        campaign_id?: string | null;
+        adset_id?: string | null;
+        ad_id?: string | null;
+      };
     };
 
     const action = body.action ?? "prepare";
@@ -92,6 +97,7 @@ export async function POST(request: Request, ctx: Ctx) {
         campaignId: body.campaignId,
         approved: true,
         enableSpend: Boolean(body.enableSpend),
+        resumeMeta: body.resumeMeta,
       });
 
       const payload = {
