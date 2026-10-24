@@ -6,6 +6,8 @@ import {
   metaAdsCredentialStatus,
   metaAdsCredentialsPresent,
   metaAdsReadyForCreate,
+  inferMetaResumeAfterPartialFailure,
+  parseMetaIdsFromAdCopy,
   publishMetaLaunchPlan,
 } from "./meta-ads";
 
@@ -15,6 +17,7 @@ const FULL_ENV = {
   META_ADS_ACCESS_TOKEN: "token",
   META_ADS_AD_ACCOUNT_ID: "123",
   META_ADS_PAGE_ID: "page",
+  META_ADS_PIXEL_ID: "pixel_123",
 };
 
 describe("meta-ads AI launch adapter", () => {
@@ -134,7 +137,11 @@ describe("meta-ads AI launch adapter", () => {
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = String(input);
       calls.push(url);
-      const body = JSON.parse(String(init?.body ?? "{}")) as { status?: string };
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        status?: string;
+        promoted_object?: { page_id?: string; pixel_id?: string };
+        destination_type?: string;
+      };
       if (url.includes("/campaigns") || url.includes("/adsets") || url.includes("/ads")) {
         assert.equal(body.status, "PAUSED");
       }
@@ -142,6 +149,9 @@ describe("meta-ads AI launch adapter", () => {
         return new Response(JSON.stringify({ id: "camp_1" }), { status: 200 });
       }
       if (url.includes("/adsets")) {
+        assert.equal(body.destination_type, "WEBSITE");
+        assert.equal(body.promoted_object?.page_id, "page");
+        assert.equal(body.promoted_object?.pixel_id, "pixel_123");
         return new Response(JSON.stringify({ id: "adset_1" }), { status: 200 });
       }
       if (url.includes("/adcreatives")) {
@@ -187,5 +197,86 @@ describe("meta-ads AI launch adapter", () => {
     assert.equal(result.metaCreated, false);
     assert.equal(result.campaign_id, null);
     assert.match(result.detail, /Invalid OAuth|failed/i);
+  });
+
+  it("blocks publish before Graph when pixel missing for website leads", async () => {
+    const plan = buildMetaLaunchPlan({
+      businessOrOffer: "META-TEST-NO-PIXEL",
+      geo: "Bangalore",
+      budgetAmount: 15,
+      budgetType: "daily",
+      currency: "USD",
+      objective: "lead_gen",
+      landingPageUrl: "https://example.com/p",
+    });
+    let called = false;
+    const fetchImpl: typeof fetch = async () => {
+      called = true;
+      return new Response("{}", { status: 200 });
+    };
+    const envNoPixel = { ...FULL_ENV, META_ADS_PIXEL_ID: undefined };
+    delete (envNoPixel as { META_ADS_PIXEL_ID?: string }).META_ADS_PIXEL_ID;
+    const result = await publishMetaLaunchPlan(plan, envNoPixel, { fetchImpl });
+    assert.equal(called, false);
+    assert.equal(result.status, "error");
+    assert.match(result.detail, /META_ADS_PIXEL_ID/i);
+  });
+
+  it("resumes from existing campaign id without creating a duplicate campaign", async () => {
+    const plan = buildMetaLaunchPlan({
+      businessOrOffer: "META-TEST-RESUME",
+      geo: "Bangalore",
+      budgetAmount: 15,
+      budgetType: "daily",
+      currency: "USD",
+      objective: "lead_gen",
+      landingPageUrl: "https://example.com/p",
+    });
+    let campaignPosts = 0;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("/campaigns")) campaignPosts += 1;
+      if (url.includes("/adsets")) {
+        return new Response(JSON.stringify({ id: "adset_new" }), { status: 200 });
+      }
+      if (url.includes("/adcreatives")) {
+        return new Response(JSON.stringify({ id: "cr_1" }), { status: 200 });
+      }
+      if (url.includes("/ads")) {
+        return new Response(JSON.stringify({ id: "ad_1" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: { message: "unexpected" } }), {
+        status: 400,
+      });
+    };
+    const result = await publishMetaLaunchPlan(plan, FULL_ENV, {
+      fetchImpl,
+      resumeExternal: { campaignId: "120249589612440250" },
+    });
+    assert.equal(campaignPosts, 0);
+    assert.equal(result.status, "created_paused");
+    assert.equal(result.campaign_id, "120249589612440250");
+    assert.equal(result.adset_id, "adset_new");
+  });
+
+  it("parses stored meta ids and infers campaign-only resume when ad missing", () => {
+    const adCopy = [
+      "Copy",
+      "",
+      "[Meta AI — error]",
+      "campaign_id=120249589612440250",
+      "adset_id=120249589612580250",
+      "ad_id=",
+    ].join("\n");
+    const stored = parseMetaIdsFromAdCopy(adCopy);
+    assert.equal(stored.campaignId, "120249589612440250");
+    assert.equal(stored.adSetId, "120249589612580250");
+    assert.equal(stored.adId, null);
+    const resume = inferMetaResumeAfterPartialFailure(stored, null);
+    assert.deepEqual(resume, {
+      campaignId: "120249589612440250",
+      adSetId: null,
+      adId: null,
+    });
   });
 });

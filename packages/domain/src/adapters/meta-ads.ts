@@ -4,6 +4,13 @@
  * With credentials → Graph API create (PAUSED unless enableSpend approved).
  */
 
+import {
+  buildMetaInstantFormLeadCreativeBody,
+  buildMetaLeadAdSetBody,
+  buildMetaWebsiteLeadCreativeBody,
+  validateMetaLeadPublishConfig,
+} from "./meta-lead-publish";
+
 export type MetaAdsCredentialStatus =
   | "pending_configuration"
   | "ready"
@@ -17,6 +24,7 @@ export type MetaLaunchBrief = {
   currency: string;
   objective: "lead_gen";
   landingPageUrl?: string | null;
+  leadGenFormId?: string | null;
   audienceBasics?: string | null;
   creativeText?: string | null;
   creativeImageUrl?: string | null;
@@ -39,6 +47,8 @@ export type MetaLaunchPlan = {
   callToAction: "LEARN_MORE" | "SIGN_UP";
   landingPageUrl: string | null;
   creativeImageUrl: string | null;
+  /** Optional — instant Form destination (ON_AD). Do not invent; set via env or brief. */
+  leadGenFormId?: string | null;
   enableSpend: boolean;
   checklist: string[];
   createdAt: string;
@@ -94,6 +104,8 @@ export function metaAdsSetupHints(): string[] {
     "Set META_ADS_ACCESS_TOKEN (long-lived system user token)",
     "Set META_ADS_AD_ACCOUNT_ID (act_… or numeric id)",
     "Set META_ADS_PAGE_ID for the Page that owns the ads",
+    "Website lead ads: set META_ADS_PIXEL_ID (Events Manager) — required with landingPageUrl",
+    "Instant Form lead ads: set META_ADS_LEAD_GEN_FORM_ID or pass leadGenFormId on the plan",
   ];
 }
 
@@ -103,6 +115,8 @@ export function readMetaAdsCredentialsFromEnv(env: NodeJS.ProcessEnv = process.e
   accessToken: string | null;
   adAccountId: string | null;
   pageId: string | null;
+  pixelId: string | null;
+  leadGenFormId: string | null;
 } {
   return {
     appId: env.META_ADS_APP_ID?.trim() || null,
@@ -110,6 +124,8 @@ export function readMetaAdsCredentialsFromEnv(env: NodeJS.ProcessEnv = process.e
     accessToken: env.META_ADS_ACCESS_TOKEN?.trim() || null,
     adAccountId: env.META_ADS_AD_ACCOUNT_ID?.trim() || null,
     pageId: env.META_ADS_PAGE_ID?.trim() || null,
+    pixelId: env.META_ADS_PIXEL_ID?.trim() || null,
+    leadGenFormId: env.META_ADS_LEAD_GEN_FORM_ID?.trim() || null,
   };
 }
 
@@ -128,6 +144,8 @@ export function metaAdsCredentialStatus(
     META_ADS_ACCESS_TOKEN: Boolean(c.accessToken),
     META_ADS_AD_ACCOUNT_ID: Boolean(c.adAccountId),
     META_ADS_PAGE_ID: Boolean(c.pageId),
+    META_ADS_PIXEL_ID: Boolean(c.pixelId),
+    META_ADS_LEAD_GEN_FORM_ID: Boolean(c.leadGenFormId),
   };
   const allOk = Boolean(
     c.appId && c.appSecret && c.accessToken && c.adAccountId && c.pageId,
@@ -214,6 +232,7 @@ export function buildMetaLaunchPlan(
     headline,
     callToAction: "SIGN_UP",
     landingPageUrl: brief.landingPageUrl?.trim() || null,
+    leadGenFormId: brief.leadGenFormId?.trim() || null,
     creativeImageUrl: brief.creativeImageUrl?.trim() || null,
     enableSpend: Boolean(brief.enableSpend),
     checklist,
@@ -277,7 +296,11 @@ export type MetaPublishCredentialOverride = {
   accessToken?: string | null;
   adAccountId?: string | null;
   pageId?: string | null;
+  pixelId?: string | null;
+  leadGenFormId?: string | null;
 };
+
+export type MetaPublishResumeExternal = Partial<MetaExternalIds>;
 
 /**
  * Publish approved plan to Meta. Caller must have collected explicit approval.
@@ -291,6 +314,8 @@ export async function publishMetaLaunchPlan(
   deps?: {
     fetchImpl?: typeof fetch;
     orgCredentials?: MetaPublishCredentialOverride | null;
+    /** Re-use Meta ids from a partial publish (avoid duplicate campaigns). */
+    resumeExternal?: MetaPublishResumeExternal | null;
   },
 ): Promise<MetaPublishResult> {
   // Lazy import to avoid circular init issues with meta-oauth ↔ meta-ads
@@ -330,149 +355,171 @@ export async function publishMetaLaunchPlan(
       : undefined;
 
   try {
-    if (!plan.landingPageUrl?.trim()) {
+    const envCreds = readMetaAdsCredentialsFromEnv(env);
+    const leadAssets = {
+      pageId,
+      pixelId:
+        deps?.orgCredentials?.pixelId?.trim() ||
+        envCreds.pixelId ||
+        null,
+      leadGenFormId:
+        plan.leadGenFormId?.trim() ||
+        deps?.orgCredentials?.leadGenFormId?.trim() ||
+        envCreds.leadGenFormId ||
+        null,
+    };
+
+    const leadCheck = validateMetaLeadPublishConfig(plan, leadAssets);
+    if (!leadCheck.ok) {
       return {
         status: "error",
         metaCreated: false,
-        detail:
-          "Meta create blocked — landingPageUrl missing (needed for lead_gen link ad)",
-        setupHints: hints,
+        detail: leadCheck.detail,
+        setupHints: [...hints, ...leadCheck.setupHints],
         present: credStatus.present,
         plan,
         ...withIds(emptyExternal()),
       };
     }
 
-    const campaign = await graphPost(
-      `${act}/campaigns`,
-      token,
-      {
-        name: plan.name,
-        objective: plan.objective,
-        status: statusOnMeta,
-        special_ad_categories: [],
-        is_adset_budget_sharing_enabled: false,
-      },
-      fetchImpl,
-    );
-    if (!campaign.ok || !campaign.id) {
-      return {
-        status: "error",
-        metaCreated: false,
-        detail: `Meta campaign create failed: ${campaign.error ?? "unknown"}`,
-        setupHints: hints,
-        present: credStatus.present,
-        plan,
-        ...withIds(emptyExternal()),
-      };
+    const resume = deps?.resumeExternal ?? null;
+    let campaignId = resume?.campaignId?.trim() || null;
+    let adSetId = resume?.adSetId?.trim() || null;
+    let adId = resume?.adId?.trim() || null;
+
+    if (!campaignId) {
+      const campaign = await graphPost(
+        `${act}/campaigns`,
+        token,
+        {
+          name: plan.name,
+          objective: plan.objective,
+          buying_type: "AUCTION",
+          status: statusOnMeta,
+          special_ad_categories: [],
+          is_adset_budget_sharing_enabled: false,
+        },
+        fetchImpl,
+      );
+      if (!campaign.ok || !campaign.id) {
+        return {
+          status: "error",
+          metaCreated: false,
+          detail: `Meta campaign create failed: ${campaign.error ?? "unknown"}`,
+          setupHints: hints,
+          present: credStatus.present,
+          plan,
+          ...withIds(emptyExternal()),
+        };
+      }
+      campaignId = campaign.id;
     }
 
     const country = guessCountryCode(plan.geo);
-    const adSetBody: Record<string, unknown> = {
-      name: `${plan.name} — ${plan.geo}`,
-      campaign_id: campaign.id,
-      billing_event: "IMPRESSIONS",
-      optimization_goal: "LEAD_GENERATION",
-      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-      status: statusOnMeta,
-      targeting: {
-        geo_locations: { countries: [country] },
-      },
-    };
-    if (dailyBudget) adSetBody.daily_budget = dailyBudget;
-    if (lifetimeBudget) adSetBody.lifetime_budget = lifetimeBudget;
-
-    const adSet = await graphPost(`${act}/adsets`, token, adSetBody, fetchImpl);
-    if (!adSet.ok || !adSet.id) {
-      return {
-        status: "error",
-        metaCreated: true,
-        detail: `Meta campaign ${campaign.id} created but ad set failed: ${adSet.error ?? "unknown"}`,
-        setupHints: hints,
-        present: credStatus.present,
-        plan,
-        ...withIds({
-          campaignId: campaign.id,
-          adSetId: null,
-          adId: null,
-        }),
-      };
-    }
-
-    const creative = await graphPost(
-      `${act}/adcreatives`,
-      token,
-      {
-        name: `${plan.name} — Creative`,
-        object_story_spec: {
-          page_id: pageId,
-          link_data: {
-            message: plan.primaryText,
-            link: plan.landingPageUrl,
-            name: plan.headline,
-            call_to_action: { type: plan.callToAction },
-            ...(plan.creativeImageUrl
-              ? { picture: plan.creativeImageUrl }
-              : {}),
-          },
-        },
-      },
-      fetchImpl,
-    );
-    if (!creative.ok || !creative.id) {
-      return {
-        status: "error",
-        metaCreated: true,
-        detail: `Meta campaign ${campaign.id} / ad set ${adSet.id} created but creative failed: ${creative.error ?? "unknown"}`,
-        setupHints: hints,
-        present: credStatus.present,
-        plan,
-        ...withIds({
-          campaignId: campaign.id,
-          adSetId: adSet.id,
-          adId: null,
-        }),
-      };
-    }
-
-    const ad = await graphPost(
-      `${act}/ads`,
-      token,
-      {
-        name: `${plan.name} — Ad`,
-        adset_id: adSet.id,
-        creative: { creative_id: creative.id },
+    if (!adSetId) {
+      const adSetBody = buildMetaLeadAdSetBody({
+        name: `${plan.name} — ${plan.geo}`,
+        campaignId: campaignId!,
+        countryCode: country,
         status: statusOnMeta,
-      },
-      fetchImpl,
-    );
-    if (!ad.ok || !ad.id) {
-      return {
-        status: "error",
-        metaCreated: true,
-        detail: `Meta campaign ${campaign.id} / ad set ${adSet.id} created but ad failed: ${ad.error ?? "unknown"}`,
-        setupHints: hints,
-        present: credStatus.present,
-        plan,
-        ...withIds({
-          campaignId: campaign.id,
-          adSetId: adSet.id,
-          adId: null,
-        }),
-      };
+        dailyBudgetMinor: dailyBudget,
+        lifetimeBudgetMinor: lifetimeBudget,
+        destination: leadCheck.destination,
+        pageId,
+        pixelId: leadAssets.pixelId,
+      });
+
+      const adSet = await graphPost(`${act}/adsets`, token, adSetBody, fetchImpl);
+      if (!adSet.ok || !adSet.id) {
+        return {
+          status: "error",
+          metaCreated: true,
+          detail: `Meta campaign ${campaignId} created but ad set failed: ${adSet.error ?? "unknown"}`,
+          setupHints: hints,
+          present: credStatus.present,
+          plan,
+          ...withIds({
+            campaignId: campaignId!,
+            adSetId: null,
+            adId: null,
+          }),
+        };
+      }
+      adSetId = adSet.id;
+    }
+
+    if (!adId) {
+      const creativeBody =
+        leadCheck.destination === "website"
+          ? buildMetaWebsiteLeadCreativeBody(plan, pageId)
+          : buildMetaInstantFormLeadCreativeBody(
+              plan,
+              pageId,
+              leadAssets.leadGenFormId!,
+            );
+
+      const creative = await graphPost(
+        `${act}/adcreatives`,
+        token,
+        creativeBody,
+        fetchImpl,
+      );
+      if (!creative.ok || !creative.id) {
+        return {
+          status: "error",
+          metaCreated: true,
+          detail: `Meta campaign ${campaignId} / ad set ${adSetId} created but creative failed: ${creative.error ?? "unknown"}`,
+          setupHints: hints,
+          present: credStatus.present,
+          plan,
+          ...withIds({
+            campaignId: campaignId!,
+            adSetId: adSetId!,
+            adId: null,
+          }),
+        };
+      }
+
+      const ad = await graphPost(
+        `${act}/ads`,
+        token,
+        {
+          name: `${plan.name} — Ad`,
+          adset_id: adSetId,
+          creative: { creative_id: creative.id },
+          status: statusOnMeta,
+        },
+        fetchImpl,
+      );
+      if (!ad.ok || !ad.id) {
+        return {
+          status: "error",
+          metaCreated: true,
+          detail: `Meta campaign ${campaignId} / ad set ${adSetId} created but ad failed: ${ad.error ?? "unknown"}. If the ad set was created before promoted_object was configured, retry Approve with resumeMeta.campaign_id only (omit adset_id) to create a new ad set under the same campaign.`,
+          setupHints: hints,
+          present: credStatus.present,
+          plan,
+          ...withIds({
+            campaignId: campaignId!,
+            adSetId: adSetId!,
+            adId: null,
+          }),
+        };
+      }
+      adId = ad.id;
     }
 
     const external = {
-      campaignId: campaign.id,
-      adSetId: adSet.id,
-      adId: ad.id,
+      campaignId: campaignId!,
+      adSetId: adSetId!,
+      adId: adId!,
     };
     return {
       status: plan.enableSpend ? "created_active" : "created_paused",
       metaCreated: true,
       detail: plan.enableSpend
-        ? `Meta created ACTIVE campaign_id=${campaign.id} adset_id=${adSet.id} ad_id=${ad.id} (${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}). Confirm in Ads Manager.`
-        : `Meta created PAUSED campaign_id=${campaign.id} adset_id=${adSet.id} ad_id=${ad.id}. Confirm in Ads Manager (filter PAUSED). Budget ${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}; geo “${plan.geo}” → country ${country}.`,
+        ? `Meta created ACTIVE campaign_id=${external.campaignId} adset_id=${external.adSetId} ad_id=${external.adId} (${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}). Confirm in Ads Manager.`
+        : `Meta created PAUSED campaign_id=${external.campaignId} adset_id=${external.adSetId} ad_id=${external.adId}. Confirm in Ads Manager (filter PAUSED). Budget ${slugBudgetLabel(plan.budgetAmount, plan.currency, plan.budgetType)}; geo “${plan.geo}” → country ${country}; lead destination=${leadCheck.destination}.`,
       setupHints: hints,
       present: credStatus.present,
       plan,
@@ -489,6 +536,53 @@ export async function publishMetaLaunchPlan(
       ...withIds(emptyExternal()),
     };
   }
+}
+
+/** Parse Meta external ids persisted on local campaign adCopy. */
+export function parseMetaIdsFromAdCopy(
+  adCopy: string | null | undefined,
+): MetaExternalIds {
+  const ids = emptyExternal();
+  if (!adCopy) return ids;
+  for (const line of adCopy.split("\n")) {
+    const m = line.trim().match(/^(campaign_id|adset_id|ad_id)=(\d+)/);
+    if (!m) continue;
+    const key = m[1];
+    const val = m[2]!;
+    if (key === "campaign_id") ids.campaignId = val;
+    if (key === "adset_id") ids.adSetId = val;
+    if (key === "ad_id") ids.adId = val;
+  }
+  return ids;
+}
+
+/**
+ * After partial Meta publish, reuse campaign id only — never reuse ad set when ad_id missing
+ * (legacy ad sets may lack promoted_object).
+ */
+export function inferMetaResumeAfterPartialFailure(
+  stored: MetaExternalIds,
+  explicit?: MetaPublishResumeExternal | null,
+): MetaPublishResumeExternal | null {
+  if (
+    explicit?.campaignId?.trim() ||
+    explicit?.adSetId?.trim() ||
+    explicit?.adId?.trim()
+  ) {
+    return {
+      campaignId: explicit.campaignId?.trim() || null,
+      adSetId: explicit.adSetId?.trim() || null,
+      adId: explicit.adId?.trim() || null,
+    };
+  }
+  if (stored.campaignId?.trim() && !stored.adId?.trim()) {
+    return {
+      campaignId: stored.campaignId,
+      adSetId: null,
+      adId: null,
+    };
+  }
+  return null;
 }
 
 /** Pure gate used by tests — approve must be true before publish. */

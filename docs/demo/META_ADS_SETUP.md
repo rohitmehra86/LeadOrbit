@@ -55,6 +55,8 @@ Optional later: OAuth redirect URI on the Meta App pointing at your LeadOrbit do
 | `META_ADS_ACCESS_TOKEN` | Optional demo fallback if org has not Connected Meta |
 | `META_ADS_AD_ACCOUNT_ID` | Optional demo fallback (`act_123…` or numeric) |
 | `META_ADS_PAGE_ID` | Optional demo fallback |
+| `META_ADS_PIXEL_ID` | **Required for website lead ads** (landing page URL + OUTCOME_LEADS) — Events Manager Pixel ID; also loads the public site pixel in `apps/web` layout |
+| `META_ADS_LEAD_GEN_FORM_ID` | Optional — instant Form (ON_AD) lead ads only |
 | `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{NEXT_PUBLIC_APP_URL}/api/v1/meta/oauth/callback` |
 | `META_ADS_TOKEN_ENCRYPTION_KEY` | Recommended stable key for per-org token ciphertext |
 

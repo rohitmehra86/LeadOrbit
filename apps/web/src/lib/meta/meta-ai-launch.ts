@@ -3,6 +3,8 @@ import {
   assertMetaLaunchApproved,
   buildMetaLaunchPlan,
   metaAdsCredentialStatus,
+  inferMetaResumeAfterPartialFailure,
+  parseMetaIdsFromAdCopy,
   publishMetaLaunchPlan,
   type MetaLaunchBrief,
   type MetaLaunchPlan,
@@ -106,6 +108,11 @@ export async function approveMetaAiLaunch(
     campaignId: string;
     approved: boolean;
     enableSpend?: boolean;
+    resumeMeta?: {
+      campaign_id?: string | null;
+      adset_id?: string | null;
+      ad_id?: string | null;
+    };
   },
 ): Promise<MetaPublishResult & { localCampaignId: string }> {
   assertMetaLaunchApproved(input.approved);
@@ -114,6 +121,18 @@ export async function approveMetaAiLaunch(
     enableSpend: Boolean(input.enableSpend),
   };
   const orgSecrets = await getMetaConnectionSecrets(actor, orgId);
+  const localCampaign = await getCampaignStore().getCampaign(
+    actor,
+    orgId,
+    input.campaignId,
+  );
+  const storedMeta = parseMetaIdsFromAdCopy(localCampaign?.adCopy ?? null);
+  const resumeExternal = inferMetaResumeAfterPartialFailure(storedMeta, {
+    campaignId: input.resumeMeta?.campaign_id?.trim() || null,
+    adSetId: input.resumeMeta?.adset_id?.trim() || null,
+    adId: input.resumeMeta?.ad_id?.trim() || null,
+  });
+
   const result = await publishMetaLaunchPlan(plan, process.env, {
     orgCredentials: orgSecrets
       ? {
@@ -122,6 +141,7 @@ export async function approveMetaAiLaunch(
           pageId: orgSecrets.pageId,
         }
       : null,
+    resumeExternal,
   });
 
   // Refresh Meta integration row honesty (pending if keys incomplete)
@@ -164,7 +184,10 @@ export async function approveMetaAiLaunch(
         plan.primaryText,
         "",
         "[Meta AI — error]",
+        `meta_status=error`,
         result.campaign_id ? `campaign_id=${result.campaign_id}` : "campaign_id=",
+        result.adset_id ? `adset_id=${result.adset_id}` : "adset_id=",
+        result.ad_id ? `ad_id=${result.ad_id}` : "ad_id=",
         result.detail,
       ].join("\n"),
     });

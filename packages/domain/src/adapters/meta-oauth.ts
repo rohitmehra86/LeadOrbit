@@ -29,6 +29,8 @@ export type MetaRuntimeCredentials = {
   accessToken: string | null;
   adAccountId: string | null;
   pageId: string | null;
+  pixelId: string | null;
+  leadGenFormId: string | null;
   /** Where token/account/page came from */
   source: "org" | "env" | "mixed" | "none";
   platformAppReady: boolean;
@@ -67,6 +69,8 @@ export function resolveMetaAdsCredentials(
   const accessToken = orgToken || fromEnv.accessToken;
   const adAccountId = orgAct || fromEnv.adAccountId;
   const pageId = orgPage || fromEnv.pageId;
+  const pixelId = fromEnv.pixelId;
+  const leadGenFormId = fromEnv.leadGenFormId;
 
   const platformAppReady = Boolean(fromEnv.appId && fromEnv.appSecret);
   let source: MetaRuntimeCredentials["source"] = "none";
@@ -80,6 +84,8 @@ export function resolveMetaAdsCredentials(
     accessToken,
     adAccountId,
     pageId,
+    pixelId,
+    leadGenFormId,
     source,
     platformAppReady,
   };
@@ -100,6 +106,8 @@ export function metaRuntimeCredentialStatus(
     META_ADS_ACCESS_TOKEN: Boolean(creds.accessToken),
     META_ADS_AD_ACCOUNT_ID: Boolean(creds.adAccountId),
     META_ADS_PAGE_ID: Boolean(creds.pageId),
+    META_ADS_PIXEL_ID: Boolean(creds.pixelId),
+    META_ADS_LEAD_GEN_FORM_ID: Boolean(creds.leadGenFormId),
     ORG_META_CONNECTION: creds.source === "org",
   };
   const hints = metaOAuthSetupHints();

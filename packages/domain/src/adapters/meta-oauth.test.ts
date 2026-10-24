@@ -96,6 +96,7 @@ describe("meta OAuth credentials", () => {
       {
         META_ADS_APP_ID: "app",
         META_ADS_APP_SECRET: "secret",
+        META_ADS_PIXEL_ID: "pixel_1",
         // no env token — org must supply
       },
       {
