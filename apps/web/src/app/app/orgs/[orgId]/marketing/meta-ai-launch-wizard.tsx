@@ -98,10 +98,14 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
     setStep("review");
   }
 
-  async function onApprove() {
+  async function onApprove(opts?: { resumeCampaignId?: string | null }) {
     if (!draft) return;
     setError(null);
     setLoading(true);
+    const resumeMeta =
+      opts?.resumeCampaignId?.trim()
+        ? { campaign_id: opts.resumeCampaignId.trim() }
+        : undefined;
     const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -111,6 +115,7 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
         enableSpend,
         plan: { ...draft.plan, enableSpend },
         campaignId: draft.local.campaignId,
+        resumeMeta,
       }),
     });
     setLoading(false);
@@ -336,6 +341,15 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
             That is not a Meta ad. <strong>Meta:</strong> only created after
             Approve when all META_ADS_* are set (HTTP 201 + campaign_id).
           </p>
+          {status?.credentialStatus === "ready" &&
+          draft.plan.landingPageUrl &&
+          !status.present.META_ADS_PIXEL_ID ? (
+            <p className="lo-error mt-2 text-sm">
+              Website lead ads need <code>META_ADS_PIXEL_ID</code> on Vercel
+              Production (Events Manager → Pixel). Approve will return HTTP 502
+              until it is set and Production is redeployed.
+            </p>
+          ) : null}
           {status?.credentialStatus !== "ready" ? (
             <p className="lo-muted mt-2 text-sm">
               Credentials incomplete — Approve returns HTTP 409{" "}
@@ -356,7 +370,11 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
             </label>
           )}
           <div className="lo-launch-actions mt-4">
-            <Button type="button" disabled={loading} onClick={onApprove}>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={() => onApprove()}
+            >
               {loading ? "Submitting…" : "Approve Meta launch"}
             </Button>
             <Button
@@ -433,7 +451,35 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
               only.
             </p>
           ) : null}
+          {resultStatus === "error" &&
+          metaIds?.campaign_id &&
+          !metaIds.ad_id &&
+          status &&
+          !status.present.META_ADS_PIXEL_ID &&
+          draft?.plan.landingPageUrl ? (
+            <p className="lo-error mt-2 text-sm">
+              Add <code>META_ADS_PIXEL_ID</code> on Vercel Production (Events
+              Manager → Pixel), redeploy with cache off, then retry. Website lead
+              ads require a real Pixel — LeadOrbit will not invent one.
+            </p>
+          ) : null}
+          {resultStatus === "error" && metaIds?.campaign_id && !metaIds.ad_id ? (
+            <p className="lo-muted mt-2 text-sm">
+              Retry reuses Meta campaign{" "}
+              <code>{metaIds.campaign_id}</code> and creates a new ad set (the
+              previous ad set is not reused).
+            </p>
+          ) : null}
           <div className="lo-card-actions">
+            {resultStatus === "error" && metaIds?.campaign_id && !metaIds.ad_id ? (
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={() => onApprove({ resumeCampaignId: metaIds.campaign_id })}
+              >
+                {loading ? "Retrying…" : "Retry Meta publish"}
+              </Button>
+            ) : null}
             <Link href={`/app/orgs/${orgId}/results`}>
               <Button type="button">View Results</Button>
             </Link>
