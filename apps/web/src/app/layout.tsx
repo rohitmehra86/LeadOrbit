@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Source_Serif_4, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { MetaPixel } from "@/components/meta-pixel";
 
 const ibmPlex = IBM_Plex_Sans({
   variable: "--font-ibm-plex",
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${ibmPlex.variable} ${sourceSerif.variable} ${geistMono.variable} antialiased`}
       >
+        <MetaPixel />
         {children}
       </body>
     </html>
