@@ -66,6 +66,7 @@ describe("meta AI launch gate (web)", () => {
         META_ADS_ACCESS_TOKEN: "t",
         META_ADS_AD_ACCOUNT_ID: "1",
         META_ADS_PAGE_ID: "p",
+        META_ADS_PIXEL_ID: "pixel_1",
       },
       { fetchImpl },
     );
