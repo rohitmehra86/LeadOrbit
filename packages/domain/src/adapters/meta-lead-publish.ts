@@ -45,7 +45,8 @@ export function validateMetaLeadPublishConfig(
   const hints = [
     "Website leads: set META_ADS_PIXEL_ID (Events Manager) on Vercel — required with landingPageUrl",
     "Instant Form leads: set META_ADS_LEAD_GEN_FORM_ID or plan.leadGenFormId (create form on Page first)",
-    "Ad set needs destination_type + promoted_object matching OUTCOME_LEADS + LEAD_GENERATION",
+    "Website leads: OUTCOME_LEADS + WEBSITE uses optimization_goal OFFSITE_CONVERSIONS + pixel LEAD event",
+    "Instant Form leads: OUTCOME_LEADS + ON_AD uses optimization_goal LEAD_GENERATION + page_id",
     "Connect Meta must use the same Page ID as META_ADS_PAGE_ID / org connection",
   ];
 
@@ -104,15 +105,20 @@ export type MetaLeadAdSetInput = {
   pixelId?: string | null;
 };
 
-/** Ad set body for POST act_…/adsets — includes promoted_object Meta requires before ad create. */
+/**
+ * Ad set body for POST act_…/adsets.
+ * Website OUTCOME_LEADS cannot use LEAD_GENERATION (Meta rejects) — use OFFSITE_CONVERSIONS + Pixel LEAD.
+ * Instant Form (ON_AD) uses LEAD_GENERATION + page_id.
+ */
 export function buildMetaLeadAdSetBody(
   input: MetaLeadAdSetInput,
 ): Record<string, unknown> {
+  const isWebsite = input.destination === "website";
   const body: Record<string, unknown> = {
     name: input.name,
     campaign_id: input.campaignId,
     billing_event: "IMPRESSIONS",
-    optimization_goal: "LEAD_GENERATION",
+    optimization_goal: isWebsite ? "OFFSITE_CONVERSIONS" : "LEAD_GENERATION",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     status: input.status,
     targeting: {
@@ -122,7 +128,7 @@ export function buildMetaLeadAdSetBody(
   if (input.dailyBudgetMinor) body.daily_budget = input.dailyBudgetMinor;
   if (input.lifetimeBudgetMinor) body.lifetime_budget = input.lifetimeBudgetMinor;
 
-  if (input.destination === "website") {
+  if (isWebsite) {
     body.destination_type = "WEBSITE";
     body.promoted_object = {
       page_id: input.pageId,
