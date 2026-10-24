@@ -52,7 +52,7 @@ describe("meta-lead-publish", () => {
     });
 
     assert.equal(body.destination_type, "WEBSITE");
-    assert.equal(body.optimization_goal, "LEAD_GENERATION");
+    assert.equal(body.optimization_goal, "OFFSITE_CONVERSIONS");
     const promoted = body.promoted_object as Record<string, string>;
     assert.equal(promoted.page_id, "1334971606375689");
     assert.equal(promoted.pixel_id, "987654321");
@@ -86,6 +86,7 @@ describe("meta-lead-publish", () => {
       pageId: "page1",
     });
     assert.equal(body.destination_type, "ON_AD");
+    assert.equal(body.optimization_goal, "LEAD_GENERATION");
     const promoted = body.promoted_object as Record<string, string>;
     assert.equal(promoted.page_id, "page1");
     assert.equal(promoted.pixel_id, undefined);
