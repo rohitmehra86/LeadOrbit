@@ -1,1 +1,1 @@
-@FILE_PLACEHOLDER
+@LOAD:/tmp/push-sb-only.json
