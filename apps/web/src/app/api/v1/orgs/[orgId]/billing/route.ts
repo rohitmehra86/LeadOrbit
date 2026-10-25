@@ -70,7 +70,7 @@ export async function POST(request: Request, ctx: Ctx) {
         body.atPeriodEnd ?? true,
       );
       return jsonOk({ subscription: sub });
-    }
+      }
 
     return jsonOk({ error: "Unknown action" }, { status: 400 });
   } catch (err) {
