@@ -22,6 +22,7 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isPublicRecordId } from "@/lib/tenancy/public-record-id";
+import { isRlsPermissionError } from "@/lib/tenancy/rls-error";
 
 function mapFields(raw: unknown): FormField[] {
   if (!Array.isArray(raw)) return [];
@@ -498,15 +499,26 @@ export class SupabaseCampaignStore {
     utm?: Partial<UtmParams>;
     campaignId?: string | null;
   }): Promise<FormSubmission> {
-    const supabase = anonClient();
-    const { data, error } = await supabase.rpc("submit_public_form", {
+    const args = {
       p_org_id: input.orgId,
       p_form_id: input.formId,
       p_payload: input.payload,
       p_utm: input.utm ?? {},
       p_campaign_id: input.campaignId ?? null,
       p_honeypot: input.honeypot ?? null,
-    });
+    };
+    const first = await anonClient().rpc("submit_public_form", args);
+    let data = first.data;
+    let error = first.error;
+    // Anon can be denied inside row-security policies. The RPC is granted to
+    // service_role and only inserts a lead for a published form in this org.
+    if (error && isRlsPermissionError(error)) {
+      const admin = createSupabaseAdminClient();
+      if (!admin) throw new AuthError(error.message, "validation");
+      const second = await admin.rpc("submit_public_form", args);
+      data = second.data;
+      error = second.error;
+    }
     if (error) throw new AuthError(error.message, "validation");
     const result = data as {
       submissionId: string;
