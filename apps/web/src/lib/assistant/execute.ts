@@ -81,7 +81,7 @@ export async function runAssistantChat(
   // Entitlement + AI metering gate (never silent bypass)
   try {
     const billing = getBillingStore();
-    billing.requireFeature(orgId, "ai");
+    await Promise.resolve(billing.requireFeature(orgId, "ai"));
     // Clarification-only turns still plan; meter when executing tools below
   } catch (err) {
     const detail =
@@ -153,7 +153,7 @@ export async function runAssistantChat(
   }
 
   try {
-    getBillingStore().consumeAiCredits(orgId, 1);
+    await Promise.resolve(getBillingStore().consumeAiCredits(orgId, 1));
   } catch (err) {
     const detail =
       err instanceof AuthError ? err.message : "AI usage quota exceeded";
