@@ -628,7 +628,13 @@ export class CampaignStore {
         .get(input.orgId, fingerprint) as { id: string } | undefined;
       if (prior) duplicateOfId = prior.id;
     }
-    const campaignId = input.campaignId ?? form.campaignId;
+    let campaignId = input.campaignId ?? form.campaignId;
+    if (campaignId) {
+      const owned = this.db
+        .prepare(`select id from campaigns where id = ? and org_id = ?`)
+        .get(campaignId, input.orgId) as { id: string } | undefined;
+      if (!owned) campaignId = form.campaignId;
+    }
     let leadId: string | null = null;
     if (this.crm && !duplicateOfId) {
       this.crm.registerOrg(input.orgId, input.orgId);

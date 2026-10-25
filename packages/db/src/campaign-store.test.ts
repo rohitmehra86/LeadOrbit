@@ -99,6 +99,45 @@ test("form submit persists to tenant and creates lead; duplicate detected", asyn
   assert.ok(perf.conversions >= 1 || perf.formSubmits >= 1);
 });
 
+test("public form ignores a campaign id from another organization", async () => {
+  const { tenancy, crm, mkt } = setup();
+  const ownerA = await tenancy.signUp({
+    email: "form-a@example.com",
+    password: "password123",
+  });
+  const ownerB = await tenancy.signUp({
+    email: "form-b@example.com",
+    password: "password123",
+  });
+  const orgA = await tenancy.createOrganization(ownerA, { name: "Form A" });
+  const orgB = await tenancy.createOrganization(ownerB, { name: "Form B" });
+  crm.registerOrg(orgA.id, orgA.name);
+  const campaignA = await mkt.createCampaign(ownerA, orgA.id, { name: "A ads" });
+  const campaignB = await mkt.createCampaign(ownerB, orgB.id, { name: "B ads" });
+  const form = await mkt.createForm(ownerA, orgA.id, {
+    name: "A form",
+    campaignId: campaignA.id,
+    templateKey: "lead_gen",
+  });
+  await mkt.updateForm(ownerA, orgA.id, form.id, { status: "published" });
+
+  const sub = await mkt.submitFormPublic({
+    orgId: orgA.id,
+    formId: form.id,
+    campaignId: campaignB.id,
+    payload: {
+      fullName: "Visitor",
+      email: "visitor@example.com",
+      phone: "9990001111",
+      consent: true,
+    },
+  });
+  assert.equal(sub.campaignId, campaignA.id);
+  assert.notEqual(sub.campaignId, campaignB.id);
+  const leadsB = await crm.listLeads(ownerB, orgB.id);
+  assert.equal(leadsB.length, 0);
+});
+
 test("page publish + sanitize; ad network pending without credentials", async () => {
   const { tenancy, mkt } = setup();
   const owner = await tenancy.signUp({
