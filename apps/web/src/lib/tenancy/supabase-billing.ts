@@ -1,1 +1,1 @@
-@/home/ubuntu/.cursor/projects/workspace/agent-tools/push-billing-batch1.json
+PLACEHOLDER_WILL_REPLACE
