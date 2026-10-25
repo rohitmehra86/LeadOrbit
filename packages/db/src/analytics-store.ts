@@ -12,7 +12,7 @@ import {
 } from "@leadorbit/domain";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
-import type { SqliteJobQueue } from "./job-queue";
+import type { DurableJobQueue } from "./job-queue";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -51,10 +51,10 @@ export class AnalyticsStore {
   constructor(
     private tenancy: LocalTenancyStore,
     private db: DatabaseSync = getCrmDatabase(),
-    private queue: SqliteJobQueue | null = null,
+    private queue: DurableJobQueue | null = null,
   ) {}
 
-  setQueue(queue: SqliteJobQueue): void {
+  setQueue(queue: DurableJobQueue): void {
     this.queue = queue;
   }
 
@@ -777,7 +777,7 @@ export class AnalyticsStore {
         now,
       );
     if (this.queue) {
-      this.queue.enqueue(
+      await this.queue.enqueue(
         "report.schedule",
         { orgId, reportId: id },
         { idempotencyKey: `report:${id}` },
