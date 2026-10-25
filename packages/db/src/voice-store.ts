@@ -17,7 +17,7 @@ import {
 } from "@leadorbit/domain";
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
-import { SqliteJobQueue } from "./job-queue";
+import { SqliteJobQueue, type DurableJobQueue } from "./job-queue";
 import type { CalendarStore } from "./calendar-store";
 
 function nowIso(): string {
@@ -28,7 +28,7 @@ export class VoiceStore {
   constructor(
     private tenancy: LocalTenancyStore,
     private db: DatabaseSync = getCrmDatabase(),
-    private queue: SqliteJobQueue = new SqliteJobQueue(db),
+    private queue: DurableJobQueue = new SqliteJobQueue(db),
     private calendar: CalendarStore | null = null,
   ) {}
 
@@ -213,7 +213,7 @@ export class VoiceStore {
         now,
         now,
       );
-    this.queue.enqueue(
+    await this.queue.enqueue(
       "voice.process",
       { orgId, callId: id },
       { idempotencyKey: `voice-process:${id}` },
@@ -270,7 +270,7 @@ export class VoiceStore {
         now,
         now,
       );
-    this.queue.enqueue(
+    await this.queue.enqueue(
       "voice.process",
       { orgId, callId: id },
       { idempotencyKey: `voice-process:${id}` },
