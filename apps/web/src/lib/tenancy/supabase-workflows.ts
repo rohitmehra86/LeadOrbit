@@ -1,4 +1,5 @@
-import { AuthError, type SessionUser } from "@leadorbit/db";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { AuthError, getJobQueue, type SessionUser } from "@leadorbit/db";
 import {
   convertLoopWorkflow,
   defaultLeadCreatedWorkflow,
@@ -10,7 +11,9 @@ import {
   type WorkflowStepRun,
   type WorkflowVersion,
 } from "@leadorbit/domain";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isRlsPermissionError } from "@/lib/tenancy/rls-error";
 
 async function client() {
   const supabase = await createSupabaseServerClient();
@@ -359,7 +362,13 @@ export class SupabaseWorkflowStore {
       .select("*")
       .single();
     if (error) throw new AuthError(error.message, "validation");
-    return mapEnrollment(data as Record<string, unknown>);
+    const enrollment = mapEnrollment(data as Record<string, unknown>);
+    await getJobQueue().enqueue(
+      "workflow.tick",
+      { orgId, enrollmentId: enrollment.id },
+      { idempotencyKey: `wf-tick:${enrollment.id}:0` },
+    );
+    return enrollment;
   }
 
   async setEnrollmentStatus(
@@ -393,50 +402,76 @@ export class SupabaseWorkflowStore {
     context?: Record<string, unknown>;
     idempotencyPrefix?: string | null;
   }): Promise<number> {
-    const supabase = await client();
-    const { data, error } = await supabase
-      .from("workflows")
-      .select("*")
-      .eq("org_id", input.orgId)
-      .eq("status", "published");
-    if (error) throw new AuthError(error.message, "validation");
-    let enrolled = 0;
-    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-      const wf = mapWorkflow(row);
-      const match = wf.graph.nodes.some(
-        (n) => n.kind === "trigger" && n.type === input.trigger,
-      );
-      if (!match) continue;
-      const key = input.idempotencyPrefix
-        ? `${input.idempotencyPrefix}:${wf.id}`
-        : null;
-      if (key) {
-        const { data: existing } = await supabase
+    const run = async (supabase: SupabaseClient) => {
+      const { data, error } = await supabase
+        .from("workflows")
+        .select("*")
+        .eq("org_id", input.orgId)
+        .eq("status", "published");
+      if (error) throw new AuthError(error.message, "validation");
+      let enrolled = 0;
+      for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+        const wf = mapWorkflow(row);
+        const match = wf.graph.nodes.some(
+          (n) => n.kind === "trigger" && n.type === input.trigger,
+        );
+        if (!match) continue;
+        const key = input.idempotencyPrefix
+          ? `${input.idempotencyPrefix}:${wf.id}`
+          : null;
+        if (key) {
+          const { data: existing } = await supabase
+            .from("workflow_enrollments")
+            .select("id")
+            .eq("org_id", input.orgId)
+            .eq("idempotency_key", key)
+            .maybeSingle();
+          if (existing) continue;
+        }
+        const triggerNode = wf.graph.nodes.find(
+          (n) => n.kind === "trigger" && n.type === input.trigger,
+        );
+        const { data: created, error: insErr } = await supabase
           .from("workflow_enrollments")
+          .insert({
+            org_id: input.orgId,
+            workflow_id: wf.id,
+            workflow_version: wf.version,
+            lead_id: input.leadId ?? null,
+            conversation_id: input.conversationId ?? null,
+            status: "active",
+            current_node_id: triggerNode?.id ?? null,
+            context: { ...(input.context ?? {}), trigger: input.trigger },
+            idempotency_key: key,
+            test_mode: false,
+          })
           .select("id")
-          .eq("org_id", input.orgId)
-          .eq("idempotency_key", key)
-          .maybeSingle();
-        if (existing) continue;
+          .single();
+        if (insErr && isRlsPermissionError(insErr)) {
+          throw new AuthError(insErr.message, "validation");
+        }
+        if (!insErr && created?.id) {
+          enrolled += 1;
+          await getJobQueue().enqueue(
+            "workflow.tick",
+            { orgId: input.orgId, enrollmentId: String(created.id) },
+            { idempotencyKey: `wf-tick:${created.id}:0` },
+          );
+        }
       }
-      const triggerNode = wf.graph.nodes.find(
-        (n) => n.kind === "trigger" && n.type === input.trigger,
-      );
-      const { error: insErr } = await supabase.from("workflow_enrollments").insert({
-        org_id: input.orgId,
-        workflow_id: wf.id,
-        workflow_version: wf.version,
-        lead_id: input.leadId ?? null,
-        conversation_id: input.conversationId ?? null,
-        status: "active",
-        current_node_id: triggerNode?.id ?? null,
-        context: { ...(input.context ?? {}), trigger: input.trigger },
-        idempotency_key: key,
-        test_mode: false,
-      });
-      if (!insErr) enrolled += 1;
+      return enrolled;
+    };
+
+    try {
+      return await run(await client());
+    } catch (err) {
+      if (!(err instanceof AuthError) || !isRlsPermissionError({ message: err.message })) {
+        throw err;
+      }
+      const admin = createSupabaseAdminClient();
+      if (!admin) throw err;
+      return run(admin);
     }
-    return enrolled;
   }
 
   setCrmStore(_crm: unknown): void {
