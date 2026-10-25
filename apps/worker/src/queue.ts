@@ -1,6 +1,7 @@
 /**
  * Legacy in-memory queue kept for unit tests of the JobQueue port shape.
- * Production/local durable path is SqliteJobQueue in @leadorbit/db.
+ * Durable path: SqliteJobQueue (local) or PostgresJobQueue (AUTH_MODE=supabase)
+ * via getJobQueue() in @leadorbit/db.
  */
 export {
   InMemoryJobQueue,

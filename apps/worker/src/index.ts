@@ -1,5 +1,8 @@
+import { hostname } from "node:os";
 import {
+  getAuthMode,
   getCrmDatabase,
+  getJobQueue,
   getLocalTenancyStore,
   CalendarStore,
   CrmStore,
@@ -9,108 +12,140 @@ import {
   SqliteJobQueue,
   VoiceStore,
   WorkflowStore,
+  computeRetryDelayMs,
+  sanitizeJobError,
+  type DurableJobQueue,
 } from "@leadorbit/db";
 import { createLogger } from "@leadorbit/observability";
+import { dispatchJob } from "./dispatch";
+import { UnsupportedJobError } from "./handlers";
 import { startWorkerHealthServer } from "./health";
 
 /**
- * Durable worker process. Claims jobs from SQLite-backed queue and executes
- * workflow ticks, message sends, knowledge reindex, appointment reminders,
- * and voice post-processing. Must not run inside Vercel request handlers.
+ * Durable worker process. Claims jobs from SQLite (local) or Postgres (supabase).
+ * Must not run inside Vercel request handlers.
  */
 const log = createLogger("leadorbit-worker");
 startWorkerHealthServer();
-const db = getCrmDatabase();
-const tenancy = getLocalTenancyStore();
-const queue = new SqliteJobQueue(db);
-const crm = new CrmStore(tenancy, db);
-const workflows = new WorkflowStore(tenancy, db, queue, crm);
-const inbox = new InboxStore(tenancy, db, queue);
-const knowledge = new KnowledgeStore(tenancy, db, queue);
-const calendar = new CalendarStore(tenancy, db, queue);
-const voice = new VoiceStore(tenancy, db, queue, calendar);
-const partnerWebhooks = new PartnerWebhookStore(tenancy, db, queue);
 
-const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
+const authMode = getAuthMode();
+const workerId =
+  process.env.WORKER_ID?.trim() ||
+  `worker-${hostname()}-${process.pid}`;
 
-async function drain(): Promise<void> {
-  const jobs = queue.claimDue(20);
-  for (const job of jobs) {
-    try {
-      if (job.name === "workflow.tick") {
-        const p = job.payload as { orgId: string; enrollmentId: string };
-        await workflows.processTick(p.orgId, p.enrollmentId);
-      } else if (job.name === "message.send") {
-        const p = job.payload as { orgId: string; messageId: string };
-        inbox.processMessageSend(p.orgId, p.messageId);
-      } else if (job.name === "workflow.run_step") {
-        const p = job.payload as {
-          orgId: string;
-          enrollmentId: string;
-          stepId: string;
-        };
-        await workflows.processTick(p.orgId, p.enrollmentId);
-        void p.stepId;
-      } else if (job.name === "knowledge.reindex") {
-        const p = job.payload as { orgId: string; documentId: string };
-        knowledge.indexDocument(p.orgId, p.documentId);
-      } else if (job.name === "embedding.upsert") {
-        const p = job.payload as {
-          orgId: string;
-          entityType: string;
-          entityId: string;
-        };
-        if (p.entityType === "knowledge_document") {
-          knowledge.indexDocument(p.orgId, p.entityId);
-        }
-      } else if (job.name === "appointment.reminder") {
-        const p = job.payload as { orgId: string; reminderId: string };
-        calendar.processReminder(p.orgId, p.reminderId);
-      } else if (job.name === "voice.process") {
-        const p = job.payload as { orgId: string; callId: string };
-        voice.processCall(p.orgId, p.callId);
-      } else if (job.name === "ai.run_turn") {
-        console.log(`[worker] ai.run_turn ack`, job.payload);
-      } else if (job.name === "lead.score") {
-        console.log(`[worker] lead.score stub`, job.payload);
-      } else if (job.name === "report.schedule") {
-        console.log(
-          `[worker] report.schedule scaffolded (email delivery pending_configuration)`,
-          job.payload,
-        );
-      } else if (job.name === "payment.reconcile") {
-        console.log(`[worker] payment.reconcile ack`, job.payload);
-      } else if (job.name === "partner.webhook.deliver") {
-        const p = job.payload as { orgId: string; deliveryId: string };
-        await partnerWebhooks.processDelivery(p.orgId, p.deliveryId);
-      } else {
-        console.warn(`[worker] no handler for ${job.name}`);
-      }
-      queue.complete(job.id);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "job failed";
-      console.error(`[worker] job ${job.id} failed`, message);
-      const retry =
-        job.attempts >= 3 ? { deadLetter: true as const } : { retryDelayMs: 5_000 };
-      queue.fail(job.id, message, retry);
-    }
-  }
+let queue: DurableJobQueue;
+try {
+  queue = getJobQueue();
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[worker] failed to initialize job queue: ${message}`);
+  process.exit(1);
 }
 
-log.info(
-  "LeadOrbit durable worker started (SQLite job queue — set LEADORBIT_SQLITE_PATH to share with web)",
-);
+log.info("LeadOrbit durable worker started", {
+  workerId,
+  mode: authMode,
+  queue: authMode === "supabase" ? "postgres" : "sqlite",
+});
+
+const db = getCrmDatabase();
+const tenancy = getLocalTenancyStore();
+const localQueue = new SqliteJobQueue(db);
+const crm = new CrmStore(tenancy, db);
+const workflows = new WorkflowStore(tenancy, db, localQueue, crm);
+const inbox = new InboxStore(tenancy, db, localQueue);
+const knowledge = new KnowledgeStore(tenancy, db, localQueue);
+const calendar = new CalendarStore(tenancy, db, localQueue);
+const voice = new VoiceStore(tenancy, db, localQueue, calendar);
+const partnerWebhooks = new PartnerWebhookStore(tenancy, db, localQueue);
+
+const domainHandlers = {
+  processWorkflowTick: (orgId: string, enrollmentId: string) =>
+    workflows.processTick(orgId, enrollmentId),
+  processMessageSend: (orgId: string, messageId: string) =>
+    inbox.processMessageSend(orgId, messageId),
+  indexDocument: (orgId: string, documentId: string) =>
+    knowledge.indexDocument(orgId, documentId),
+  processReminder: (orgId: string, reminderId: string) =>
+    calendar.processReminder(orgId, reminderId),
+  processCall: (orgId: string, callId: string) =>
+    voice.processCall(orgId, callId),
+  processPartnerDelivery: async (orgId: string, deliveryId: string) => {
+    await partnerWebhooks.processDelivery(orgId, deliveryId);
+  },
+};
+
+const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 500);
+const LEASE_SECONDS = Number(process.env.WORKER_LEASE_SECONDS ?? 300);
+
+let draining = false;
+let stopping = false;
+
+async function drain(): Promise<void> {
+  if (draining || stopping) return;
+  draining = true;
+  try {
+    if (typeof queue.recoverStale === "function") {
+      await Promise.resolve(queue.recoverStale(LEASE_SECONDS));
+    }
+    const jobs = await Promise.resolve(queue.claimDue(20, workerId));
+    for (const job of jobs) {
+      if (stopping) break;
+      try {
+        await dispatchJob(job, authMode, domainHandlers);
+        await Promise.resolve(queue.complete(job.id));
+      } catch (err) {
+        const message = sanitizeJobError(
+          err instanceof Error ? err.message : "job failed",
+        );
+        const unsupported = err instanceof UnsupportedJobError;
+        console.error(`[worker] job ${job.id} (${job.name}) failed`, message);
+        if (unsupported || job.attempts >= job.maxAttempts) {
+          await Promise.resolve(
+            queue.fail(job.id, message, { deadLetter: true }),
+          );
+        } else {
+          await Promise.resolve(
+            queue.fail(job.id, message, {
+              retryDelayMs: computeRetryDelayMs(job.attempts),
+            }),
+          );
+        }
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[worker] drain loop error`, message);
+    if (authMode === "supabase") {
+      console.error(
+        `[worker] PostgreSQL queue unavailable; refusing SQLite fallback`,
+      );
+    }
+  } finally {
+    draining = false;
+  }
+}
 
 const timer = setInterval(() => {
   void drain();
 }, POLL_MS);
 
-const shutdown = () => {
+const shutdown = async () => {
+  if (stopping) return;
+  stopping = true;
   clearInterval(timer);
+  const started = Date.now();
+  while (draining && Date.now() - started < 10_000) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
   console.log("[worker] stopped");
   process.exit(0);
 };
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => {
+  void shutdown();
+});
+process.on("SIGTERM", () => {
+  void shutdown();
+});
 
 await new Promise(() => {});
