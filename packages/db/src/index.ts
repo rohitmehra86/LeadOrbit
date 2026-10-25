@@ -21,7 +21,23 @@ export { AnalyticsStore } from "./analytics-store";
 export { WhiteLabelStore } from "./white-label-store";
 export { PartnerWebhookStore } from "./partner-webhook-store";
 export { MarketplaceStore } from "./marketplace-store";
-export { SqliteJobQueue, getJobQueue } from "./job-queue";
+export {
+  SqliteJobQueue,
+  PostgresJobQueue,
+  getJobQueue,
+  resetJobQueueForTests,
+  createPostgresJobQueueForTests,
+  createServiceRoleRpcClient,
+  computeRetryDelayMs,
+  sanitizeJobError,
+  assertJobPayloadHasOrgId,
+  isKnownJobName,
+  type DurableJob,
+  type DurableJobQueue,
+  type DurableJobStatus,
+  type EnqueueResult,
+  type FailJobOptions,
+} from "./job-queue";
 export { getCrmDatabase, openCrmDatabase, resetCrmDatabaseForTests } from "./sqlite";
 
 

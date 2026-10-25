@@ -6,18 +6,20 @@ import { join } from "node:path";
 import { openCrmDatabase } from "./sqlite";
 import { SqliteJobQueue } from "./job-queue";
 
+const ORG = "33333333-3333-4333-8333-333333333333";
+
 test("sqlite job queue idempotent enqueue and claim/complete", () => {
   const dir = mkdtempSync(join(tmpdir(), "lo-jq-"));
   const db = openCrmDatabase(join(dir, "q.sqlite"));
   const q = new SqliteJobQueue(db);
   const a = q.enqueue(
     "workflow.tick",
-    { orgId: "o1", enrollmentId: "e1" },
+    { orgId: ORG, enrollmentId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" },
     { idempotencyKey: "k1" },
   );
   const b = q.enqueue(
     "workflow.tick",
-    { orgId: "o1", enrollmentId: "e1" },
+    { orgId: ORG, enrollmentId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" },
     { idempotencyKey: "k1" },
   );
   assert.equal(a.duplicate, false);
@@ -26,6 +28,7 @@ test("sqlite job queue idempotent enqueue and claim/complete", () => {
 
   const claimed = q.claimDue(5);
   assert.equal(claimed.length, 1);
+  assert.equal(claimed[0]!.maxAttempts, 5);
   q.complete(claimed[0]!.id);
   assert.equal(q.claimDue(5).length, 0);
 });
@@ -35,7 +38,7 @@ test("sqlite job queue retries then dead-letters", () => {
   const db = openCrmDatabase(join(dir, "q.sqlite"));
   const q = new SqliteJobQueue(db);
   const { jobId } = q.enqueue("message.send", {
-    orgId: "o",
+    orgId: ORG,
     messageId: "m",
   });
   const [job] = q.claimDue(1);
