@@ -1,0 +1,12 @@
+---
+description: LeadOrbit Supabase schema changes — apply to LeadOrbit only, never Linkbook
+alwaysApply: true
+---
+
+# Supabase (LeadOrbit)
+
+- Target project is **LeadOrbit** (`kqmuxocbmtydkxdvmypy`). Never modify the separate **linkbook** project or its database.
+- When shipping SQL under `supabase/migrations/`, also apply it to the live LeadOrbit project (MCP `apply_migration` / `execute_sql`) in the same session — do not leave migrations repo-only.
+- Prefer the exact migration file contents; do not invent a simplified substitute when applying.
+- After apply, verify with `list_migrations` and a targeted `execute_sql` check (tables/RPCs/indexes).
+- Commit and push schema + app changes to `main` after verification.
