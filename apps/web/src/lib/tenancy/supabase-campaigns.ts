@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AuthError, isSupabaseConfigured, type SessionUser } from "@leadorbit/db";
 import {
   aggregatePerformance,
@@ -9,6 +9,7 @@ import {
   type Campaign,
   type CreativeAsset,
   type FormDefinition,
+  type FormField,
   type FormSubmission,
   type Funnel,
   type FunnelStep,
@@ -18,7 +19,39 @@ import {
   type PublishStatus,
   type UtmParams,
 } from "@leadorbit/domain";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isPublicRecordId } from "@/lib/tenancy/public-record-id";
+
+function mapFields(raw: unknown): FormField[] {
+  if (!Array.isArray(raw)) return [];
+  const fields: FormField[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const field = item as Partial<FormField>;
+    fields.push({
+      id: String(field.id ?? ""),
+      key: String(field.key ?? ""),
+      label: String(field.label ?? ""),
+      type: (field.type ?? "text") as FormField["type"],
+      required: Boolean(field.required),
+      options: Array.isArray(field.options) ? field.options.map(String) : [],
+      placeholder: field.placeholder ? String(field.placeholder) : null,
+      showWhen:
+        field.showWhen && typeof field.showWhen === "object"
+          ? {
+              fieldKey: String(field.showWhen.fieldKey ?? ""),
+              equals: String(field.showWhen.equals ?? ""),
+            }
+          : null,
+      step: Number(field.step ?? 0),
+      position: Number(field.position ?? 0),
+      crmMapTo: field.crmMapTo ?? null,
+      customCrmKey: field.customCrmKey ? String(field.customCrmKey) : null,
+    });
+  }
+  return fields;
+}
 
 function anonClient() {
   if (!isSupabaseConfigured()) {
@@ -76,7 +109,7 @@ function mapForm(row: Record<string, unknown>): FormDefinition {
     campaignId: (row.campaign_id as string | null) ?? null,
     name: String(row.name),
     status: row.status as PublishStatus,
-    fields: (row.fields as FormDefinition["fields"]) ?? [],
+    fields: mapFields(row.fields),
     multiStep: Boolean(row.multi_step),
     spamHoneypotEnabled: Boolean(row.spam_honeypot_enabled),
     duplicateDetection: Boolean(row.duplicate_detection),
@@ -107,6 +140,36 @@ function mapPage(row: Record<string, unknown>): LandingPage {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
+}
+
+/**
+ * Published rows are world-readable. Anon SELECT can still fail when a member
+ * policy calls private.is_org_member, which anon cannot execute. Retry with
+ * the service role, still filtered to status=published.
+ */
+async function selectPublishedRow(
+  table: "landing_pages" | "forms",
+  filters: Record<string, string>,
+): Promise<Record<string, unknown> | null> {
+  const run = async (client: SupabaseClient) => {
+    let query = client.from(table).select("*").eq("status", "published");
+    for (const [column, value] of Object.entries(filters)) {
+      query = query.eq(column, value);
+    }
+    return query.maybeSingle();
+  };
+
+  const anon = anonClient();
+  const first = await run(anon);
+  if (!first.error) {
+    return (first.data as Record<string, unknown> | null) ?? null;
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) throw new AuthError(first.error.message, "validation");
+  const second = await run(admin);
+  if (second.error) throw new AuthError(second.error.message, "validation");
+  return (second.data as Record<string, unknown> | null) ?? null;
 }
 
 function slugify(input: string): string {
@@ -243,7 +306,7 @@ export class SupabaseCampaignStore {
         embed_enabled: true,
         version: 1,
         template_key: input.templateKey ?? "lead_gen",
-        thank_you_message: "Thanks — we will be in touch shortly.",
+        thank_you_message: "Thanks \u2014 we will be in touch shortly.",
       })
       .select("*")
       .single();
@@ -268,7 +331,7 @@ export class SupabaseCampaignStore {
   }
 
   getPublishedForm(orgId: string, formId: string): FormDefinition | null {
-    // Sync API surface for local parity — prefer async path in supabase mode.
+    // Sync API surface for local parity \u2014 prefer async path in supabase mode.
     void orgId;
     void formId;
     return null;
@@ -278,16 +341,12 @@ export class SupabaseCampaignStore {
     orgId: string,
     formId: string,
   ): Promise<FormDefinition | null> {
-    const supabase = anonClient();
-    const { data, error } = await supabase
-      .from("forms")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("id", formId)
-      .eq("status", "published")
-      .maybeSingle();
-    if (error) throw new AuthError(error.message, "validation");
-    return data ? mapForm(data as Record<string, unknown>) : null;
+    if (!isPublicRecordId(orgId) || !isPublicRecordId(formId)) return null;
+    const data = await selectPublishedRow("forms", {
+      org_id: orgId,
+      id: formId,
+    });
+    return data ? mapForm(data) : null;
   }
 
   async updateForm(
@@ -404,16 +463,12 @@ export class SupabaseCampaignStore {
     orgId: string,
     slug: string,
   ): Promise<LandingPage | null> {
-    const supabase = anonClient();
-    const { data, error } = await supabase
-      .from("landing_pages")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("slug", slug)
-      .eq("status", "published")
-      .maybeSingle();
-    if (error) throw new AuthError(error.message, "validation");
-    return data ? mapPage(data as Record<string, unknown>) : null;
+    if (!isPublicRecordId(orgId) || !slug.trim()) return null;
+    const data = await selectPublishedRow("landing_pages", {
+      org_id: orgId,
+      slug,
+    });
+    return data ? mapPage(data) : null;
   }
 
   async publishPage(
