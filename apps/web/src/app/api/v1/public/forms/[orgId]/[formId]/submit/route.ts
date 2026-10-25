@@ -26,35 +26,40 @@ export async function POST(request: Request, ctx: Ctx) {
     });
 
     if (item.leadId) {
-      await Promise.resolve(
-        getIngestionStore().recordPostCreateAttribution({
-          orgId,
-          leadId: item.leadId,
-          channel: body.pageId ? "landing_page" : "form",
-          campaignId: item.campaignId,
-          formId,
-          pageId: body.pageId ?? null,
-          utm: body.utm ?? item.utm,
-          idempotencyKey: item.id,
-          payload: item.payload,
-          duplicate: Boolean(item.duplicateOfId),
-        }),
-      );
-      if (!item.duplicateOfId) {
-        await getWorkflowStore().dispatchTrigger({
-          orgId,
-          trigger: "form_submitted",
-          leadId: item.leadId,
-          context: { formId, campaignId: item.campaignId },
-          idempotencyPrefix: `formsub:${item.id}`,
-        });
-        await getWorkflowStore().dispatchTrigger({
-          orgId,
-          trigger: "lead_created",
-          leadId: item.leadId,
-          context: { source: "form" },
-          idempotencyPrefix: `leadcreate:${item.leadId}`,
-        });
+      try {
+        await Promise.resolve(
+          getIngestionStore().recordPostCreateAttribution({
+            orgId,
+            leadId: item.leadId,
+            channel: body.pageId ? "landing_page" : "form",
+            campaignId: item.campaignId,
+            formId,
+            pageId: body.pageId ?? null,
+            utm: body.utm ?? item.utm,
+            idempotencyKey: item.id,
+            payload: item.payload,
+            duplicate: Boolean(item.duplicateOfId),
+          }),
+        );
+        if (!item.duplicateOfId) {
+          await getWorkflowStore().dispatchTrigger({
+            orgId,
+            trigger: "form_submitted",
+            leadId: item.leadId,
+            context: { formId, campaignId: item.campaignId },
+            idempotencyPrefix: `formsub:${item.id}`,
+          });
+          await getWorkflowStore().dispatchTrigger({
+            orgId,
+            trigger: "lead_created",
+            leadId: item.leadId,
+            context: { source: "form" },
+            idempotencyPrefix: `leadcreate:${item.leadId}`,
+          });
+        }
+      } catch (sideEffect) {
+        // The lead already exists. A follow-up write must not turn the form into an error.
+        console.error("public_form_side_effect_failed", sideEffect);
       }
     }
     return jsonOk({ item }, { status: 201 });
