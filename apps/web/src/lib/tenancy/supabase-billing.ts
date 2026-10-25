@@ -628,7 +628,7 @@ export class SupabaseBillingStore {
       throw new AuthError(check.reason, "forbidden");
     }
     await this.requireFeature(orgId, "ai");
-    let q = sub.usageQuotas[USAGE_METRICS.aiJobs];
+    const q = sub.usageQuotas[USAGE_METRICS.aiJobs];
     if (q) {
       const qCheck = canConsumeQuota(q, 1);
       if (!qCheck.ok) throw new AuthError("Quota exceeded: ai_jobs", "forbidden");

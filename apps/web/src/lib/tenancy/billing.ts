@@ -34,7 +34,7 @@ export function getBillingStore(): DomainBillingStore {
 }
 
 export function isSupabaseBillingStore(
-  store: DomainBillingStore,
-): store is SupabaseBillingStore {
+  _store: DomainBillingStore,
+): _store is SupabaseBillingStore {
   return getAuthMode() === "supabase";
 }
