@@ -116,7 +116,10 @@ function Block({
       );
     case "faq": {
       const items = Array.isArray(p.items)
-        ? (p.items as Array<{ q?: string; a?: string }>)
+        ? (p.items as Array<{ q?: string; a?: string } | null>).filter(
+            (item): item is { q?: string; a?: string } =>
+              !!item && typeof item === "object",
+          )
         : [];
       return (
         <div className="space-y-3">

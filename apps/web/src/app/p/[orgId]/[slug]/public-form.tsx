@@ -24,15 +24,16 @@ export function PublicForm({
   fields,
   multiStep,
 }: Props) {
+  const safeFields = Array.isArray(fields) ? fields : [];
   const maxStep = useMemo(
-    () => Math.max(0, ...fields.map((f) => f.step)),
-    [fields],
+    () => Math.max(0, ...safeFields.map((f) => Number(f.step) || 0)),
+    [safeFields],
   );
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const visible = visibleFieldsForStep(fields, values, step);
+  const visible = visibleFieldsForStep(safeFields, values, step);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -105,7 +106,7 @@ export function PublicForm({
               }
             >
               <option value="">Select…</option>
-              {f.options.map((o) => (
+              {(Array.isArray(f.options) ? f.options : []).map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
