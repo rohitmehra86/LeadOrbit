@@ -28,7 +28,7 @@ import {
 import { AuthError, type LocalTenancyStore, type SessionUser } from "./tenancy-store";
 import { getCrmDatabase } from "./sqlite";
 import { KnowledgeStore } from "./knowledge-store";
-import { SqliteJobQueue } from "./job-queue";
+import { SqliteJobQueue, type DurableJobQueue } from "./job-queue";
 import type { RealEstateStore } from "./real-estate-store";
 
 function nowIso(): string {
@@ -51,7 +51,7 @@ export class AiStore {
     private tenancy: LocalTenancyStore,
     private db: DatabaseSync = getCrmDatabase(),
     private knowledge: KnowledgeStore,
-    private queue: SqliteJobQueue = new SqliteJobQueue(db),
+    private queue: DurableJobQueue = new SqliteJobQueue(db),
     private realEstate: RealEstateStore | null = null,
   ) {}
 
@@ -900,7 +900,7 @@ export class AiStore {
       );
 
     // Optional durable queue marker (worker can re-process analytics later)
-    this.queue.enqueue(
+    await this.queue.enqueue(
       "ai.run_turn",
       { orgId, turnId },
       { idempotencyKey: `ai-turn:${turnId}` },
