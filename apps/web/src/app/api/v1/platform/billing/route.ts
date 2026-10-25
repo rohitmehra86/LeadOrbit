@@ -34,7 +34,7 @@ export async function GET() {
     if (!user.isPlatformAdmin) {
       return jsonProblem(403, "Platform admin required");
     }
-    const events = getBillingStore().listWebhookEvents();
+    const events = await Promise.resolve(getBillingStore().listWebhookEvents());
     return jsonOk({ webhookEvents: events });
   } catch (err) {
     return fromAuthError(err);

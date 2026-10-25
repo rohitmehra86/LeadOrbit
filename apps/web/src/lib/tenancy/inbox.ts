@@ -24,6 +24,12 @@ export function getInboxStore(): InboxStore {
       new SqliteJobQueue(db),
     );
   }
-  globalInbox.__leadorbitInbox.setBillingStore(getBillingStore());
+  if (getAuthMode() !== "supabase") {
+    globalInbox.__leadorbitInbox.setBillingStore(
+      getBillingStore() as import("@leadorbit/db").BillingStore,
+    );
+  } else {
+    globalInbox.__leadorbitInbox.setBillingStore(null);
+  }
   return globalInbox.__leadorbitInbox;
 }

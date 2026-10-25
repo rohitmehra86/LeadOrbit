@@ -12,7 +12,11 @@ export async function POST(request: Request) {
     request.headers.get("Stripe-Signature") ??
     "";
 
-  let parsed: { id?: string; type?: string; data?: { object?: { metadata?: { orgId?: string } } } };
+  let parsed: {
+    id?: string;
+    type?: string;
+    data?: { object?: { metadata?: { orgId?: string }; id?: string } };
+  };
   try {
     parsed = JSON.parse(rawBody) as typeof parsed;
   } catch {
@@ -25,15 +29,18 @@ export async function POST(request: Request) {
     return jsonProblem(400, "Missing event id/type");
   }
 
+  // Claimed orgId is a hint only — the store matches it to a stored checkout.
   const orgId = parsed.data?.object?.metadata?.orgId ?? null;
-  const result = getBillingStore().processVerifiedWebhook({
-    provider: "stripe",
-    eventId,
-    eventType,
-    orgId,
-    rawBody,
-    signatureHeader,
-  });
+  const result = await Promise.resolve(
+    getBillingStore().processVerifiedWebhook({
+      provider: "stripe",
+      eventId,
+      eventType,
+      orgId,
+      rawBody,
+      signatureHeader,
+    }),
+  );
 
   if (!result.accepted) {
     return jsonProblem(400, "Webhook rejected", result.detail);

@@ -26,14 +26,16 @@ export async function POST(request: Request) {
   const eventType = parsed.event ?? "unknown";
   const orgId = parsed.payload?.payment?.entity?.notes?.orgId ?? null;
 
-  const result = getBillingStore().processVerifiedWebhook({
-    provider: "razorpay",
-    eventId,
-    eventType,
-    orgId,
-    rawBody,
-    signatureHeader,
-  });
+  const result = await Promise.resolve(
+    getBillingStore().processVerifiedWebhook({
+      provider: "razorpay",
+      eventId,
+      eventType,
+      orgId,
+      rawBody,
+      signatureHeader,
+    }),
+  );
 
   if (!result.accepted) {
     return jsonProblem(400, "Webhook rejected", result.detail);

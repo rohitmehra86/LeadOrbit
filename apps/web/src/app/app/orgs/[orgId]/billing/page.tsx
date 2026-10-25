@@ -18,7 +18,7 @@ export default async function BillingPage({ params }: Props) {
   const subscription = await store.getSubscription(user, orgId);
   const invoices = await store.listInvoices(user, orgId);
   const providers = await store.providerStatus(user, orgId);
-  const plans = store.listPlans();
+  const plans = await Promise.resolve(store.listPlans());
 
   return (
     <div className="flex flex-col gap-6">

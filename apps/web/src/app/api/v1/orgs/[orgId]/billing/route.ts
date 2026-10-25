@@ -13,11 +13,12 @@ export async function GET(_request: Request, ctx: Ctx) {
     const subscription = await store.getSubscription(user, orgId);
     const invoices = await store.listInvoices(user, orgId);
     const providers = await store.providerStatus(user, orgId);
+    const listedPlans = await Promise.resolve(store.listPlans());
     return jsonOk({
       subscription,
       invoices,
       providers,
-      plans: store.listPlans().length ? store.listPlans() : DEFAULT_PLANS,
+      plans: listedPlans.length ? listedPlans : DEFAULT_PLANS,
     });
   } catch (err) {
     return fromAuthError(err);
@@ -69,7 +70,7 @@ export async function POST(request: Request, ctx: Ctx) {
         body.atPeriodEnd ?? true,
       );
       return jsonOk({ subscription: sub });
-    }
+      }
 
     return jsonOk({ error: "Unknown action" }, { status: 400 });
   } catch (err) {
