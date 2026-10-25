@@ -1,1 +1,4 @@
-__WORKSPACE__/apps/web/src/lib/tenancy/supabase-billing.ts
+export function getSupabaseBillingStore(): SupabaseBillingStore {
+  if (!singleton) singleton = new SupabaseBillingStore();
+  return singleton;
+}
