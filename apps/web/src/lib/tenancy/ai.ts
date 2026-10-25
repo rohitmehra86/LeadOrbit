@@ -2,7 +2,7 @@ import {
   AiStore,
   getAuthMode,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
   type BillingStore,
 } from "@leadorbit/db";
@@ -24,7 +24,7 @@ export function getAiStore(): AiStore {
       getLocalTenancyStore(),
       db,
       getKnowledgeStore(),
-      new SqliteJobQueue(db),
+      getJobQueue(),
     );
   }
   if (getAuthMode() !== "supabase") {

@@ -2,7 +2,7 @@ import {
   WorkflowStore,
   getAuthMode,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
 } from "@leadorbit/db";
 import { getCrmStore } from "./crm";
@@ -21,7 +21,7 @@ export function getWorkflowStore(): WorkflowStore {
     const store = new WorkflowStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
       getCrmStore(),
     );
     globalWf.__leadorbitWorkflows = store;

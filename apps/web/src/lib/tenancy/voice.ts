@@ -1,7 +1,7 @@
 import {
   VoiceStore,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
 } from "@leadorbit/db";
 import { getCalendarStore } from "./calendar";
@@ -16,7 +16,7 @@ export function getVoiceStore(): VoiceStore {
     const store = new VoiceStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
       getCalendarStore(),
     );
     globalVoice.__leadorbitVoice = store;

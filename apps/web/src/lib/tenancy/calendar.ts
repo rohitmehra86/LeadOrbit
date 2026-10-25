@@ -1,7 +1,7 @@
 import {
   CalendarStore,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
   getAuthMode,
 } from "@leadorbit/db";
@@ -21,7 +21,7 @@ export function getCalendarStore(): CalendarStore {
     globalCal.__leadorbitCalendar = new CalendarStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
     );
   }
   return globalCal.__leadorbitCalendar;

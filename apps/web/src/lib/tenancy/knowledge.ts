@@ -1,7 +1,7 @@
 import {
   KnowledgeStore,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
 } from "@leadorbit/db";
 
@@ -15,7 +15,7 @@ export function getKnowledgeStore(): KnowledgeStore {
     globalKb.__leadorbitKnowledge = new KnowledgeStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
     );
   }
   return globalKb.__leadorbitKnowledge;

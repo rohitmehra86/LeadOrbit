@@ -2,7 +2,7 @@ import {
   InboxStore,
   getAuthMode,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
 } from "@leadorbit/db";
 import { getSupabaseInboxStore } from "./supabase-inbox";
@@ -21,7 +21,7 @@ export function getInboxStore(): InboxStore {
     globalInbox.__leadorbitInbox = new InboxStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
     );
   }
   if (getAuthMode() !== "supabase") {

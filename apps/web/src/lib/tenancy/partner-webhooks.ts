@@ -1,7 +1,7 @@
 import {
   PartnerWebhookStore,
   getLocalTenancyStore,
-  SqliteJobQueue,
+  getJobQueue,
   getCrmDatabase,
 } from "@leadorbit/db";
 
@@ -15,7 +15,7 @@ export function getPartnerWebhookStore(): PartnerWebhookStore {
     globalPw.__leadorbitPartnerWebhooks = new PartnerWebhookStore(
       getLocalTenancyStore(),
       db,
-      new SqliteJobQueue(db),
+      getJobQueue(),
     );
   }
   return globalPw.__leadorbitPartnerWebhooks;
