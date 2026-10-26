@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   let queue: Record<string, number> | undefined;
   if (deep) {
     try {
-      queue = getJobQueue().countByStatus();
+      queue = await Promise.resolve(getJobQueue().countByStatus());
     } catch (e) {
       log.warn("queue health probe failed", {
         detail: e instanceof Error ? e.message : "unknown",

@@ -13,7 +13,7 @@ export async function GET() {
     if (!user.isPlatformAdmin) {
       return jsonOk({ error: "Platform admin required" }, { status: 403 });
     }
-    const counts = getJobQueue().countByStatus();
+    const counts = await Promise.resolve(getJobQueue().countByStatus());
     const dead = counts.dead_letter ?? 0;
     const pending = counts.pending ?? 0;
     log.info("queue snapshot", {
