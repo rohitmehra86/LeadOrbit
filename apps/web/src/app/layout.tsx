@@ -1,24 +1,14 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Source_Serif_4, Geist_Mono } from "next/font/google";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-sans/700.css";
+import "@fontsource/source-serif-4/600.css";
+import "@fontsource/source-serif-4/700.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./globals.css";
 import { MetaPixel } from "@/components/meta-pixel";
-
-const ibmPlex = IBM_Plex_Sans({
-  variable: "--font-ibm-plex",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "LeadOrbit — AI Lead & Revenue Cloud",
@@ -33,9 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${ibmPlex.variable} ${sourceSerif.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <MetaPixel />
         {children}
       </body>
