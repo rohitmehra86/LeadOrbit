@@ -747,7 +747,7 @@ export function MetaAiLaunchWizard({ orgId }: Props) {
               <div>
                 <dt>adset_id</dt>
                 <dd>
-                  <code>{metaIds.ad_id ?? "—"}</code>
+                  <code>{metaIds.adset_id ?? "—"}</code>
                 </dd>
               </div>
               <div>
