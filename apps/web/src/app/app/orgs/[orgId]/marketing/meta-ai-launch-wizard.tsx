@@ -1,1 +1,1 @@
-PLACEHOLDER
+@file:///tmp/wizard-only-content.txt
