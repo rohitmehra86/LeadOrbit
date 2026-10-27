@@ -1,1 +1,1 @@
-@file:///tmp/wizard-only-content.txt
+@/tmp/wizard-only-content.txt
