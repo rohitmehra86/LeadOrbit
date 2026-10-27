@@ -1,1 +1,1 @@
-{{FILE:/tmp/wizard-only-content.txt}}
+PLACEHOLDER_WILL_REPLACE
