@@ -1,5 +1,6 @@
 /**
  * Meta Marketing API OAuth helpers (platform APP_ID/SECRET + per-org user token).
+ * Connect Meta uses Facebook Login for Business (`config_id`), not consumer Login scopes alone.
  */
 
 import {
@@ -8,18 +9,73 @@ import {
   type MetaAdsCredentialStatus,
 } from "./meta-ads";
 
-export const META_OAUTH_SCOPES = [
+/**
+ * Permissions LeadOrbit needs from the Login for Business configuration
+ * (Meta App Dashboard → Facebook Login for Business → configurations).
+ * Set these on the configuration itself; do not rely on `scope` in the dialog URL.
+ */
+export const META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS = [
   "ads_management",
   "ads_read",
   "pages_show_list",
   "pages_read_engagement",
+  "pages_manage_ads",
   "business_management",
-].join(",");
+  "leads_retrieval",
+] as const;
 
+/** @deprecated Prefer Login for Business config permissions; kept for docs/tests. */
+export const META_OAUTH_SCOPES =
+  META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS.join(",");
+
+/** Numeric Meta Login for Business configuration id (e.g. LeadOrbitConfig). */
+export function readMetaLoginConfigId(
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const value = env.META_ADS_LOGIN_CONFIG_ID?.trim();
+  return value || null;
+}
+
+export function isValidMetaLoginConfigId(value: string): boolean {
+  return /^\d{5,32}$/.test(value.trim());
+}
+
+export function validateMetaLoginConfigId(
+  env: NodeJS.ProcessEnv = process.env,
+): {
+  ok: boolean;
+  configId: string | null;
+  detail: string;
+} {
+  const configId = readMetaLoginConfigId(env);
+  if (!configId) {
+    return {
+      ok: false,
+      configId: null,
+      detail:
+        "META_ADS_LOGIN_CONFIG_ID missing — set the Facebook Login for Business configuration id",
+    };
+  }
+  if (!isValidMetaLoginConfigId(configId)) {
+    return {
+      ok: false,
+      configId,
+      detail:
+        "META_ADS_LOGIN_CONFIG_ID must be the numeric configuration id from Meta App Dashboard",
+    };
+  }
+  return {
+    ok: true,
+    configId,
+    detail: "Login for Business configuration id ready",
+  };
+}
 export type MetaOrgConnectionInput = {
   accessToken?: string | null;
   adAccountId?: string | null;
   pageId?: string | null;
+  pixelId?: string | null;
+  leadGenFormId?: string | null;
   tokenExpiresAt?: string | null;
 };
 
@@ -49,8 +105,10 @@ export function metaOAuthRedirectUri(env: NodeJS.ProcessEnv = process.env): stri
 export function metaOAuthSetupHints(): string[] {
   return [
     ...metaAdsSetupHints().filter((h) => !/ACCESS_TOKEN|AD_ACCOUNT|PAGE_ID/.test(h)),
+    "Set META_ADS_LOGIN_CONFIG_ID to the Facebook Login for Business configuration id (LeadOrbitConfig)",
     "Add Valid OAuth Redirect URI in Meta App → Facebook Login → Settings",
     `Redirect URI: ${metaOAuthRedirectUri()}`,
+    `Login for Business config permissions: ${META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS.join(", ")}`,
     "Customers Connect Meta in LeadOrbit (per org) — no per-tenant secrets on Vercel",
     "External in Meta: App Live, Privacy Policy URL, Ad Account billing",
   ];
@@ -65,12 +123,14 @@ export function resolveMetaAdsCredentials(
   const orgToken = org?.accessToken?.trim() || null;
   const orgAct = org?.adAccountId?.trim() || null;
   const orgPage = org?.pageId?.trim() || null;
+  const orgPixel = org?.pixelId?.trim() || null;
+  const orgForm = org?.leadGenFormId?.trim() || null;
 
   const accessToken = orgToken || fromEnv.accessToken;
   const adAccountId = orgAct || fromEnv.adAccountId;
   const pageId = orgPage || fromEnv.pageId;
-  const pixelId = fromEnv.pixelId;
-  const leadGenFormId = fromEnv.leadGenFormId;
+  const pixelId = orgPixel || fromEnv.pixelId;
+  const leadGenFormId = orgForm || fromEnv.leadGenFormId;
 
   const platformAppReady = Boolean(fromEnv.appId && fromEnv.appSecret);
   let source: MetaRuntimeCredentials["source"] = "none";
@@ -93,6 +153,7 @@ export function resolveMetaAdsCredentials(
 
 export function metaRuntimeCredentialStatus(
   creds: MetaRuntimeCredentials,
+  env: NodeJS.ProcessEnv = process.env,
 ): {
   status: MetaAdsCredentialStatus;
   detail: string;
@@ -103,12 +164,15 @@ export function metaRuntimeCredentialStatus(
   const present = {
     META_ADS_APP_ID: Boolean(creds.appId),
     META_ADS_APP_SECRET: Boolean(creds.appSecret),
+    META_ADS_LOGIN_CONFIG_ID: Boolean(readMetaLoginConfigId(env)),
     META_ADS_ACCESS_TOKEN: Boolean(creds.accessToken),
     META_ADS_AD_ACCOUNT_ID: Boolean(creds.adAccountId),
     META_ADS_PAGE_ID: Boolean(creds.pageId),
     META_ADS_PIXEL_ID: Boolean(creds.pixelId),
     META_ADS_LEAD_GEN_FORM_ID: Boolean(creds.leadGenFormId),
     ORG_META_CONNECTION: creds.source === "org",
+    ORG_META_PIXEL: Boolean(creds.pixelId),
+    ORG_META_LEAD_FORM: Boolean(creds.leadGenFormId),
   };
   const hints = metaOAuthSetupHints();
   const ready = Boolean(
@@ -168,33 +232,49 @@ export function buildMetaOAuthStartUrl(input: {
   detail: string;
   url: string | null;
   redirectUri: string;
+  configId: string | null;
   setupHints: string[];
 } {
   const env = input.env ?? process.env;
   const hints = metaOAuthSetupHints();
   const appId = env.META_ADS_APP_ID?.trim();
   const redirectUri = input.redirectUri || metaOAuthRedirectUri(env);
+  const configCheck = validateMetaLoginConfigId(env);
   if (!appId || !env.META_ADS_APP_SECRET?.trim()) {
     return {
       status: "pending_configuration",
       detail: "META_ADS_APP_ID and META_ADS_APP_SECRET required to start OAuth",
       url: null,
       redirectUri,
+      configId: configCheck.configId,
       setupHints: hints,
     };
   }
+  if (!configCheck.ok || !configCheck.configId) {
+    return {
+      status: "pending_configuration",
+      detail: configCheck.detail,
+      url: null,
+      redirectUri,
+      configId: configCheck.configId,
+      setupHints: hints,
+    };
+  }
+  // Facebook Login for Business: permissions come from the configuration.
+  // Meta recommends omitting `scope` when `config_id` is present.
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
     state: input.state,
     response_type: "code",
-    scope: META_OAUTH_SCOPES,
+    config_id: configCheck.configId,
   });
   return {
     status: "ready",
-    detail: "OAuth start URL ready",
+    detail: "Facebook Login for Business OAuth start URL ready",
     url: `https://www.facebook.com/v21.0/dialog/oauth?${params}`,
     redirectUri,
+    configId: configCheck.configId,
     setupHints: hints,
   };
 }
@@ -337,6 +417,75 @@ export async function fetchMetaPages(
       ok: false,
       items: [],
       error: raw.error?.message ?? `Pages HTTP ${res.status}`,
+    };
+  }
+  return { ok: true, items: raw.data ?? [] };
+}
+
+export type MetaPixelOption = {
+  id: string;
+  name: string;
+};
+
+export type MetaLeadFormOption = {
+  id: string;
+  name: string;
+  status?: string;
+};
+
+function normalizeActId(id: string): string {
+  const t = id.trim();
+  return t.startsWith("act_") ? t : `act_${t}`;
+}
+
+/** List Meta Pixels for an ad account (website OUTCOME_LEADS promoted_object). */
+export async function fetchMetaAdAccountPixels(
+  accessToken: string,
+  adAccountId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaPixelOption[]; error?: string }> {
+  const act = normalizeActId(adAccountId);
+  const url = new URL(`https://graph.facebook.com/v21.0/${act}/adspixels`);
+  url.searchParams.set("fields", "id,name");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaPixelOption[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Pixels HTTP ${res.status}`,
+    };
+  }
+  return { ok: true, items: raw.data ?? [] };
+}
+
+/** List Instant Forms on a Facebook Page (ON_AD lead destination). */
+export async function fetchMetaPageLeadForms(
+  accessToken: string,
+  pageId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaLeadFormOption[]; error?: string }> {
+  const url = new URL(
+    `https://graph.facebook.com/v21.0/${pageId.trim()}/leadgen_forms`,
+  );
+  url.searchParams.set("fields", "id,name,status");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaLeadFormOption[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Lead forms HTTP ${res.status}`,
     };
   }
   return { ok: true, items: raw.data ?? [] };

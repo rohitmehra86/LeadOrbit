@@ -50,23 +50,30 @@ Optional later: OAuth redirect URI on the Meta App pointing at your LeadOrbit do
 
 | Name | What to paste |
 |------|----------------|
-| `META_ADS_APP_ID` | Meta App ID (**required** for Connect Meta OAuth) |
-| `META_ADS_APP_SECRET` | Meta App Secret (**required**) |
+| `META_ADS_APP_ID` | Meta App ID (**required** for Connect Meta OAuth) — LeadOrbitGamingApp: `1828424055013488` |
+| `META_ADS_APP_SECRET` | Meta App Secret (**required**, server-only — never expose to the browser) |
+| `META_ADS_LOGIN_CONFIG_ID` | Facebook Login for Business configuration id (**required** for Connect Meta) — LeadOrbitConfig: `1436209141980934` |
 | `META_ADS_ACCESS_TOKEN` | Optional demo fallback if org has not Connected Meta |
 | `META_ADS_AD_ACCOUNT_ID` | Optional demo fallback (`act_123…` or numeric) |
 | `META_ADS_PAGE_ID` | Optional demo fallback |
-| `META_ADS_PIXEL_ID` | **Required for website lead ads** (landing page URL + OUTCOME_LEADS) — Events Manager Pixel ID; also loads the public site pixel in `apps/web` layout |
-| `META_ADS_LEAD_GEN_FORM_ID` | Optional — instant Form (ON_AD) lead ads only |
-| `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{NEXT_PUBLIC_APP_URL}/api/v1/meta/oauth/callback` |
+| `META_ADS_PIXEL_ID` | Optional env fallback for website lead ads — prefer selecting Pixel in **Connect Meta** (stored per org). Also loads the public site pixel in `apps/web` layout when set |
+| `META_ADS_LEAD_GEN_FORM_ID` | Optional env fallback for Instant Form — prefer selecting a Page lead form in **Connect Meta** |
+| `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{NEXT_PUBLIC_APP_URL}/api/v1/meta/oauth/callback` — production: `https://leadorbit-delta.vercel.app/api/v1/meta/oauth/callback` |
 | `META_ADS_TOKEN_ENCRYPTION_KEY` | Recommended stable key for per-org token ciphertext |
 
 Also keep `NEXT_PUBLIC_APP_URL` set to your production URL (e.g. `https://leadorbit-delta.vercel.app`).
 
-**Preferred:** customers use **Settings → Connect Meta** (OAuth). Org token/account/page override the three optional env vars above.  
+**Preferred:** customers use **Settings → Connect Meta** (Facebook Login for Business). LeadOrbit builds the dialog URL with `config_id` from `META_ADS_LOGIN_CONFIG_ID` (permissions come from that configuration — do not put App Secret or tokens in the browser). Org token/account/page/**pixel**/form override the optional env vars above.  
+Apply migration `00023_meta_connection_lead_assets.sql` for Pixel / Instant Form columns (manual — do not auto-apply).  
 **Meta App → Facebook Login → Valid OAuth Redirect URIs** must include  
 `https://leadorbit-delta.vercel.app/api/v1/meta/oauth/callback` (and localhost for dev).
 
+**Login for Business configuration (`LeadOrbitConfig`) should grant at least:**  
+`ads_management`, `ads_read`, `pages_show_list`, `pages_read_engagement`, `pages_manage_ads`, `business_management`, `leads_retrieval`.
+
 Do **not** invent values. Do **not** paste secrets into chat. Connect Meta stores the token encrypted server-side.
+
+Full expert demo walkthrough: [`META_MARKETING_DEMO_CHECKLIST.md`](./META_MARKETING_DEMO_CHECKLIST.md).
 
 ---
 

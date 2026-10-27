@@ -24,6 +24,7 @@ export async function POST(_request: Request, ctx: Ctx) {
           status: "pending_configuration",
           url: null,
           redirectUri: start.redirectUri,
+          configIdPresent: Boolean(start.configId),
           detail: start.detail,
           setupHints: start.setupHints,
         },
@@ -34,6 +35,7 @@ export async function POST(_request: Request, ctx: Ctx) {
       status: "ready",
       url: start.url,
       redirectUri: start.redirectUri,
+      configIdPresent: Boolean(start.configId),
       detail: start.detail,
       setupHints: start.setupHints,
     });
