@@ -29,10 +29,12 @@ export async function GET(_request: Request, ctx: Ctx) {
             accessToken: secrets.accessToken,
             adAccountId: secrets.adAccountId,
             pageId: secrets.pageId,
+            pixelId: secrets.pixelId,
+            leadGenFormId: secrets.leadGenFormId,
           }
         : null,
     );
-    const creds = metaRuntimeCredentialStatus(runtime);
+    const creds = metaRuntimeCredentialStatus(runtime, process.env);
 
     let connectionStatus:
       | "connected"
@@ -59,6 +61,8 @@ export async function GET(_request: Request, ctx: Ctx) {
               status: connection.status,
               adAccountId: connection.adAccountId,
               pageId: connection.pageId,
+              pixelId: connection.pixelId,
+              leadGenFormId: connection.leadGenFormId,
               connectedAt: connection.connectedAt,
               tokenExpiresAt: connection.tokenExpiresAt,
               lastError: connection.lastError,

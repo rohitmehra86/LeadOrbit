@@ -10,13 +10,14 @@ Use this with a digital marketing expert. Creates **PAUSED** Meta objects by def
 |----------|----------------|
 | `META_ADS_APP_ID` | OAuth + API (LeadOrbitGamingApp: `1828424055013488`) |
 | `META_ADS_APP_SECRET` | OAuth + API (server-only) |
-| `META_ADS_LOGIN_CONFIG_ID` | Facebook Login for Business config id (LeadOrbitConfig: `1436209141980934`) |
+| `META_ADS_LOGIN_CONFIG_ID` | Login for Business **User access token** config id |
 | `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{NEXT_PUBLIC_APP_URL}/api/v1/meta/oauth/callback` |
 | `META_ADS_TOKEN_ENCRYPTION_KEY` | Per-org token ciphertext |
 | `NEXT_PUBLIC_APP_URL` | OAuth redirect + landing URLs |
-| `META_ADS_ACCESS_TOKEN` / `META_ADS_AD_ACCOUNT_ID` / `META_ADS_PAGE_ID` | Optional env fallback if org has not Connected Meta |
-| `META_ADS_PIXEL_ID` | Optional env fallback for website leads |
-| `META_ADS_LEAD_GEN_FORM_ID` | Optional env fallback for Instant Form |
+| `META_ADS_ALLOW_ENV_FALLBACK` | Optional `true` for platform demo only |
+| `META_ADS_ACCESS_TOKEN` / `META_ADS_AD_ACCOUNT_ID` / `META_ADS_PAGE_ID` | Demo only when env fallback is enabled |
+| `META_ADS_PIXEL_ID` | Optional assist for website leads |
+| `META_ADS_LEAD_GEN_FORM_ID` | Optional assist for Instant Form |
 | `LLM_API_KEY` or `OPENAI_API_KEY` | AI ad copy (optional; template fallback without key) |
 | `LLM_BASE_URL` / `LLM_MODEL` | Optional OpenAI-compatible overrides |
 
