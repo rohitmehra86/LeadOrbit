@@ -2,10 +2,11 @@ import type { SessionUser } from "@leadorbit/db";
 import {
   assertMetaLaunchApproved,
   buildMetaLaunchPlan,
-  metaAdsCredentialStatus,
   inferMetaResumeAfterPartialFailure,
+  metaRuntimeCredentialStatus,
   parseMetaIdsFromAdCopy,
   publishMetaLaunchPlan,
+  resolveMetaAdsCredentials,
   type MetaLaunchBrief,
   type MetaLaunchPlan,
   type MetaPublishResult,
@@ -25,12 +26,12 @@ export type MetaAiLaunchDraft = {
     published: boolean;
   };
   metaStatus: {
-    credentialStatus: ReturnType<typeof metaAdsCredentialStatus>["status"];
+    credentialStatus: ReturnType<typeof metaRuntimeCredentialStatus>["status"];
     detail: string;
     present: Record<string, boolean>;
     setupHints: string[];
     /** Alias for credentialStatus (compat). */
-    status: ReturnType<typeof metaAdsCredentialStatus>["status"];
+    status: ReturnType<typeof metaRuntimeCredentialStatus>["status"];
   };
 };
 
@@ -56,15 +57,23 @@ export async function prepareMetaAiLaunch(
     publicPath = live.publicPath;
   }
 
-  const absoluteLanding = brief.landingPageUrl?.trim()
-    ? brief.landingPageUrl.trim()
-    : opts?.appOrigin
-      ? `${opts.appOrigin.replace(/\/$/, "")}${publicPath}`
-      : publicPath;
+  const orgSecrets = await getMetaConnectionSecrets(actor, orgId);
+  const wantsInstantForm = Boolean(brief.leadGenFormId?.trim());
+  const absoluteLanding = wantsInstantForm
+    ? null
+    : brief.landingPageUrl?.trim()
+      ? brief.landingPageUrl.trim()
+      : opts?.appOrigin
+        ? `${opts.appOrigin.replace(/\/$/, "")}${publicPath}`
+        : publicPath;
 
   const plan = buildMetaLaunchPlan({
     ...brief,
     landingPageUrl: absoluteLanding,
+    leadGenFormId:
+      brief.leadGenFormId?.trim() ||
+      (wantsInstantForm ? orgSecrets?.leadGenFormId : null) ||
+      null,
   });
 
   // Persist plan snapshot on campaign via update adCopy note (lightweight)
@@ -79,7 +88,19 @@ export async function prepareMetaAiLaunch(
     ].join("\n"),
   });
 
-  const creds = metaAdsCredentialStatus();
+  const runtime = resolveMetaAdsCredentials(
+    process.env,
+    orgSecrets
+      ? {
+          accessToken: orgSecrets.accessToken,
+          adAccountId: orgSecrets.adAccountId,
+          pageId: orgSecrets.pageId,
+          pixelId: orgSecrets.pixelId,
+          leadGenFormId: orgSecrets.leadGenFormId,
+        }
+      : null,
+  );
+  const creds = metaRuntimeCredentialStatus(runtime, process.env);
   return {
     plan,
     local: {
@@ -139,6 +160,8 @@ export async function approveMetaAiLaunch(
           accessToken: orgSecrets.accessToken,
           adAccountId: orgSecrets.adAccountId,
           pageId: orgSecrets.pageId,
+          pixelId: orgSecrets.pixelId,
+          leadGenFormId: orgSecrets.leadGenFormId,
         }
       : null,
     resumeExternal,
