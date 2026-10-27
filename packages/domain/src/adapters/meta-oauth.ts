@@ -9,6 +9,11 @@ import {
   type MetaAdsCredentialStatus,
 } from "./meta-ads";
 
+/** Keep inline (avoid circular import with meta-ads). */
+function allowMetaAdsEnvFallback(env: NodeJS.ProcessEnv): boolean {
+  return env.META_ADS_ALLOW_ENV_FALLBACK?.trim().toLowerCase() === "true";
+}
+
 /**
  * Permissions LeadOrbit needs from the Login for Business configuration
  * (Meta App Dashboard → Facebook Login for Business → configurations).
@@ -104,38 +109,49 @@ export function metaOAuthRedirectUri(env: NodeJS.ProcessEnv = process.env): stri
 
 export function metaOAuthSetupHints(): string[] {
   return [
-    ...metaAdsSetupHints().filter((h) => !/ACCESS_TOKEN|AD_ACCOUNT|PAGE_ID/.test(h)),
-    "Set META_ADS_LOGIN_CONFIG_ID to the Facebook Login for Business configuration id (LeadOrbitConfig)",
+    ...metaAdsSetupHints().filter((h) => !/ALLOW_ENV_FALLBACK|ACCESS_TOKEN|AD_ACCOUNT|PAGE_ID/.test(h)),
+    "Set META_ADS_LOGIN_CONFIG_ID to a User access token Login for Business configuration id",
     "Add Valid OAuth Redirect URI in Meta App → Facebook Login → Settings",
     `Redirect URI: ${metaOAuthRedirectUri()}`,
-    `Login for Business config permissions: ${META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS.join(", ")}`,
-    "Customers Connect Meta in LeadOrbit (per org) — no per-tenant secrets on Vercel",
+    `Login for Business permissions: ${META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS.join(", ")}`,
+    "Connect Meta per organization (OAuth) — primary path; no customer secrets on Vercel",
     "External in Meta: App Live, Privacy Policy URL, Ad Account billing",
   ];
 }
 
-/** Resolve credentials: org connection overrides env token/account/page; APP_* always from env. */
+/**
+ * Resolve credentials for Marketing API.
+ * Primary: org Connect Meta (token + ad account + Page).
+ * Env ACCESS_TOKEN / AD_ACCOUNT / PAGE only when META_ADS_ALLOW_ENV_FALLBACK=true (platform demo).
+ * APP_ID / APP_SECRET / LOGIN_CONFIG_ID always from env.
+ */
 export function resolveMetaAdsCredentials(
   env: NodeJS.ProcessEnv = process.env,
   org?: Partial<MetaOrgConnectionInput> | null,
 ): MetaRuntimeCredentials {
   const fromEnv = readMetaAdsCredentialsFromEnv(env);
+  const allowEnvFallback = allowMetaAdsEnvFallback(env);
   const orgToken = org?.accessToken?.trim() || null;
   const orgAct = org?.adAccountId?.trim() || null;
   const orgPage = org?.pageId?.trim() || null;
   const orgPixel = org?.pixelId?.trim() || null;
   const orgForm = org?.leadGenFormId?.trim() || null;
 
-  const accessToken = orgToken || fromEnv.accessToken;
-  const adAccountId = orgAct || fromEnv.adAccountId;
-  const pageId = orgPage || fromEnv.pageId;
+  const envToken = allowEnvFallback ? fromEnv.accessToken : null;
+  const envAct = allowEnvFallback ? fromEnv.adAccountId : null;
+  const envPage = allowEnvFallback ? fromEnv.pageId : null;
+
+  const accessToken = orgToken || envToken;
+  const adAccountId = orgAct || envAct;
+  const pageId = orgPage || envPage;
+  // Pixel/form: org first; env allowed as soft assist for website/instant form assets
   const pixelId = orgPixel || fromEnv.pixelId;
   const leadGenFormId = orgForm || fromEnv.leadGenFormId;
 
   const platformAppReady = Boolean(fromEnv.appId && fromEnv.appSecret);
   let source: MetaRuntimeCredentials["source"] = "none";
   if (orgToken && orgAct && orgPage) source = "org";
-  else if (fromEnv.accessToken && fromEnv.adAccountId && fromEnv.pageId) source = "env";
+  else if (allowEnvFallback && envToken && envAct && envPage) source = "env";
   else if (accessToken || adAccountId || pageId) source = "mixed";
 
   return {
@@ -161,6 +177,7 @@ export function metaRuntimeCredentialStatus(
   setupHints: string[];
   source: MetaRuntimeCredentials["source"];
 } {
+  const allowEnvFallback = allowMetaAdsEnvFallback(env);
   const present = {
     META_ADS_APP_ID: Boolean(creds.appId),
     META_ADS_APP_SECRET: Boolean(creds.appSecret),
@@ -170,6 +187,7 @@ export function metaRuntimeCredentialStatus(
     META_ADS_PAGE_ID: Boolean(creds.pageId),
     META_ADS_PIXEL_ID: Boolean(creds.pixelId),
     META_ADS_LEAD_GEN_FORM_ID: Boolean(creds.leadGenFormId),
+    META_ADS_ALLOW_ENV_FALLBACK: allowEnvFallback,
     ORG_META_CONNECTION: creds.source === "org",
     ORG_META_PIXEL: Boolean(creds.pixelId),
     ORG_META_LEAD_FORM: Boolean(creds.leadGenFormId),
@@ -180,15 +198,16 @@ export function metaRuntimeCredentialStatus(
       creds.appSecret &&
       creds.accessToken &&
       creds.adAccountId &&
-      creds.pageId,
+      creds.pageId &&
+      (creds.source === "org" || (allowEnvFallback && creds.source === "env")),
   );
   if (ready) {
     return {
       status: "ready",
       detail:
         creds.source === "org"
-          ? "Org Meta connection ready — Approve will call Marketing API"
-          : "Env META_ADS_* ready — Approve will call Marketing API (or Connect Meta per org)",
+          ? "Connect Meta ready — Approve will create on this org’s ad account"
+          : "Platform env fallback ready (META_ADS_ALLOW_ENV_FALLBACK) — demo only; customers should Connect Meta",
       present,
       setupHints: hints,
       source: creds.source,
@@ -213,10 +232,20 @@ export function metaRuntimeCredentialStatus(
       source: creds.source,
     };
   }
+  if (!readMetaLoginConfigId(env)) {
+    return {
+      status: "pending_configuration",
+      detail:
+        "META_ADS_LOGIN_CONFIG_ID missing — set the Facebook Login for Business configuration id",
+      present,
+      setupHints: hints,
+      source: creds.source,
+    };
+  }
   return {
     status: "pending_configuration",
     detail:
-      "Connect Meta for this organization (OAuth) or set global META_ADS_ACCESS_TOKEN + AD_ACCOUNT_ID + PAGE_ID",
+      "Connect Meta for this organization (Settings → Connect Meta). Env ACCESS_TOKEN fallback is off unless META_ADS_ALLOW_ENV_FALLBACK=true",
     present,
     setupHints: hints,
     source: creds.source,
