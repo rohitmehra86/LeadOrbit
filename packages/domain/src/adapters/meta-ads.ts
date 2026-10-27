@@ -47,7 +47,7 @@ export type MetaLaunchPlan = {
   callToAction: "LEARN_MORE" | "SIGN_UP";
   landingPageUrl: string | null;
   creativeImageUrl: string | null;
-  /** Optional — instant Form destination (ON_AD). Do not invent; set via env or brief. */
+  /** Optional — Instant Form destination (ON_AD). Do not invent; set via env or brief. */
   leadGenFormId?: string | null;
   enableSpend: boolean;
   checklist: string[];
@@ -104,8 +104,8 @@ export function metaAdsSetupHints(): string[] {
     "Set META_ADS_ACCESS_TOKEN (long-lived system user token)",
     "Set META_ADS_AD_ACCOUNT_ID (act_… or numeric id)",
     "Set META_ADS_PAGE_ID for the Page that owns the ads",
-    "Website lead ads: set META_ADS_PIXEL_ID (Events Manager) — required with landingPageUrl",
-    "Instant Form lead ads: set META_ADS_LEAD_GEN_FORM_ID or pass leadGenFormId on the plan",
+    "Website lead ads: select Pixel in Connect Meta or set META_ADS_PIXEL_ID — required with landingPageUrl",
+    "Instant Form lead ads: select form in Connect Meta or set META_ADS_LEAD_GEN_FORM_ID / plan.leadGenFormId",
   ];
 }
 
@@ -355,18 +355,16 @@ export async function publishMetaLaunchPlan(
       : undefined;
 
   try {
-    const envCreds = readMetaAdsCredentialsFromEnv(env);
+    // Only pass connection form id into assets when the plan did not choose website.
+    // Website plans keep landingPageUrl and must not be forced onto Instant Form.
     const leadAssets = {
       pageId,
-      pixelId:
-        deps?.orgCredentials?.pixelId?.trim() ||
-        envCreds.pixelId ||
-        null,
-      leadGenFormId:
-        plan.leadGenFormId?.trim() ||
-        deps?.orgCredentials?.leadGenFormId?.trim() ||
-        envCreds.leadGenFormId ||
-        null,
+      pixelId: runtime.pixelId,
+      leadGenFormId: plan.leadGenFormId?.trim()
+        ? plan.leadGenFormId.trim()
+        : plan.landingPageUrl?.trim()
+          ? null
+          : runtime.leadGenFormId,
     };
 
     const leadCheck = validateMetaLeadPublishConfig(plan, leadAssets);
@@ -405,8 +403,12 @@ export async function publishMetaLaunchPlan(
         return {
           status: "error",
           metaCreated: false,
-          detail: `Meta campaign create failed: ${campaign.error ?? "unknown"}`,
-          setupHints: hints,
+          detail: `Meta campaign create failed on ${act} (credential source: ${runtime.source}): ${campaign.error ?? "unknown"}`,
+          setupHints: [
+            ...hints,
+            "Token cannot create on this ad account — in Business Settings assign the Ad Account to the System User / reconnect Connect Meta with ads_management and pick an ad account you admin",
+            `Verify ${act} exists under the same Business as the token`,
+          ],
           present: credStatus.present,
           plan,
           ...withIds(emptyExternal()),
