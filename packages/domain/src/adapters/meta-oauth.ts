@@ -144,15 +144,27 @@ export function resolveMetaAdsCredentials(
   const accessToken = orgToken || envToken;
   const adAccountId = orgAct || envAct;
   const pageId = orgPage || envPage;
-  // Pixel/form: org first; env allowed as soft assist for website/instant form assets
-  const pixelId = orgPixel || fromEnv.pixelId;
-  const leadGenFormId = orgForm || fromEnv.leadGenFormId;
 
   const platformAppReady = Boolean(fromEnv.appId && fromEnv.appSecret);
   let source: MetaRuntimeCredentials["source"] = "none";
   if (orgToken && orgAct && orgPage) source = "org";
   else if (allowEnvFallback && envToken && envAct && envPage) source = "env";
   else if (accessToken || adAccountId || pageId) source = "mixed";
+
+  // Org path: only org Pixel/Form (never mix a Vercel env Pixel onto a customer ad account).
+  // Env fallback path: use env Pixel/Form for platform demo only.
+  const pixelId =
+    source === "org"
+      ? orgPixel
+      : source === "env"
+        ? fromEnv.pixelId
+        : orgPixel || (allowEnvFallback ? fromEnv.pixelId : null);
+  const leadGenFormId =
+    source === "org"
+      ? orgForm
+      : source === "env"
+        ? fromEnv.leadGenFormId
+        : orgForm || (allowEnvFallback ? fromEnv.leadGenFormId : null);
 
   return {
     appId: fromEnv.appId,
@@ -182,15 +194,17 @@ export function metaRuntimeCredentialStatus(
     META_ADS_APP_ID: Boolean(creds.appId),
     META_ADS_APP_SECRET: Boolean(creds.appSecret),
     META_ADS_LOGIN_CONFIG_ID: Boolean(readMetaLoginConfigId(env)),
-    META_ADS_ACCESS_TOKEN: Boolean(creds.accessToken),
-    META_ADS_AD_ACCOUNT_ID: Boolean(creds.adAccountId),
-    META_ADS_PAGE_ID: Boolean(creds.pageId),
-    META_ADS_PIXEL_ID: Boolean(creds.pixelId),
-    META_ADS_LEAD_GEN_FORM_ID: Boolean(creds.leadGenFormId),
+    META_ADS_ACCESS_TOKEN: Boolean(readMetaAdsCredentialsFromEnv(env).accessToken),
+    META_ADS_AD_ACCOUNT_ID: Boolean(readMetaAdsCredentialsFromEnv(env).adAccountId),
+    META_ADS_PAGE_ID: Boolean(readMetaAdsCredentialsFromEnv(env).pageId),
+    META_ADS_PIXEL_ID: Boolean(readMetaAdsCredentialsFromEnv(env).pixelId),
+    META_ADS_LEAD_GEN_FORM_ID: Boolean(
+      readMetaAdsCredentialsFromEnv(env).leadGenFormId,
+    ),
     META_ADS_ALLOW_ENV_FALLBACK: allowEnvFallback,
     ORG_META_CONNECTION: creds.source === "org",
-    ORG_META_PIXEL: Boolean(creds.pixelId),
-    ORG_META_LEAD_FORM: Boolean(creds.leadGenFormId),
+    ORG_META_PIXEL: creds.source === "org" && Boolean(creds.pixelId),
+    ORG_META_LEAD_FORM: creds.source === "org" && Boolean(creds.leadGenFormId),
   };
   const hints = metaOAuthSetupHints();
   const ready = Boolean(
