@@ -10,6 +10,8 @@ export type MetaConnectionPublic = {
   status: "connected" | "token_expired" | "pending_configuration";
   adAccountId: string | null;
   pageId: string | null;
+  pixelId: string | null;
+  leadGenFormId: string | null;
   connectedAt: string | null;
   tokenExpiresAt: string | null;
   lastError: string | null;
@@ -20,6 +22,8 @@ export type MetaConnectionSecrets = {
   accessToken: string;
   adAccountId: string;
   pageId: string;
+  pixelId: string | null;
+  leadGenFormId: string | null;
   tokenExpiresAt: string | null;
 };
 
@@ -35,6 +39,8 @@ function mapPublic(row: {
   status: string;
   ad_account_id: string | null;
   page_id: string | null;
+  pixel_id?: string | null;
+  lead_gen_form_id?: string | null;
   connected_at: string | null;
   token_expires_at: string | null;
   last_error: string | null;
@@ -48,6 +54,8 @@ function mapPublic(row: {
     status,
     adAccountId: row.ad_account_id,
     pageId: row.page_id,
+    pixelId: row.pixel_id ?? null,
+    leadGenFormId: row.lead_gen_form_id ?? null,
     connectedAt: row.connected_at,
     tokenExpiresAt: row.token_expires_at,
     lastError: row.last_error,
@@ -62,6 +70,9 @@ async function supabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+const PUBLIC_SELECT =
+  "org_id,status,ad_account_id,page_id,pixel_id,lead_gen_form_id,connected_at,token_expires_at,last_error,access_token_ciphertext";
+
 export async function getMetaConnectionPublic(
   actor: SessionUser,
   orgId: string,
@@ -73,9 +84,7 @@ export async function getMetaConnectionPublic(
     if (!admin) return null;
     const { data } = await admin
       .from("meta_ad_connections")
-      .select(
-        "org_id,status,ad_account_id,page_id,connected_at,token_expires_at,last_error,access_token_ciphertext",
-      )
+      .select(PUBLIC_SELECT)
       .eq("org_id", orgId)
       .maybeSingle();
     if (!data) return null;
@@ -91,6 +100,8 @@ export async function getMetaConnectionPublic(
     status: row.status,
     ad_account_id: row.ad_account_id,
     page_id: row.page_id,
+    pixel_id: row.pixel_id ?? null,
+    lead_gen_form_id: row.lead_gen_form_id ?? null,
     connected_at: row.connected_at,
     token_expires_at: row.token_expires_at,
     last_error: row.last_error,
@@ -109,7 +120,9 @@ export async function getMetaConnectionSecrets(
     if (!admin) return null;
     const { data } = await admin
       .from("meta_ad_connections")
-      .select("access_token_ciphertext,ad_account_id,page_id,token_expires_at,status")
+      .select(
+        "access_token_ciphertext,ad_account_id,page_id,pixel_id,lead_gen_form_id,token_expires_at,status",
+      )
       .eq("org_id", orgId)
       .maybeSingle();
     if (!data?.access_token_ciphertext) return null;
@@ -119,6 +132,8 @@ export async function getMetaConnectionSecrets(
         accessToken: decryptSecret(String(data.access_token_ciphertext)),
         adAccountId: String(data.ad_account_id),
         pageId: String(data.page_id),
+        pixelId: (data.pixel_id as string | null) ?? null,
+        leadGenFormId: (data.lead_gen_form_id as string | null) ?? null,
         tokenExpiresAt: (data.token_expires_at as string | null) ?? null,
       };
     } catch {
@@ -135,6 +150,8 @@ export async function getMetaConnectionSecrets(
       accessToken: decryptSecret(row.access_token_ciphertext),
       adAccountId: row.ad_account_id,
       pageId: row.page_id,
+      pixelId: row.pixel_id || null,
+      leadGenFormId: row.lead_gen_form_id || null,
       tokenExpiresAt: row.token_expires_at || null,
     };
   } catch {
@@ -149,6 +166,8 @@ export async function upsertMetaConnection(
     accessToken: string;
     adAccountId: string;
     pageId: string;
+    pixelId?: string | null;
+    leadGenFormId?: string | null;
     tokenExpiresAt?: string | null;
   },
 ): Promise<MetaConnectionPublic> {
@@ -158,6 +177,8 @@ export async function upsertMetaConnection(
   const act = input.adAccountId.startsWith("act_")
     ? input.adAccountId
     : `act_${input.adAccountId}`;
+  const pixelId = input.pixelId?.trim() || null;
+  const leadGenFormId = input.leadGenFormId?.trim() || null;
 
   if (getAuthMode() === "supabase") {
     const admin = await supabaseAdmin();
@@ -171,6 +192,8 @@ export async function upsertMetaConnection(
           access_token_ciphertext: cipher,
           ad_account_id: act,
           page_id: input.pageId,
+          pixel_id: pixelId,
+          lead_gen_form_id: leadGenFormId,
           token_expires_at: input.tokenExpiresAt ?? null,
           connected_at: now,
           connected_by_user_id: actor.id,
@@ -179,9 +202,7 @@ export async function upsertMetaConnection(
         },
         { onConflict: "org_id" },
       )
-      .select(
-        "org_id,status,ad_account_id,page_id,connected_at,token_expires_at,last_error,access_token_ciphertext",
-      )
+      .select(PUBLIC_SELECT)
       .single();
     if (error || !data) {
       throw new AuthError(error?.message ?? "Failed to save Meta connection", "validation");
@@ -196,12 +217,14 @@ export async function upsertMetaConnection(
   const id = existing?.id ?? randomUUID();
   if (existing) {
     db.prepare(
-      `update meta_ad_connections set status=?, access_token_ciphertext=?, ad_account_id=?, page_id=?, token_expires_at=?, connected_at=?, connected_by_user_id=?, last_error=null, updated_at=? where org_id=?`,
+      `update meta_ad_connections set status=?, access_token_ciphertext=?, ad_account_id=?, page_id=?, pixel_id=?, lead_gen_form_id=?, token_expires_at=?, connected_at=?, connected_by_user_id=?, last_error=null, updated_at=? where org_id=?`,
     ).run(
       "connected",
       cipher,
       act,
       input.pageId,
+      pixelId,
+      leadGenFormId,
       input.tokenExpiresAt ?? null,
       now,
       actor.id,
@@ -210,7 +233,7 @@ export async function upsertMetaConnection(
     );
   } else {
     db.prepare(
-      `insert into meta_ad_connections(id, org_id, status, access_token_ciphertext, ad_account_id, page_id, token_expires_at, connected_at, connected_by_user_id, last_error, created_at, updated_at) values (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `insert into meta_ad_connections(id, org_id, status, access_token_ciphertext, ad_account_id, page_id, pixel_id, lead_gen_form_id, token_expires_at, connected_at, connected_by_user_id, last_error, created_at, updated_at) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     ).run(
       id,
       orgId,
@@ -218,6 +241,8 @@ export async function upsertMetaConnection(
       cipher,
       act,
       input.pageId,
+      pixelId,
+      leadGenFormId,
       input.tokenExpiresAt ?? null,
       now,
       actor.id,
@@ -225,6 +250,63 @@ export async function upsertMetaConnection(
       now,
       now,
     );
+  }
+  return (await getMetaConnectionPublic(actor, orgId))!;
+}
+
+/** Update Pixel / Instant Form without rotating the OAuth token. */
+export async function updateMetaConnectionLeadAssets(
+  actor: SessionUser,
+  orgId: string,
+  input: { pixelId?: string | null; leadGenFormId?: string | null },
+): Promise<MetaConnectionPublic> {
+  await assertOrgMember(actor, orgId);
+  const now = new Date().toISOString();
+  const pixelId =
+    input.pixelId === undefined ? undefined : input.pixelId?.trim() || null;
+  const leadGenFormId =
+    input.leadGenFormId === undefined
+      ? undefined
+      : input.leadGenFormId?.trim() || null;
+
+  if (getAuthMode() === "supabase") {
+    const admin = await supabaseAdmin();
+    if (!admin) throw new AuthError("Supabase service role not configured", "validation");
+    const patch: Record<string, unknown> = { updated_at: now };
+    if (pixelId !== undefined) patch.pixel_id = pixelId;
+    if (leadGenFormId !== undefined) patch.lead_gen_form_id = leadGenFormId;
+    const { data, error } = await admin
+      .from("meta_ad_connections")
+      .update(patch)
+      .eq("org_id", orgId)
+      .select(PUBLIC_SELECT)
+      .maybeSingle();
+    if (error) {
+      throw new AuthError(error.message, "validation");
+    }
+    if (!data) {
+      throw new AuthError("Meta connection not found", "not_found");
+    }
+    return mapPublic(data as Parameters<typeof mapPublic>[0]);
+  }
+
+  const db = getCrmDatabase();
+  const existing = db
+    .prepare(`select id from meta_ad_connections where org_id = ?`)
+    .get(orgId) as { id: string } | undefined;
+  if (!existing) throw new AuthError("Meta connection not found", "not_found");
+  if (pixelId !== undefined && leadGenFormId !== undefined) {
+    db.prepare(
+      `update meta_ad_connections set pixel_id=?, lead_gen_form_id=?, updated_at=? where org_id=?`,
+    ).run(pixelId, leadGenFormId, now, orgId);
+  } else if (pixelId !== undefined) {
+    db.prepare(
+      `update meta_ad_connections set pixel_id=?, updated_at=? where org_id=?`,
+    ).run(pixelId, now, orgId);
+  } else if (leadGenFormId !== undefined) {
+    db.prepare(
+      `update meta_ad_connections set lead_gen_form_id=?, updated_at=? where org_id=?`,
+    ).run(leadGenFormId, now, orgId);
   }
   return (await getMetaConnectionPublic(actor, orgId))!;
 }
