@@ -46,7 +46,22 @@ describe("meta OAuth credentials", () => {
     assert.equal(status.present.META_ADS_LOGIN_CONFIG_ID, true);
   });
 
-  it("falls back to env when org missing", () => {
+  it("falls back to env when org missing and META_ADS_ALLOW_ENV_FALLBACK=true", () => {
+    const env = {
+      META_ADS_APP_ID: "app",
+      META_ADS_APP_SECRET: "secret",
+      META_ADS_LOGIN_CONFIG_ID: LEADORBIT_LOGIN_CONFIG_ID,
+      META_ADS_ALLOW_ENV_FALLBACK: "true",
+      META_ADS_ACCESS_TOKEN: "env-token",
+      META_ADS_AD_ACCOUNT_ID: "act_env",
+      META_ADS_PAGE_ID: "page_env",
+    };
+    const runtime = resolveMetaAdsCredentials(env, null);
+    assert.equal(runtime.source, "env");
+    assert.equal(metaRuntimeCredentialStatus(runtime, env).status, "ready");
+  });
+
+  it("requires Connect Meta when env fallback is off", () => {
     const env = {
       META_ADS_APP_ID: "app",
       META_ADS_APP_SECRET: "secret",
@@ -56,8 +71,11 @@ describe("meta OAuth credentials", () => {
       META_ADS_PAGE_ID: "page_env",
     };
     const runtime = resolveMetaAdsCredentials(env, null);
-    assert.equal(runtime.source, "env");
-    assert.equal(metaRuntimeCredentialStatus(runtime, env).status, "ready");
+    assert.equal(runtime.source, "none");
+    assert.equal(runtime.accessToken, null);
+    const status = metaRuntimeCredentialStatus(runtime, env);
+    assert.equal(status.status, "pending_configuration");
+    assert.match(status.detail, /Connect Meta/i);
   });
 
   it("validates Login for Business configuration id shape", () => {
