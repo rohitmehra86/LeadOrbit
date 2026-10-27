@@ -1,1 +1,1 @@
-@/tmp/wizard-only-content.txt
+{{FILE:/tmp/wizard-only-content.txt}}
