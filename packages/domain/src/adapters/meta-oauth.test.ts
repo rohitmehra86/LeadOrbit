@@ -6,6 +6,7 @@ import {
   META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS,
   metaRuntimeCredentialStatus,
   resolveMetaAdsCredentials,
+  summarizeMetaPermissionGap,
   validateMetaLoginConfigId,
 } from "./meta-oauth";
 import { publishMetaLaunchPlan, buildMetaLaunchPlan } from "./meta-ads";
@@ -124,6 +125,17 @@ describe("meta OAuth credentials", () => {
     assert.equal(start.status, "pending_configuration");
     assert.equal(start.url, null);
     assert.match(start.detail, /META_ADS_LOGIN_CONFIG_ID/);
+  });
+
+  it("summarizes missing ads permissions on Login for Business tokens", () => {
+    const gap = summarizeMetaPermissionGap([
+      { permission: "pages_show_list", status: "granted" },
+      { permission: "business_management", status: "granted" },
+      { permission: "public_profile", status: "granted" },
+    ]);
+    assert.match(gap, /missing on token/);
+    assert.match(gap, /ads_management/);
+    assert.match(gap, /pages_show_list/);
   });
 
   it("publish uses org credentials override", async () => {

@@ -376,6 +376,47 @@ export type MetaPageOption = {
   name: string;
 };
 
+export type MetaGrantedPermission = {
+  permission: string;
+  status: string;
+};
+
+/** Inspect scopes on a user token (safe to surface status names; never the token). */
+export async function fetchMetaTokenPermissions(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaGrantedPermission[]; error?: string }> {
+  const url = new URL("https://graph.facebook.com/v21.0/me/permissions");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaGrantedPermission[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Permissions HTTP ${res.status}`,
+    };
+  }
+  return { ok: true, items: raw.data ?? [] };
+}
+
+export function summarizeMetaPermissionGap(
+  granted: MetaGrantedPermission[],
+  required: readonly string[] = META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS,
+): string {
+  const allowed = new Set(
+    granted.filter((p) => p.status === "granted").map((p) => p.permission),
+  );
+  const missing = required.filter((p) => !allowed.has(p));
+  if (missing.length === 0) {
+    return `granted: ${[...allowed].sort().join(", ") || "(none)"}`;
+  }
+  return `missing on token: ${missing.join(", ")} (granted: ${[...allowed].sort().join(", ") || "none"})`;
+}
+
 export async function fetchMetaAdAccounts(
   accessToken: string,
   fetchImpl: typeof fetch = fetch,

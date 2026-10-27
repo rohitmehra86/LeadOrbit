@@ -4,6 +4,8 @@ import {
   exchangeMetaOAuthCode,
   fetchMetaAdAccounts,
   fetchMetaPages,
+  fetchMetaTokenPermissions,
+  summarizeMetaPermissionGap,
 } from "@leadorbit/domain";
 import {
   clearMetaOAuthPending,
@@ -35,7 +37,7 @@ export async function GET(request: Request) {
 
   const fail = (msg: string) =>
     NextResponse.redirect(
-      `${appUrl}/app/orgs/${orgId}/settings/meta-connect?error=${encodeURIComponent(msg)}`,
+      `${appUrl}/app/orgs/${orgId}/settings/meta-connect?error=${encodeURIComponent(msg.slice(0, 280))}`,
     );
 
   if (err) return fail(err);
@@ -77,9 +79,18 @@ export async function GET(request: Request) {
     fetchMetaPages(accessToken),
   ]);
 
-  if (!accounts.ok) return fail(accounts.error ?? "Could not list ad accounts");
-  if (!pages.ok) return fail(pages.error ?? "Could not list Pages");
-
+  if (!accounts.ok || !pages.ok) {
+    const perms = await fetchMetaTokenPermissions(accessToken);
+    const gap = perms.ok
+      ? summarizeMetaPermissionGap(perms.items)
+      : perms.error ?? "could not read /me/permissions";
+    const which = !accounts.ok
+      ? `ad accounts: ${accounts.error}`
+      : `pages: ${pages.error}`;
+    return fail(
+      `${which}. ${gap}. Fix LeadOrbitConfig: use User access token, keep ads_management+ads_read, share an Ad account, reconnect as app admin.`,
+    );
+  }
   if (accounts.items.length === 1 && pages.items.length === 1) {
     await upsertMetaConnection(user, orgId, {
       accessToken,
