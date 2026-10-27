@@ -1,1 +1,1 @@
-LOAD_FROM_/tmp/create_wiz.json
+PLACEHOLDER_WILL_REPLACE
