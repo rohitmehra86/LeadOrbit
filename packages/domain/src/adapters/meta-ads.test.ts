@@ -14,6 +14,7 @@ import {
 const FULL_ENV = {
   META_ADS_APP_ID: "app",
   META_ADS_APP_SECRET: "secret",
+  META_ADS_ALLOW_ENV_FALLBACK: "true",
   META_ADS_ACCESS_TOKEN: "token",
   META_ADS_AD_ACCOUNT_ID: "123",
   META_ADS_PAGE_ID: "page",
@@ -219,7 +220,7 @@ describe("meta-ads AI launch adapter", () => {
     const result = await publishMetaLaunchPlan(plan, envNoPixel, { fetchImpl });
     assert.equal(called, false);
     assert.equal(result.status, "error");
-    assert.match(result.detail, /META_ADS_PIXEL_ID/i);
+    assert.match(result.detail, /Pixel ID required/i);
   });
 
   it("resumes from existing campaign id without creating a duplicate campaign", async () => {
