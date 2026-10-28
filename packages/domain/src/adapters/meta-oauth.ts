@@ -432,3 +432,265 @@ export async function fetchMetaTokenPermissions(
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ ok: boolean; items: MetaGrantedPermission[]; error?: string }> {
   const url = new URL("https://graph.facebook.com/v21.0/me/permissions");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaGrantedPermission[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Permissions HTTP ${res.status}`,
+    };
+  }
+  return { ok: true, items: raw.data ?? [] };
+}
+
+export function summarizeMetaPermissionGap(
+  granted: MetaGrantedPermission[],
+  required: readonly string[] = META_LOGIN_FOR_BUSINESS_REQUIRED_PERMISSIONS,
+): string {
+  const allowed = new Set(
+    granted.filter((p) => p.status === "granted").map((p) => p.permission),
+  );
+  const missing = required.filter((p) => !allowed.has(p));
+  if (missing.length === 0) {
+    return `granted: ${[...allowed].sort().join(", ") || "(none)"}`;
+  }
+  return `missing on token: ${missing.join(", ")} (granted: ${[...allowed].sort().join(", ") || "none"})`;
+}
+
+export async function fetchMetaAdAccounts(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaAdAccountOption[]; error?: string }> {
+  const url = new URL("https://graph.facebook.com/v21.0/me/adaccounts");
+  url.searchParams.set("fields", "id,name,account_id");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaAdAccountOption[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Ad accounts HTTP ${res.status}`,
+    };
+  }
+  return { ok: true, items: raw.data ?? [] };
+}
+
+export async function fetchMetaPages(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaPageOption[]; error?: string }> {
+  const url = new URL("https://graph.facebook.com/v21.0/me/accounts");
+  // access_token is required later for /{page-id}/leadgen_forms
+  url.searchParams.set("fields", "id,name,access_token");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: Array<{ id: string; name: string; access_token?: string }>;
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Pages HTTP ${res.status}`,
+    };
+  }
+  return {
+    ok: true,
+    items: (raw.data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      accessToken: p.access_token,
+    })),
+  };
+}
+
+/** Resolve a Page access token for Instant Form / leadgen Graph calls. */
+export async function resolveMetaPageAccessToken(
+  userAccessToken: string,
+  pageId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; pageAccessToken?: string; error?: string }> {
+  const pages = await fetchMetaPages(userAccessToken, fetchImpl);
+  if (!pages.ok) return { ok: false, error: pages.error };
+  const want = pageId.trim();
+  const match = pages.items.find((p) => p.id === want);
+  if (!match?.accessToken) {
+    return {
+      ok: false,
+      error: `No Page access token for page ${want} — reconnect Connect Meta with pages_show_list / pages_manage_ads`,
+    };
+  }
+  return { ok: true, pageAccessToken: match.accessToken };
+}
+
+export type MetaPixelOption = {
+  id: string;
+  name: string;
+};
+
+export type MetaLeadFormOption = {
+  id: string;
+  name: string;
+  status?: string;
+};
+
+function normalizeActId(id: string): string {
+  const t = id.trim();
+  return t.startsWith("act_") ? t : `act_${t}`;
+}
+
+function mergePixelOptions(lists: MetaPixelOption[][]): MetaPixelOption[] {
+  const byId = new Map<string, MetaPixelOption>();
+  for (const list of lists) {
+    for (const p of list) {
+      if (p?.id && !byId.has(p.id)) byId.set(p.id, p);
+    }
+  }
+  return [...byId.values()];
+}
+
+async function fetchMetaBusinessPixels(
+  accessToken: string,
+  businessId: string,
+  fetchImpl: typeof fetch,
+): Promise<MetaPixelOption[]> {
+  const lists = await Promise.all(
+    ["owned_pixels", "client_pixels"].map(async (edge) => {
+      const url = new URL(
+        `https://graph.facebook.com/v21.0/${businessId}/${edge}`,
+      );
+      url.searchParams.set("fields", "id,name");
+      url.searchParams.set("limit", "50");
+      url.searchParams.set("access_token", accessToken);
+      const res = await fetchImpl(url.toString());
+      const raw = (await res.json().catch(() => ({}))) as {
+        data?: MetaPixelOption[];
+      };
+      return res.ok ? (raw.data ?? []) : [];
+    }),
+  );
+  return mergePixelOptions(lists);
+}
+
+/**
+ * List Meta Pixels usable with an ad account (website OUTCOME_LEADS).
+ * Tries act_/adspixels first, then Business owned/client pixels when the act list is empty.
+ */
+export async function fetchMetaAdAccountPixels(
+  accessToken: string,
+  adAccountId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaPixelOption[]; error?: string }> {
+  const act = normalizeActId(adAccountId);
+  const url = new URL(`https://graph.facebook.com/v21.0/${act}/adspixels`);
+  url.searchParams.set("fields", "id,name");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaPixelOption[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    // Fall through to business pixels when act edge is denied/empty of permission.
+    const actError = raw.error?.message ?? `Pixels HTTP ${res.status}`;
+    const bizUrl = new URL(`https://graph.facebook.com/v21.0/${act}`);
+    bizUrl.searchParams.set("fields", "business{id,name}");
+    bizUrl.searchParams.set("access_token", accessToken);
+    const bizRes = await fetchImpl(bizUrl.toString());
+    const bizRaw = (await bizRes.json().catch(() => ({}))) as {
+      business?: { id?: string };
+      error?: { message?: string };
+    };
+    if (bizRes.ok && bizRaw.business?.id) {
+      const fromBiz = await fetchMetaBusinessPixels(
+        accessToken,
+        bizRaw.business.id,
+        fetchImpl,
+      );
+      if (fromBiz.length > 0) return { ok: true, items: fromBiz };
+    }
+    return { ok: false, items: [], error: actError };
+  }
+  const fromAct = raw.data ?? [];
+  if (fromAct.length > 0) return { ok: true, items: fromAct };
+
+  // Empty act list — try Business owned/client pixels (common when Pixel not yet shared to act).
+  const bizUrl = new URL(`https://graph.facebook.com/v21.0/${act}`);
+  bizUrl.searchParams.set("fields", "business{id,name}");
+  bizUrl.searchParams.set("access_token", accessToken);
+  const bizRes = await fetchImpl(bizUrl.toString());
+  const bizRaw = (await bizRes.json().catch(() => ({}))) as {
+    business?: { id?: string };
+  };
+  if (bizRes.ok && bizRaw.business?.id) {
+    const fromBiz = await fetchMetaBusinessPixels(
+      accessToken,
+      bizRaw.business.id,
+      fetchImpl,
+    );
+    if (fromBiz.length > 0) {
+      return {
+        ok: true,
+        items: fromBiz,
+      };
+    }
+  }
+  return {
+    ok: true,
+    items: [],
+    error:
+      "No Pixels on this ad account. In Meta Events Manager create a Pixel or share an existing one to the ad account, then refresh. Or paste the Pixel ID below.",
+  };
+}
+
+/**
+ * List Instant Forms on a Facebook Page (ON_AD lead destination).
+ * Prefer a Page access token (from `/me/accounts`); user tokens often return empty/errors.
+ */
+export async function fetchMetaPageLeadForms(
+  accessToken: string,
+  pageId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaLeadFormOption[]; error?: string }> {
+  const url = new URL(
+    `https://graph.facebook.com/v21.0/${pageId.trim()}/leadgen_forms`,
+  );
+  url.searchParams.set("fields", "id,name,status");
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("access_token", accessToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    data?: MetaLeadFormOption[];
+    error?: { message?: string };
+  };
+  if (!res.ok || raw.error) {
+    return {
+      ok: false,
+      items: [],
+      error: raw.error?.message ?? `Lead forms HTTP ${res.status}`,
+    };
+  }
+  const items = raw.data ?? [];
+  if (items.length === 0) {
+    return {
+      ok: true,
+      items: [],
+      error:
+        "No Instant Forms on this Page. Create one in Meta Ads Manager → Lead forms, then refresh.",
+    };
+  }
+  return { ok: true, items };
+}
