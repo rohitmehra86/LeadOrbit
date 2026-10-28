@@ -1,1 +1,1 @@
-LOAD_FROM:/tmp/exact_file_0.tsx
+USE_FILE:/tmp/c0_raw.txt
