@@ -1,1 +1,1 @@
-PLACEHOLDER_LOAD_FROM_DISK
+LOAD_FROM_/tmp/oauth_only.txt_DO_NOT_USE
