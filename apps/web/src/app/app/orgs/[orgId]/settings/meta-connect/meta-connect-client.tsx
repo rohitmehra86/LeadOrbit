@@ -85,11 +85,61 @@ export function MetaConnectClient({
       }),
     });
     if (!res.ok) {
-      setError(await res.text());
+      const body = await res.text();
+      setError(
+        body.includes("<!DOCTYPE") || body.includes("404")
+          ? `Save failed (HTTP ${res.status}). Refresh and try again.`
+          : body || `Save failed (HTTP ${res.status})`,
+      );
       return false;
     }
     await refreshStatus();
     return true;
+  }
+
+  /** Prefer stable /meta/assets; fall back to legacy /meta/oauth/assets. */
+  async function fetchMetaAssetsJson(
+    query: string,
+  ): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; detail: string }> {
+    const paths = [
+      `/api/v1/orgs/${orgId}/meta/assets?${query}`,
+      `/api/v1/orgs/${orgId}/meta/oauth/assets?${query}`,
+    ];
+    let lastDetail = "Meta asset list unavailable";
+    for (const path of paths) {
+      try {
+        const r = await fetch(path, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        const text = await r.text();
+        const looksHtml =
+          /^\s*</.test(text) ||
+          text.includes("<!DOCTYPE") ||
+          text.includes("This page could not be found");
+        if (looksHtml) {
+          lastDetail = `Asset API returned HTML ${r.status} for ${path.split("?")[0]} — paste Pixel ID and Save instead.`;
+          continue;
+        }
+        let data: Record<string, unknown> = {};
+        try {
+          data = JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          lastDetail = `Asset API returned non-JSON (HTTP ${r.status})`;
+          continue;
+        }
+        if (!r.ok) {
+          lastDetail =
+            (typeof data.detail === "string" && data.detail) ||
+            `Asset API HTTP ${r.status}`;
+          continue;
+        }
+        return { ok: true, data };
+      } catch (e) {
+        lastDetail = e instanceof Error ? e.message : "Asset fetch failed";
+      }
+    }
+    return { ok: false, detail: lastDetail };
   }
 
   async function loadRelatedAssets(act: string, page: string) {
@@ -101,16 +151,17 @@ export function MetaConnectClient({
     setAssetsLoading(true);
     setSaveDetail(null);
     try {
-      const r = await fetch(`/api/v1/orgs/${orgId}/meta/oauth/assets?${params}`);
-      if (!r.ok) {
-        const body = await r.text();
+      const result = await fetchMetaAssetsJson(params.toString());
+      if (!result.ok) {
         setPixels([]);
         setLeadForms([]);
-        setPixelHint(body || `Could not load Pixel/Form lists (HTTP ${r.status})`);
+        setPixelHint(
+          `${result.detail} You can still paste Pixel ID ${pixelId || "28654551490903640"} below and click Save Pixel / Form.`,
+        );
         setFormHint(null);
         return;
       }
-      const d = (await r.json()) as {
+      const d = result.data as {
         pixels?: AssetOption[];
         leadForms?: AssetOption[];
         pixelError?: string | null;
@@ -159,21 +210,19 @@ export function MetaConnectClient({
   useEffect(() => {
     if (step !== "pick" || !activeNonce) return;
     setLoading(true);
-    void fetch(
-      `/api/v1/orgs/${orgId}/meta/oauth/assets?nonce=${encodeURIComponent(activeNonce)}`,
-    )
-      .then(async (r) => {
-        if (!r.ok) throw new Error(await r.text());
-        return r.json() as Promise<{
-          adAccounts: AssetOption[];
-          pages: AssetOption[];
-        }>;
-      })
-      .then((d) => {
-        setAccounts(d.adAccounts);
-        setPages(d.pages);
-        const act = d.adAccounts[0]?.id ?? "";
-        const page = d.pages[0]?.id ?? "";
+    void fetchMetaAssetsJson(`nonce=${encodeURIComponent(activeNonce)}`)
+      .then((result) => {
+        if (!result.ok) throw new Error(result.detail);
+        const d = result.data as {
+          adAccounts?: AssetOption[];
+          pages?: AssetOption[];
+        };
+        const nextAccounts = d.adAccounts ?? [];
+        const nextPages = d.pages ?? [];
+        setAccounts(nextAccounts);
+        setPages(nextPages);
+        const act = nextAccounts[0]?.id ?? "";
+        const page = nextPages[0]?.id ?? "";
         if (act) setAdAccountId(act);
         if (page) setPageId(page);
         if (act || page) void loadRelatedAssets(act, page);
@@ -494,8 +543,9 @@ export function MetaConnectClient({
             >
               <h3 className="text-sm font-medium">Lead destination assets</h3>
               <p className="lo-muted text-xs">
-                Website OUTCOME_LEADS requires a Pixel. Instant Form requires a
-                Page lead form. You can update these without reconnecting OAuth.
+                Website OUTCOME_LEADS needs a saved Pixel (dropdown or paste ID,
+                then Save). Instant Form is optional for website leads. Lists
+                failing does not block Save.
               </p>
               {assetsLoading ? (
                 <p className="lo-muted text-xs">Loading Pixel / Form lists from Meta…</p>
