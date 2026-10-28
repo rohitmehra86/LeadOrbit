@@ -202,3 +202,233 @@ export function metaRuntimeCredentialStatus(
       readMetaAdsCredentialsFromEnv(env).leadGenFormId,
     ),
     META_ADS_ALLOW_ENV_FALLBACK: allowEnvFallback,
+    ORG_META_CONNECTION: creds.source === "org",
+    ORG_META_PIXEL: creds.source === "org" && Boolean(creds.pixelId),
+    ORG_META_LEAD_FORM: creds.source === "org" && Boolean(creds.leadGenFormId),
+  };
+  const hints = metaOAuthSetupHints();
+  const ready = Boolean(
+    creds.appId &&
+      creds.appSecret &&
+      creds.accessToken &&
+      creds.adAccountId &&
+      creds.pageId &&
+      (creds.source === "org" || (allowEnvFallback && creds.source === "env")),
+  );
+  if (ready) {
+    return {
+      status: "ready",
+      detail:
+        creds.source === "org"
+          ? "Connect Meta ready — Approve will create on this org’s ad account"
+          : "Platform env fallback ready (META_ADS_ALLOW_ENV_FALLBACK) — demo only; customers should Connect Meta",
+      present,
+      setupHints: hints,
+      source: creds.source,
+    };
+  }
+  if (creds.accessToken && creds.adAccountId && !creds.pageId) {
+    return {
+      status: "partial",
+      detail: "Token + ad account present; select a Page to finish Connect Meta",
+      present,
+      setupHints: hints,
+      source: creds.source,
+    };
+  }
+  if (!creds.platformAppReady) {
+    return {
+      status: "pending_configuration",
+      detail:
+        "Platform META_ADS_APP_ID / META_ADS_APP_SECRET missing on Vercel — OAuth cannot start",
+      present,
+      setupHints: hints,
+      source: creds.source,
+    };
+  }
+  if (!readMetaLoginConfigId(env)) {
+    return {
+      status: "pending_configuration",
+      detail:
+        "META_ADS_LOGIN_CONFIG_ID missing — set the Facebook Login for Business configuration id",
+      present,
+      setupHints: hints,
+      source: creds.source,
+    };
+  }
+  return {
+    status: "pending_configuration",
+    detail:
+      "Connect Meta for this organization (Settings → Connect Meta). Env ACCESS_TOKEN fallback is off unless META_ADS_ALLOW_ENV_FALLBACK=true",
+    present,
+    setupHints: hints,
+    source: creds.source,
+  };
+}
+
+export function buildMetaOAuthStartUrl(input: {
+  state: string;
+  redirectUri?: string;
+  env?: NodeJS.ProcessEnv;
+}): {
+  status: "pending_configuration" | "ready";
+  detail: string;
+  url: string | null;
+  redirectUri: string;
+  configId: string | null;
+  setupHints: string[];
+} {
+  const env = input.env ?? process.env;
+  const hints = metaOAuthSetupHints();
+  const appId = env.META_ADS_APP_ID?.trim();
+  const redirectUri = input.redirectUri || metaOAuthRedirectUri(env);
+  const configCheck = validateMetaLoginConfigId(env);
+  if (!appId || !env.META_ADS_APP_SECRET?.trim()) {
+    return {
+      status: "pending_configuration",
+      detail: "META_ADS_APP_ID and META_ADS_APP_SECRET required to start OAuth",
+      url: null,
+      redirectUri,
+      configId: configCheck.configId,
+      setupHints: hints,
+    };
+  }
+  if (!configCheck.ok || !configCheck.configId) {
+    return {
+      status: "pending_configuration",
+      detail: configCheck.detail,
+      url: null,
+      redirectUri,
+      configId: configCheck.configId,
+      setupHints: hints,
+    };
+  }
+  // Facebook Login for Business: permissions come from the configuration.
+  // Meta recommends omitting `scope` when `config_id` is present.
+  const params = new URLSearchParams({
+    client_id: appId,
+    redirect_uri: redirectUri,
+    state: input.state,
+    response_type: "code",
+    config_id: configCheck.configId,
+  });
+  return {
+    status: "ready",
+    detail: "Facebook Login for Business OAuth start URL ready",
+    url: `https://www.facebook.com/v21.0/dialog/oauth?${params}`,
+    redirectUri,
+    configId: configCheck.configId,
+    setupHints: hints,
+  };
+}
+
+export async function exchangeMetaOAuthCode(
+  code: string,
+  opts?: {
+    env?: NodeJS.ProcessEnv;
+    redirectUri?: string;
+    fetchImpl?: typeof fetch;
+  },
+): Promise<{
+  ok: boolean;
+  accessToken?: string;
+  expiresIn?: number;
+  error?: string;
+}> {
+  const env = opts?.env ?? process.env;
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const appId = env.META_ADS_APP_ID?.trim();
+  const appSecret = env.META_ADS_APP_SECRET?.trim();
+  const redirectUri = opts?.redirectUri || metaOAuthRedirectUri(env);
+  if (!appId || !appSecret) {
+    return { ok: false, error: "META_ADS_APP_ID / META_ADS_APP_SECRET missing" };
+  }
+  const url = new URL("https://graph.facebook.com/v21.0/oauth/access_token");
+  url.searchParams.set("client_id", appId);
+  url.searchParams.set("client_secret", appSecret);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("code", code);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  };
+  if (!res.ok || !raw.access_token) {
+    return {
+      ok: false,
+      error: raw.error?.message ?? `Token exchange HTTP ${res.status}`,
+    };
+  }
+  return {
+    ok: true,
+    accessToken: raw.access_token,
+    expiresIn: raw.expires_in,
+  };
+}
+
+/** Exchange short-lived user token for long-lived (~60 days). */
+export async function exchangeMetaLongLivedToken(
+  shortLivedToken: string,
+  opts?: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch },
+): Promise<{
+  ok: boolean;
+  accessToken?: string;
+  expiresIn?: number;
+  error?: string;
+}> {
+  const env = opts?.env ?? process.env;
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const appId = env.META_ADS_APP_ID?.trim();
+  const appSecret = env.META_ADS_APP_SECRET?.trim();
+  if (!appId || !appSecret) {
+    return { ok: false, error: "META_ADS_APP_ID / META_ADS_APP_SECRET missing" };
+  }
+  const url = new URL("https://graph.facebook.com/v21.0/oauth/access_token");
+  url.searchParams.set("grant_type", "fb_exchange_token");
+  url.searchParams.set("client_id", appId);
+  url.searchParams.set("client_secret", appSecret);
+  url.searchParams.set("fb_exchange_token", shortLivedToken);
+  const res = await fetchImpl(url.toString());
+  const raw = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  };
+  if (!res.ok || !raw.access_token) {
+    return {
+      ok: false,
+      error: raw.error?.message ?? `Long-lived exchange HTTP ${res.status}`,
+    };
+  }
+  return {
+    ok: true,
+    accessToken: raw.access_token,
+    expiresIn: raw.expires_in,
+  };
+}
+
+export type MetaAdAccountOption = {
+  id: string;
+  name: string;
+  account_id?: string;
+};
+
+export type MetaPageOption = {
+  id: string;
+  name: string;
+  /** Page access token from `/me/accounts` — required for Instant Form list. */
+  accessToken?: string;
+};
+
+export type MetaGrantedPermission = {
+  permission: string;
+  status: string;
+};
+
+/** Inspect scopes on a user token (safe to surface status names; never the token). */
+export async function fetchMetaTokenPermissions(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; items: MetaGrantedPermission[]; error?: string }> {
+  const url = new URL("https://graph.facebook.com/v21.0/me/permissions");
