@@ -1,1 +1,1 @@
-PLACEHOLDER_FILE_0
+LOAD_FROM:/tmp/exact_file_0.tsx
