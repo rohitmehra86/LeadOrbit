@@ -4,6 +4,9 @@ import {
   updateMetaConnectionLeadAssets,
 } from "@/lib/meta/meta-connections";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 type Ctx = { params: Promise<{ orgId: string }> };
 
 /** Update Pixel / Instant Form on an existing org Meta connection. */
