@@ -1,142 +1,49 @@
-# LeadOrbit (`ai-lead-revenue-cloud`)
+# LeadOrbit (Java)
 
-Multi-tenant **AI Lead & Revenue Cloud** SaaS — production-grade target architecture (not an MVP mock).
+AI Lead & Revenue Cloud — **Spring Boot 3 / Java 21** rewrite of the former TypeScript/Next.js stack.
 
-Stack: Next.js App Router · TypeScript · Tailwind · Supabase · Vercel · durable workers · GitHub Actions.
+## What it does
 
-## Docs
+- **Connect Meta** — Facebook Login for Business OAuth per organization
+- **Pixel / Instant Form assets** — list or paste IDs, save on the org connection
+- **Marketing launch** — prepare a published landing page, approve to create a **PAUSED** Meta `OUTCOME_LEADS` website campaign
+- **Public landing** — `/p/{orgId}/{slug}` form submits into the local H2 leads DB
 
-| Document | Path |
-|----------|------|
-| Friend demos (overview + walkthroughs) | [`docs/demo/OVERVIEW.md`](./docs/demo/OVERVIEW.md) |
-| Meta Ads setup (AI launch + Vercel env names) | [`docs/demo/META_ADS_SETUP.md`](./docs/demo/META_ADS_SETUP.md) |
-| Broker meeting script (live laptop demo) | [`docs/demo/BROKER_MEETING_SCRIPT.md`](./docs/demo/BROKER_MEETING_SCRIPT.md) |
-| Competitor feature matrix (AI-first) | [`docs/product/COMPETITOR_FEATURE_MATRIX.md`](./docs/product/COMPETITOR_FEATURE_MATRIX.md) |
-| Competitive differentiation | [`docs/product/COMPETITIVE_DIFFERENTIATION.md`](./docs/product/COMPETITIVE_DIFFERENTIATION.md) |
-| Feature superiority roadmap | [`docs/product/FEATURE_SUPERIORITY_ROADMAP.md`](./docs/product/FEATURE_SUPERIORITY_ROADMAP.md) |
-| Product requirements | [`PRODUCT_REQUIREMENTS.md`](./PRODUCT_REQUIREMENTS.md) |
-| Competitor feature matrix (legacy root) | [`COMPETITOR_FEATURE_MATRIX.md`](./COMPETITOR_FEATURE_MATRIX.md) |
-| Architecture | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
-| Database design | [`DATABASE_DESIGN.md`](./DATABASE_DESIGN.md) |
-| Implementation plan | [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) |
-| Implementation status (honest) | [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) |
-| Java migration starter | [`docs/MIGRATION_TO_JAVA.md`](./docs/MIGRATION_TO_JAVA.md) |
-| Package boundaries | [`docs/PACKAGE_BOUNDARIES.md`](./docs/PACKAGE_BOUNDARIES.md) |
-| OpenAPI partner surface | [`packages/api-contracts/openapi/openapi.yaml`](./packages/api-contracts/openapi/openapi.yaml) |
-| Partner API (Zapier/n8n) | [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) |
-
-## Monorepo
-
-```
-apps/web          Next.js UI + /api/v1 BFF
-apps/worker       Durable job consumer skeleton
-packages/domain   Pure domain types & invariants
-packages/api-contracts  OpenAPI + DTOs
-packages/db       Repository ports (Supabase later)
-packages/ui       Shared UI primitives
-packages/config   Shared TS config
-supabase/         Migrations + config stubs
-tests/            e2e / contract / unit (growing)
-```
-
-## Local development
-
-Prerequisites: **Node 22+** and **pnpm 10+**.
-
-### Install Node + pnpm (macOS)
-
-If `node -v` fails or is below 22, install Node first (pick one):
+## Run locally
 
 ```bash
-# Option A — official installer: https://nodejs.org (LTS 22+)
-# Option B — Homebrew:
-brew install node@22
+# Java 21 + Maven
+mvn spring-boot:run
 ```
 
-Then enable pnpm (Corepack ships with Node 22):
+App: [http://127.0.0.1:43127](http://127.0.0.1:43127)
+
+### Environment
+
+| Variable | Purpose |
+|----------|---------|
+| `META_ADS_APP_ID` | Meta app id |
+| `META_ADS_APP_SECRET` | Meta app secret |
+| `META_ADS_LOGIN_CONFIG_ID` | Login for Business config id |
+| `META_ADS_OAUTH_REDIRECT_URI` | Optional; default `{app}/api/v1/meta/oauth/callback` |
+| `NEXT_PUBLIC_APP_URL` / `leadorbit.app-url` | Public base URL for redirects & landing links |
+| `PORT` | Server port (default `43127`) |
+
+Copy Meta redirect URI into the Meta app:  
+`https://<your-host>/api/v1/meta/oauth/callback`
+
+## Build / test
 
 ```bash
-corepack enable
-corepack prepare pnpm@10.33.4 --activate
-pnpm -v   # should print 10.x
+mvn -q test
+mvn -q -DskipTests package
+java -jar target/leadorbit-0.1.0-SNAPSHOT.jar
 ```
 
-If Corepack is unavailable:
+## Demo org
 
-```bash
-npm install -g pnpm@10.33.4
-```
+Seeded org id: `33333333-3333-4333-8333-333333333333`
 
-### Run LeadOrbit
-
-From the repo root:
-
-```bash
-pnpm install
-pnpm local:demo
-# → http://127.0.0.1:43127  (signup with any email/password)
-
-# Optional local API smoke (AUTH_MODE=local only)
-pnpm demo:seed
-pnpm demo:smoke
-```
-
-**Friend demos (Vercel):** https://leadorbit-delta.vercel.app — walkthroughs in [`docs/demo/`](./docs/demo/).  
-Durable seed SQL: [`scripts/seed-vercel-demo-orgs.sql`](./scripts/seed-vercel-demo-orgs.sql) (LeadOrbit Supabase).
-
-Or start services separately:
-
-```bash
-pnpm install
-pnpm dev:web      # http://127.0.0.1:43127
-pnpm dev:worker  # durable SQLite job consumer (share LEADORBIT_SQLITE_PATH)
-pnpm lint
-pnpm typecheck
-pnpm test
-```
-
-Supabase CLI, Docker, Vercel CLI, and provider credentials are **not** assumed. See `IMPLEMENTATION_STATUS.md` for blockers.
-
-## Auth (Milestone 2)
-
-Default **`AUTH_MODE=local`** when Supabase env is unset: cookie session + in-process tenancy store (permission-checked).  
-Set Supabase URL/anon key (and apply `supabase/migrations`) for production Auth + RLS. Details: [`docs/MILESTONE_2_AUTH.md`](./docs/MILESTONE_2_AUTH.md).
-
-## API (current)
-
-- `GET /api/v1/health` → status + `authMode`  
-- `POST /api/v1/auth/signup|login|logout`, `GET /api/v1/auth/session`  
-- `GET|POST /api/v1/orgs`, `GET|PATCH /api/v1/orgs/:id`  
-- Members, invites, flags, audit, `GET /api/v1/platform/orgs`  
-- Billing + webhooks: `/api/v1/orgs/:id/billing`, `/api/v1/billing/webhooks/{stripe,razorpay}`, platform billing  
-- Analytics + CSV: `/api/v1/orgs/:id/analytics`, `/export`  
-- White-label: `/api/v1/orgs/:id/white-label`, public `/api/v1/public/branding/:orgId`  
-
-UI: `/signup`, `/login`, `/app`, `/app/orgs/:id`, CRM, Marketing, Integrations, Workflows, Inbox, AI & knowledge, Calendar & voice, Real estate (optional), Analytics, Billing, White label, `/platform`
-
-Domain data persists to shared SQLite at repo-root `.data/leadorbit.sqlite` (override `LEADORBIT_SQLITE_PATH`).  
-Docs: [`MILESTONE_11_HARDENING`](./docs/MILESTONE_11_HARDENING.md) · [`MILESTONE_12_LAUNCH_READINESS`](./docs/MILESTONE_12_LAUNCH_READINESS.md) · [`DEPLOYMENT`](./docs/DEPLOYMENT.md) · [`OPERATIONS`](./docs/OPERATIONS.md) · [`SECURITY`](./docs/SECURITY.md) · [`PRIVACY_DPDP`](./docs/PRIVACY_DPDP.md) · earlier milestone docs under `docs/`.
-
-```bash
-pnpm test:m11           # unit/contract + integration + security + perf smoke
-pnpm test:e2e           # Playwright (PLAYWRIGHT_CHANNEL=chrome if CDN blocked)
-pnpm audit:deps         # high+ advisories (may fail on transitive Next deps)
-pnpm deploy:check       # preflight (fails closed without staging/prod secrets)
-pnpm migrate:status     # list SQL migrations
-```
-
-**Deploy status:** Vercel / Supabase / worker configs are in-repo; live deploys are **blocked** without credentials — see `IMPLEMENTATION_STATUS.md`.
-
-```bash
-pnpm dev:web     # http://127.0.0.1:43127
-pnpm dev:worker  # durable workflow/message consumer
-```
-
-Public landing pages: `/p/:orgId/:slug`.  
-Signed lead webhooks: `POST /api/v1/public/webhooks/:orgId/:endpointId`.  
-Signed messaging webhooks: `POST /api/v1/public/messaging/:orgId/:channel`.
-
-## License
-
-Proprietary — all rights reserved.
-
+- Connect Meta: `/app/orgs/<orgId>/settings/meta-connect`
+- Marketing: `/app/orgs/<orgId>/marketing`
+- Leads: `/app/orgs/<orgId>/leads`
