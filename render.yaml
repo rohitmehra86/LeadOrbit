@@ -1,0 +1,35 @@
+# Free-tier friendly Render Blueprint for LeadOrbit (Java / Spring Boot)
+# https://render.com — create from this repo, set env vars below.
+services:
+  - type: web
+    name: leadorbit
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: supabase
+      - key: PORT
+        value: "8080"
+      - key: APP_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        value: postgres
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        value: https://kqmuxocbmtydkxdvmypy.supabase.co
+      - key: SUPABASE_PROJECT_REF
+        value: kqmuxocbmtydkxdvmypy
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: META_ADS_APP_ID
+        sync: false
+      - key: META_ADS_APP_SECRET
+        sync: false
+      - key: META_ADS_LOGIN_CONFIG_ID
+        sync: false
+      - key: META_ADS_OAUTH_REDIRECT_URI
+        sync: false
