@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${page.title}">LeadOrbit</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <div class="landing">
+    <div class="landing-card">
+      <p class="muted">LeadOrbit</p>
+      <h1 th:text="${page.headline}">Headline</h1>
+      <p class="muted" th:text="${page.bodyText}">Body</p>
+      <form id="lead-form" class="row" style="flex-direction:column;align-items:stretch;margin-top:1.25rem">
+        <label>Full name<input name="fullName" required/></label>
+        <label>Email<input name="email" type="email" required/></label>
+        <label>Phone<input name="phone"/></label>
+        <button type="submit">Get details</button>
+      </form>
+      <p class="ok" id="thanks" hidden>Thanks — we received your details.</p>
+      <p class="err" id="err"></p>
+    </div>
+  </div>
+  <script th:inline="javascript">
+    const orgId = /*[[${orgId}]]*/ '';
+    const pageId = /*[[${page.id}]]*/ '';
+    const campaignId = /*[[${page.campaignId}]]*/ '';
+    document.getElementById('lead-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const res = await fetch(`/api/v1/public/forms/${orgId}/submit`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          fullName: fd.get('fullName'),
+          email: fd.get('email'),
+          phone: fd.get('phone'),
+          pageId,
+          campaignId
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        document.getElementById('err').textContent = data.detail || 'Submit failed';
+        return;
+      }
+      document.getElementById('lead-form').hidden = true;
+      document.getElementById('thanks').hidden = false;
+    };
+  </script>
+</body>
+</html>
