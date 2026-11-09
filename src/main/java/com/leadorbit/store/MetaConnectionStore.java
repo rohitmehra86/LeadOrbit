@@ -42,20 +42,38 @@ public class MetaConnectionStore {
       String pixelId,
       String leadGenFormId,
       Instant expiresAt) {
-    jdbc.update(
-        """
-        MERGE INTO meta_connections (org_id, access_token, ad_account_id, page_id, pixel_id,
-          lead_gen_form_id, token_expires_at, updated_at)
-        KEY (org_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """,
-        orgId,
-        accessToken,
-        adAccountId,
-        pageId,
-        pixelId,
-        leadGenFormId,
-        expiresAt == null ? null : Timestamp.from(expiresAt));
+    Timestamp expires = expiresAt == null ? null : Timestamp.from(expiresAt);
+    int updated =
+        jdbc.update(
+            """
+            UPDATE lo_meta_connections SET
+              access_token = ?, ad_account_id = ?, page_id = ?, pixel_id = ?,
+              lead_gen_form_id = ?, token_expires_at = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE org_id = ?
+            """,
+            accessToken,
+            adAccountId,
+            pageId,
+            pixelId,
+            leadGenFormId,
+            expires,
+            orgId);
+    if (updated == 0) {
+      jdbc.update(
+          """
+          INSERT INTO lo_meta_connections (
+            org_id, access_token, ad_account_id, page_id, pixel_id,
+            lead_gen_form_id, token_expires_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          """,
+          orgId,
+          accessToken,
+          adAccountId,
+          pageId,
+          pixelId,
+          leadGenFormId,
+          expires);
+    }
   }
 
   public Optional<Connection> findSecrets(String orgId) {
@@ -63,7 +81,7 @@ public class MetaConnectionStore {
         .query(
             """
             SELECT org_id, access_token, ad_account_id, page_id, pixel_id, lead_gen_form_id, token_expires_at
-            FROM meta_connections WHERE org_id = ?
+            FROM lo_meta_connections WHERE org_id = ?
             """,
             (rs, i) ->
                 new Connection(
@@ -110,22 +128,34 @@ public class MetaConnectionStore {
   }
 
   public void savePending(String nonce, String orgId, String userId, String accessToken) {
-    jdbc.update(
-        """
-        MERGE INTO meta_oauth_pending (nonce, org_id, user_id, access_token, created_at)
-        KEY (nonce)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """,
-        nonce,
-        orgId,
-        userId,
-        accessToken);
+    int updated =
+        jdbc.update(
+            """
+            UPDATE lo_meta_oauth_pending
+            SET org_id = ?, user_id = ?, access_token = ?, created_at = CURRENT_TIMESTAMP
+            WHERE nonce = ?
+            """,
+            orgId,
+            userId,
+            accessToken == null ? "" : accessToken,
+            nonce);
+    if (updated == 0) {
+      jdbc.update(
+          """
+          INSERT INTO lo_meta_oauth_pending (nonce, org_id, user_id, access_token, created_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          """,
+          nonce,
+          orgId,
+          userId,
+          accessToken == null ? "" : accessToken);
+    }
   }
 
   public Optional<Map<String, String>> loadPending(String nonce) {
     return jdbc
         .query(
-            "SELECT nonce, org_id, user_id, access_token FROM meta_oauth_pending WHERE nonce = ?",
+            "SELECT nonce, org_id, user_id, access_token FROM lo_meta_oauth_pending WHERE nonce = ?",
             (rs, i) ->
                 Map.of(
                     "nonce",
@@ -142,11 +172,11 @@ public class MetaConnectionStore {
   }
 
   public void clearPending(String orgId) {
-    jdbc.update("DELETE FROM meta_oauth_pending WHERE org_id = ?", orgId);
+    jdbc.update("DELETE FROM lo_meta_oauth_pending WHERE org_id = ?", orgId);
   }
 
   public void disconnect(String orgId) {
-    jdbc.update("DELETE FROM meta_connections WHERE org_id = ?", orgId);
+    jdbc.update("DELETE FROM lo_meta_connections WHERE org_id = ?", orgId);
   }
 
   public static String newNonce() {
