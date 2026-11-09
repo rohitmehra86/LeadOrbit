@@ -28,6 +28,12 @@ public class UiController {
     return "home";
   }
 
+  /** Public privacy policy for Meta App Dashboard / OAuth review. */
+  @GetMapping({"/privacy", "/privacy-policy"})
+  public String privacy() {
+    return "privacy";
+  }
+
   @GetMapping("/app/orgs/{orgId}/settings/meta-connect")
   public String metaConnect(
       @PathVariable String orgId,
