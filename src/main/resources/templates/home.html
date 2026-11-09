@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>LeadOrbit — AI Lead &amp; Revenue Cloud</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">LeadOrbit</a>
+    <nav>
+      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
+      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="muted">Java · Spring Boot</p>
+      <h1>LeadOrbit</h1>
+      <p class="muted">Connect Meta, launch paused website lead campaigns, and capture leads on published landing pages.</p>
+      <div class="row" style="margin-top:1.25rem">
+        <a class="btn" th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}" style="padding:0.7rem 1rem;border-radius:8px">Connect Meta</a>
+        <a class="btn secondary" th:href="@{|/app/orgs/${orgId}/marketing|}" style="padding:0.7rem 1rem;border-radius:8px;display:inline-block">Marketing</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
