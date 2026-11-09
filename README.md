@@ -41,31 +41,17 @@ mvn spring-boot:run
 # http://127.0.0.1:43127
 ```
 
-## Free hosts like Vercel (for Java)
+## Recommended host: **Render** (free)
 
-Vercel does **not** fit Spring Boot. Use one of these free/hobby options:
+Vercel does **not** run Spring Boot. **Render** is the configured choice:
 
-| Host | Fit | Notes |
-|------|-----|--------|
-| **[Render](https://render.com)** | Best starter | Free web service + Docker; sleeps on idle. Use `render.yaml` in this repo. |
-| **[Railway](https://railway.app)** | Easy | Hobby credit; connect GitHub, set env vars, deploy Dockerfile. |
-| **[Fly.io](https://fly.io)** | Good | `fly.toml` included; free allowance / pay-as-you-go. |
-| **[Google Cloud Run](https://cloud.google.com/run)** | Solid | Free tier; container; scales to zero. |
-| **[Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/)** | Always-free VM | Run the JAR on a small ARM VM if you want 24/7. |
+- Free Docker web service + GitHub auto-deploy on `main`
+- Blueprint file: [`render.yaml`](./render.yaml)
+- Step-by-step: [`DEPLOY_RENDER.md`](./DEPLOY_RENDER.md)
 
-### Deploy on Render (recommended free path)
+Dashboard: [https://dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → `rohitmehra86/LeadOrbit`.
 
-1. Push this repo to GitHub
-2. Render → **New → Blueprint** → select repo (`render.yaml`)
-3. Set secrets: `DATABASE_URL`, `DATABASE_PASSWORD`, `APP_URL`, Meta keys, `SUPABASE_ANON_KEY`
-4. Set Meta OAuth redirect to `https://<your-render-host>/api/v1/meta/oauth/callback`
-
-### Deploy on Fly.io
-
-```bash
-fly launch   # or fly deploy with fly.toml
-fly secrets set DATABASE_URL=... DATABASE_PASSWORD=... APP_URL=https://<app>.fly.dev
-```
+Alternatives (not pre-configured): Railway, Fly.io (`fly.toml`), Cloud Run.
 
 ## Build / test
 

@@ -5,11 +5,14 @@ COPY pom.xml .
 COPY src ./src
 RUN mvn -q -DskipTests package
 
-# Run
-FROM eclipse-temurin:21-jre
+# Run — sized for Render free (512 MB)
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=build /app/target/leadorbit-0.1.0-SNAPSHOT.jar app.jar
+RUN useradd -r -u 10001 appuser
+COPY --from=build /app/target/leadorbit-0.1.0-SNAPSHOT.jar /app/app.jar
+USER appuser
 ENV PORT=8080
 ENV SPRING_PROFILES_ACTIVE=supabase
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70.0 -XX:+UseContainerSupport"
 EXPOSE 8080
-ENTRYPOINT ["java","-XX:+UseContainerSupport","-Xmx384m","-jar","/app/app.jar"]
+ENTRYPOINT ["java","-jar","/app/app.jar"]
