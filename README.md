@@ -41,17 +41,15 @@ mvn spring-boot:run
 # http://127.0.0.1:43127
 ```
 
-## Recommended host: **Render** (free)
+## Recommended host: **Northflank** (Hobby — your account)
 
-Vercel does **not** run Spring Boot. **Render** is the configured choice:
+Vercel does **not** run Spring Boot. You signed into **Northflank Hobby** — use that:
 
-- Free Docker web service + GitHub auto-deploy on `main`
-- Blueprint file: [`render.yaml`](./render.yaml)
-- Step-by-step: [`DEPLOY_RENDER.md`](./DEPLOY_RENDER.md)
+- Step-by-step: [`DEPLOY_NORTHFLANK.md`](./DEPLOY_NORTHFLANK.md)
+- Repo already has a root [`Dockerfile`](./Dockerfile) for a **combined service**
+- Database: existing **Supabase** project (not Northflank Postgres)
 
-Dashboard: [https://dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → `rohitmehra86/LeadOrbit`.
-
-Alternatives (not pre-configured): Railway, Fly.io (`fly.toml`), Cloud Run.
+Also present (optional): [`render.yaml`](./render.yaml) / [`DEPLOY_RENDER.md`](./DEPLOY_RENDER.md), [`fly.toml`](./fly.toml).
 
 ## Build / test
 
