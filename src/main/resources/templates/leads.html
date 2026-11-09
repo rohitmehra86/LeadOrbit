@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Leads — LeadOrbit</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">LeadOrbit</a>
+    <nav>
+      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
+      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Leads</h1>
+    <p class="muted">Captured from published landing pages.</p>
+    <div class="panel">
+      <table class="table" th:if="${!leads.isEmpty()}">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Phone</th><th>Created</th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="lead : ${leads}">
+            <td th:text="${lead.fullName}">Name</td>
+            <td th:text="${lead.email}">email</td>
+            <td th:text="${lead.phone}">phone</td>
+            <td th:text="${lead.createdAt}">when</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="muted" th:if="${leads.isEmpty()}">No leads yet. Submit a landing page form to capture one.</p>
+    </div>
+  </main>
+</body>
+</html>
