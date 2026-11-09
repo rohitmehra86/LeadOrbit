@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Marketing — LeadOrbit</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">LeadOrbit</a>
+    <nav>
+      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
+      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Meta AI Launch</h1>
+    <p class="muted">Prepare a landing page, then Approve to create a PAUSED Meta website lead campaign.</p>
+    <p th:if="${!connection.connected}" class="err">Connect Meta first.</p>
+    <p th:if="${connection.connected && connection.pixelId == null}" class="err">Save a Pixel in Connect Meta before Approve.</p>
+
+    <section class="panel">
+      <div class="row">
+        <label>Campaign name
+          <input id="name" value="condo in mohali"/>
+        </label>
+        <label>Geo
+          <input id="geo" value="Mohali"/>
+        </label>
+        <label>Daily budget (INR)
+          <input id="budget" type="number" value="100"/>
+        </label>
+      </div>
+      <div class="row" style="margin-top:1rem">
+        <button type="button" id="btn-prepare">Prepare</button>
+        <button type="button" id="btn-approve" class="secondary" disabled>Approve (create PAUSED)</button>
+      </div>
+      <pre id="out" class="panel" style="overflow:auto;white-space:pre-wrap"></pre>
+    </section>
+  </main>
+  <script th:inline="javascript">
+    const orgId = /*[[${orgId}]]*/ '';
+    let plan = null;
+    const out = document.getElementById('out');
+    document.getElementById('btn-prepare').onclick = async () => {
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'prepare',
+          name: document.getElementById('name').value,
+          geo: document.getElementById('geo').value,
+          budgetAmount: Number(document.getElementById('budget').value || 100)
+        })
+      });
+      const data = await res.json();
+      plan = data.item?.plan || null;
+      out.textContent = JSON.stringify(data, null, 2);
+      document.getElementById('btn-approve').disabled = !plan;
+    };
+    document.getElementById('btn-approve').onclick = async () => {
+      if (!plan) return;
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', plan })
+      });
+      const data = await res.json();
+      out.textContent = JSON.stringify(data, null, 2);
+    };
+  </script>
+</body>
+</html>
