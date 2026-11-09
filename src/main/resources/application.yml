@@ -1,0 +1,39 @@
+server:
+  port: ${PORT:43127}
+
+spring:
+  application:
+    name: leadorbit
+  datasource:
+    url: jdbc:h2:file:./.data/leadorbit;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2
+  thymeleaf:
+    cache: false
+
+leadorbit:
+  app-url: ${NEXT_PUBLIC_APP_URL:http://127.0.0.1:43127}
+  meta:
+    app-id: ${META_ADS_APP_ID:}
+    app-secret: ${META_ADS_APP_SECRET:}
+    login-config-id: ${META_ADS_LOGIN_CONFIG_ID:}
+    oauth-redirect-uri: ${META_ADS_OAUTH_REDIRECT_URI:}
+    allow-env-fallback: ${META_ADS_ALLOW_ENV_FALLBACK:false}
+    access-token: ${META_ADS_ACCESS_TOKEN:}
+    ad-account-id: ${META_ADS_AD_ACCOUNT_ID:}
+    page-id: ${META_ADS_PAGE_ID:}
+    pixel-id: ${META_ADS_PIXEL_ID:}
+    lead-gen-form-id: ${META_ADS_LEAD_GEN_FORM_ID:}
+
+logging:
+  level:
+    com.leadorbit: INFO

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:replace="${title}">LeadOrbit</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">LeadOrbit</a>
+    <nav>
+      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
+      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
+    </nav>
+  </header>
+  <main th:replace="${content}">content</main>
+</body>
+</html>
