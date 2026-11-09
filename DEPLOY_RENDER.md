@@ -12,9 +12,12 @@
 | Key | Value |
 |-----|--------|
 | `APP_URL` | `https://leadorbit.onrender.com` (or the URL Render shows after first deploy) |
-| `DATABASE_URL` | `jdbc:postgresql://db.kqmuxocbmtydkxdvmypy.supabase.co:5432/postgres?sslmode=require` |
+| `DATABASE_URL` | `jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0` |
+| `DATABASE_USERNAME` | `postgres.kqmuxocbmtydkxdvmypy` |
 | `DATABASE_PASSWORD` | Supabase → Project Settings → Database → password |
 | `SUPABASE_ANON_KEY` | Supabase → Settings → API → `anon` / publishable key |
+
+> Use the **pooler** URL above (not `db.*.supabase.co:5432`). Render free is IPv4-only; the direct DB host often fails with exit status 1.
 | `META_ADS_APP_ID` | Meta app id |
 | `META_ADS_APP_SECRET` | Meta app secret |
 | `META_ADS_LOGIN_CONFIG_ID` | Login for Business config id |

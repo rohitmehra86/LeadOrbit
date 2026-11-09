@@ -23,12 +23,13 @@ services:
         value: https://kqmuxocbmtydkxdvmypy.supabase.co
       - key: SUPABASE_PROJECT_REF
         value: kqmuxocbmtydkxdvmypy
+      # Pooler user (IPv4). Override only if Supabase shows a different pooler host.
       - key: DATABASE_USERNAME
-        value: postgres
+        value: postgres.kqmuxocbmtydkxdvmypy
+      - key: DATABASE_URL
+        value: jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
       # Set these in the Render Dashboard (Blueprint "sync: false" secrets)
       - key: APP_URL
-        sync: false
-      - key: DATABASE_URL
         sync: false
       - key: DATABASE_PASSWORD
         sync: false
