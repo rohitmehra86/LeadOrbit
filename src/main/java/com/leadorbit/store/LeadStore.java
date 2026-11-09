@@ -48,7 +48,7 @@ public class LeadStore {
     if (existing.isPresent()) {
       jdbc.update(
           """
-          UPDATE landing_pages
+          UPDATE lo_landing_pages
           SET campaign_id = ?, title = ?, headline = ?, body_text = ?, status = 'published'
           WHERE org_id = ? AND slug = ?
           """,
@@ -63,7 +63,7 @@ public class LeadStore {
     String id = UUID.randomUUID().toString();
     jdbc.update(
         """
-        INSERT INTO landing_pages
+        INSERT INTO lo_landing_pages
           (id, org_id, campaign_id, slug, title, headline, body_text, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'published')
         """,
@@ -82,7 +82,7 @@ public class LeadStore {
         .query(
             """
             SELECT id, org_id, campaign_id, slug, title, headline, body_text, status
-            FROM landing_pages WHERE org_id = ? AND slug = ?
+            FROM lo_landing_pages WHERE org_id = ? AND slug = ?
             """,
             (rs, i) -> mapPage(rs),
             orgId,
@@ -96,7 +96,7 @@ public class LeadStore {
         .query(
             """
             SELECT id, org_id, campaign_id, slug, title, headline, body_text, status
-            FROM landing_pages WHERE org_id = ? AND slug = ? AND status = 'published'
+            FROM lo_landing_pages WHERE org_id = ? AND slug = ? AND status = 'published'
             """,
             (rs, i) -> mapPage(rs),
             orgId,
@@ -128,7 +128,8 @@ public class LeadStore {
     String id = UUID.randomUUID().toString();
     jdbc.update(
         """
-        INSERT INTO leads (id, org_id, campaign_id, page_id, full_name, email, phone, source, payload)
+        INSERT INTO lo_leads
+          (id, org_id, campaign_id, page_id, full_name, email, phone, source, payload)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'landing_page', ?)
         """,
         id,
@@ -138,7 +139,7 @@ public class LeadStore {
         fullName,
         email,
         phone,
-        payloadJson);
+        payloadJson == null ? "{}" : payloadJson);
     return listLeads(orgId).stream().filter(l -> l.id().equals(id)).findFirst().orElseThrow();
   }
 
@@ -147,7 +148,7 @@ public class LeadStore {
         """
         SELECT id, org_id, campaign_id, page_id, full_name, email, phone, source,
                CAST(created_at AS VARCHAR) AS created_at
-        FROM leads WHERE org_id = ? ORDER BY created_at DESC
+        FROM lo_leads WHERE org_id = ? ORDER BY created_at DESC
         """,
         (rs, i) ->
             new Lead(
@@ -167,7 +168,7 @@ public class LeadStore {
     String id = UUID.randomUUID().toString();
     jdbc.update(
         """
-        INSERT INTO meta_launch_plans
+        INSERT INTO lo_meta_launch_plans
           (id, org_id, local_campaign_id, name, geo, budget_amount, currency, primary_text, headline,
            landing_page_url, meta_campaign_id, meta_adset_id, meta_ad_id, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
