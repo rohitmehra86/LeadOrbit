@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Connect Meta — LeadOrbit</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">LeadOrbit</a>
+    <nav>
+      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
+      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Connect Meta</h1>
+    <p class="muted">OAuth per organization. Save Pixel for website OUTCOME_LEADS.</p>
+    <p class="err" th:if="${error}" th:text="${error}"></p>
+    <p class="ok" th:if="${connected}">Connected.</p>
+
+    <section class="panel" th:if="${step == 'status'}">
+      <h2>Status</h2>
+      <p>Connected: <strong th:text="${connection.connected}">false</strong></p>
+      <p>Ad account: <span th:text="${connection.adAccountId} ?: '—'">—</span></p>
+      <p>Page: <span th:text="${connection.pageId} ?: '—'">—</span></p>
+      <p>Pixel: <span th:text="${connection.pixelId} ?: '—'">—</span></p>
+      <div class="row" style="margin-top:1rem">
+        <button type="button" id="btn-connect">Connect with Meta</button>
+        <button type="button" class="secondary" id="btn-refresh-assets">Refresh Pixel / Forms</button>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <h3>Lead destination assets</h3>
+        <div class="row">
+          <label>Pixel ID
+            <input id="pixelId" th:value="${connection.pixelId}"/>
+          </label>
+          <label>Instant Form ID (optional)
+            <input id="leadGenFormId" th:value="${connection.leadGenFormId}"/>
+          </label>
+        </div>
+        <p class="muted" id="asset-hint" style="margin-top:0.75rem"></p>
+        <button type="button" id="btn-save-assets" style="margin-top:0.75rem">Save Pixel / Form</button>
+        <p class="ok" id="save-detail"></p>
+      </div>
+    </section>
+
+    <section class="panel" th:if="${step == 'pick'}">
+      <h2>Pick ad account &amp; Page</h2>
+      <div class="row">
+        <label>Ad account
+          <select id="adAccountId"></select>
+        </label>
+        <label>Page
+          <select id="pageId"></select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:0.75rem">
+        <label>Pixel
+          <select id="pixelSelect"></select>
+        </label>
+        <label>Or paste Pixel ID
+          <input id="pixelPaste"/>
+        </label>
+      </div>
+      <button type="button" id="btn-complete" style="margin-top:1rem">Save connection</button>
+      <p class="err" id="pick-error"></p>
+    </section>
+  </main>
+  <script th:inline="javascript">
+    const orgId = /*[[${orgId}]]*/ '';
+    const step = /*[[${step}]]*/ 'status';
+    const nonce = /*[[${nonce}]]*/ null;
+
+    async function startOAuth() {
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/oauth/start`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.url) {
+        alert(data.detail || 'OAuth not configured');
+        return;
+      }
+      window.location = data.url;
+    }
+
+    async function loadPicker() {
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/assets?nonce=${encodeURIComponent(nonce)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('pick-error').textContent = data.detail || await res.text();
+        return;
+      }
+      const act = document.getElementById('adAccountId');
+      const page = document.getElementById('pageId');
+      (data.adAccounts || []).forEach(a => {
+        const o = document.createElement('option');
+        o.value = a.id; o.textContent = `${a.name} (${a.id})`;
+        act.appendChild(o);
+      });
+      (data.pages || []).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = `${p.name} (${p.id})`;
+        page.appendChild(o);
+      });
+      await loadRelated();
+      act.onchange = loadRelated;
+      page.onchange = loadRelated;
+    }
+
+    async function loadRelated() {
+      const act = document.getElementById('adAccountId')?.value || '';
+      const page = document.getElementById('pageId')?.value || '';
+      const params = new URLSearchParams();
+      if (nonce) params.set('nonce', nonce);
+      if (act) params.set('adAccountId', act);
+      if (page) params.set('pageId', page);
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/assets?${params}`);
+      const text = await res.text();
+      if (text.trim().startsWith('<')) {
+        document.getElementById('asset-hint') && (document.getElementById('asset-hint').textContent = 'Asset API returned HTML — paste Pixel ID and Save.');
+        return;
+      }
+      const data = JSON.parse(text);
+      const sel = document.getElementById('pixelSelect');
+      if (sel) {
+        sel.innerHTML = '';
+        (data.pixels || []).forEach(p => {
+          const o = document.createElement('option');
+          o.value = p.id; o.textContent = `${p.name} (${p.id})`;
+          sel.appendChild(o);
+        });
+      }
+      const hint = document.getElementById('asset-hint');
+      if (hint) hint.textContent = data.pixelError || data.leadFormError || '';
+      const statusPixel = document.getElementById('pixelId');
+      if (statusPixel && data.pixels?.[0]?.id && !statusPixel.value) statusPixel.value = data.pixels[0].id;
+    }
+
+    async function complete() {
+      const pixel = document.getElementById('pixelPaste').value || document.getElementById('pixelSelect').value || null;
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/oauth/complete`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          nonce,
+          adAccountId: document.getElementById('adAccountId').value,
+          pageId: document.getElementById('pageId').value,
+          pixelId: pixel,
+          leadGenFormId: null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('pick-error').textContent = data.detail || 'Save failed';
+        return;
+      }
+      window.location = `/app/orgs/${orgId}/settings/meta-connect?connected=1`;
+    }
+
+    async function saveAssets() {
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/connection`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          pixelId: document.getElementById('pixelId').value || null,
+          leadGenFormId: document.getElementById('leadGenFormId').value || null
+        })
+      });
+      const data = await res.json();
+      document.getElementById('save-detail').textContent = res.ok
+        ? `Saved Pixel ${data.item?.pixelId || ''}`
+        : (data.detail || 'Save failed');
+    }
+
+    document.getElementById('btn-connect')?.addEventListener('click', startOAuth);
+    document.getElementById('btn-complete')?.addEventListener('click', complete);
+    document.getElementById('btn-save-assets')?.addEventListener('click', saveAssets);
+    document.getElementById('btn-refresh-assets')?.addEventListener('click', async () => {
+      const st = await fetch(`/api/v1/orgs/${orgId}/meta/status`).then(r => r.json());
+      const act = st.item?.connection?.adAccountId;
+      const page = st.item?.connection?.pageId;
+      if (!act && !page) return;
+      const params = new URLSearchParams();
+      if (act) params.set('adAccountId', act);
+      if (page) params.set('pageId', page);
+      const res = await fetch(`/api/v1/orgs/${orgId}/meta/assets?${params}`);
+      const data = await res.json();
+      if (data.pixels?.[0]?.id) document.getElementById('pixelId').value = data.pixels[0].id;
+      document.getElementById('asset-hint').textContent = data.pixelError || data.leadFormError || `Loaded ${data.pixels?.length || 0} pixel(s)`;
+    });
+    if (step === 'pick' && nonce) loadPicker();
+  </script>
+</body>
+</html>
