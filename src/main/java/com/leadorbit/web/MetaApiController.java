@@ -204,7 +204,7 @@ public class MetaApiController {
               ? n.doubleValue()
               : 100d;
       Map<String, Object> plan = launch.prepare(orgId, name, geo, budget);
-      return ResponseEntity.ok(Map.of("item", Map.of("status", "prepared", "plan", plan));
+      return ResponseEntity.ok(Map.of("item", Map.of("status", "prepared", "plan", plan)));
     }
     if ("approve".equals(action)) {
       @SuppressWarnings("unchecked")
