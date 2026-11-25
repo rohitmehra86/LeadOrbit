@@ -1,5 +1,6 @@
 package com.leadorbit.web;
 
+import com.leadorbit.meta.CreativeTemplates;
 import com.leadorbit.meta.MetaGraphClient;
 import com.leadorbit.meta.MetaLaunchService;
 import com.leadorbit.meta.MetaOAuthService;
@@ -192,18 +193,17 @@ public class MetaApiController {
     return Map.of("ok", true);
   }
 
+  @GetMapping("/api/v1/meta/creative-templates")
+  public Map<String, Object> creativeTemplates() {
+    return Map.of("items", CreativeTemplates.catalog());
+  }
+
   @PostMapping("/api/v1/orgs/{orgId}/meta/launch")
   public ResponseEntity<Map<String, Object>> launch(
       @PathVariable String orgId, @RequestBody Map<String, Object> body) throws Exception {
     String action = String.valueOf(body.getOrDefault("action", "prepare"));
     if ("prepare".equals(action)) {
-      String name = String.valueOf(body.getOrDefault("name", "Lead campaign"));
-      String geo = String.valueOf(body.getOrDefault("geo", "US"));
-      double budget =
-          body.get("budgetAmount") instanceof Number n
-              ? n.doubleValue()
-              : 100d;
-      Map<String, Object> plan = launch.prepare(orgId, name, geo, budget);
+      Map<String, Object> plan = launch.prepare(orgId, body);
       return ResponseEntity.ok(Map.of("item", Map.of("status", "prepared", "plan", plan)));
     }
     if ("approve".equals(action)) {

@@ -146,6 +146,39 @@ public class MetaGraphClient {
     return id;
   }
 
+  /**
+   * Upload an image to the ad account image library. {@code bytesBase64} is raw file bytes,
+   * Base64-encoded (Meta Ad Image API). Returns the image hash for creatives.
+   */
+  public String uploadAdImage(String actId, String accessToken, String bytesBase64, String filename)
+      throws Exception {
+    String act = MetaIds.normalizeActId(actId);
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("bytes", bytesBase64);
+    if (filename != null && !filename.isBlank()) {
+      body.put("name", filename);
+    }
+    JsonNode root = postForm(GRAPH + "/" + act + "/adimages", accessToken, body);
+    if (root.has("error")) {
+      throw new IllegalStateException(formatMetaError(act + "/adimages", root.path("error")));
+    }
+    JsonNode images = root.path("images");
+    if (images.isObject()) {
+      var fields = images.fields();
+      if (fields.hasNext()) {
+        String hash = textOrNull(fields.next().getValue().path("hash"));
+        if (hash != null) {
+          return hash;
+        }
+      }
+    }
+    String hash = textOrNull(root.path("hash"));
+    if (hash != null) {
+      return hash;
+    }
+    throw new IllegalStateException("Meta adimages returned no hash: " + root);
+  }
+
   static String formatMetaError(String path, JsonNode err) {
     StringBuilder sb = new StringBuilder();
     String msg = textOrNull(err.path("message"));
