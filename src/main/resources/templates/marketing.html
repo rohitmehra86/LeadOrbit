@@ -1,50 +1,79 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Marketing — LeadOrbit</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}"/>
-</head>
+<head th:replace="~{fragments :: head('Launch — LeadOrbit')}"></head>
 <body>
-  <header class="top">
-    <a class="brand" href="/">LeadOrbit</a>
-    <nav>
-      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
-      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
-      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
-    </nav>
-  </header>
+  <header th:replace="~{fragments :: nav(${orgId}, 'marketing')}"></header>
   <main>
-    <h1>Meta AI Launch</h1>
-    <p class="muted">Prepare a landing page, then Approve to create a PAUSED Meta website lead campaign.</p>
-    <p th:if="${!connection.connected}" class="err">Connect Meta first.</p>
-    <p th:if="${connection.connected && connection.pixelId == null}" class="err">Save a Pixel in Connect Meta before Approve.</p>
+    <div class="section-head">
+      <div>
+        <h1>Launch</h1>
+        <p class="lede">Prepare a landing page, then Approve to create a PAUSED Meta website-lead campaign.</p>
+      </div>
+    </div>
 
-    <section class="panel">
+    <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
+    <p th:if="${connection == null or !connection.connected}" class="err">Connect Meta before launching.</p>
+    <p th:if="${connection != null and connection.connected and connection.pixelId == null}" class="err">Save a Pixel in Connect before Approve.</p>
+
+    <section class="form-shell">
       <div class="row">
         <label>Campaign name
-          <input id="name" value="condo in mohali"/>
+          <input id="name" value="Flat by VRS" autocomplete="off"/>
         </label>
         <label>Geo
           <input id="geo" value="Rajpura" placeholder="City or country (IN)"/>
         </label>
         <label>Daily budget (INR)
-          <input id="budget" type="number" value="100"/>
+          <input id="budget" type="number" min="50" step="50" value="100"/>
         </label>
       </div>
       <div class="row" style="margin-top:1rem">
         <button type="button" id="btn-prepare">Prepare</button>
         <button type="button" id="btn-approve" class="secondary" disabled>Approve (create PAUSED)</button>
       </div>
-      <pre id="out" class="panel" style="overflow:auto;white-space:pre-wrap"></pre>
+
+      <div id="preview" class="plan-preview" hidden>
+        <h2>Prepared plan</h2>
+        <dl>
+          <dt>Landing</dt><dd id="pv-landing">—</dd>
+          <dt>Headline</dt><dd id="pv-headline">—</dd>
+          <dt>Primary text</dt><dd id="pv-primary">—</dd>
+          <dt>Objective</dt><dd>OUTCOME_LEADS · website · PAUSED</dd>
+        </dl>
+      </div>
+
+      <div id="success" class="plan-preview success-panel" hidden>
+        <h2>Created in Meta (PAUSED)</h2>
+        <p class="ok" id="success-detail"></p>
+        <dl>
+          <dt>Campaign</dt><dd id="ok-campaign">—</dd>
+          <dt>Ad set</dt><dd id="ok-adset">—</dd>
+          <dt>Ad</dt><dd id="ok-ad">—</dd>
+        </dl>
+        <div class="actions" style="margin-top:0.75rem">
+          <a class="btn" id="ok-landing" href="#" target="_blank" rel="noopener">Open landing page</a>
+          <a class="btn secondary" id="ok-ads" href="https://adsmanager.facebook.com/" target="_blank" rel="noopener">Open Ads Manager</a>
+          <a class="btn ghost" th:href="@{|/app/orgs/${orgId}/campaigns|}">View in Campaigns</a>
+        </div>
+      </div>
+
+      <p class="err" id="err" style="margin-top:1rem"></p>
     </section>
   </main>
   <script th:inline="javascript">
     const orgId = /*[[${orgId}]]*/ '';
     let plan = null;
-    const out = document.getElementById('out');
+    const err = document.getElementById('err');
+    const preview = document.getElementById('preview');
+    const success = document.getElementById('success');
+
+    function showErr(msg) {
+      err.textContent = msg || '';
+    }
+
     document.getElementById('btn-prepare').onclick = async () => {
+      showErr('');
+      success.hidden = true;
       const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -55,20 +84,52 @@
           budgetAmount: Number(document.getElementById('budget').value || 100)
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showErr(data.detail || 'Prepare failed');
+        return;
+      }
       plan = data.item?.plan || null;
-      out.textContent = JSON.stringify(data, null, 2);
       document.getElementById('btn-approve').disabled = !plan;
+      if (plan) {
+        preview.hidden = false;
+        document.getElementById('pv-landing').textContent = plan.landingPageUrl || '—';
+        document.getElementById('pv-headline').textContent = plan.headline || '—';
+        document.getElementById('pv-primary').textContent = plan.primaryText || '—';
+      }
     };
+
     document.getElementById('btn-approve').onclick = async () => {
       if (!plan) return;
+      showErr('');
+      const btn = document.getElementById('btn-approve');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
       const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'approve', plan })
       });
-      const data = await res.json();
-      out.textContent = JSON.stringify(data, null, 2);
+      const data = await res.json().catch(() => ({}));
+      btn.textContent = 'Approve (create PAUSED)';
+      if (!res.ok) {
+        btn.disabled = false;
+        showErr(data.detail || 'Approve failed');
+        return;
+      }
+      success.hidden = false;
+      document.getElementById('success-detail').textContent = data.detail || 'Created PAUSED in Meta.';
+      document.getElementById('ok-campaign').textContent = data.campaign_id || data.meta?.campaign_id || '—';
+      document.getElementById('ok-adset').textContent = data.adset_id || data.meta?.adset_id || '—';
+      document.getElementById('ok-ad').textContent = data.ad_id || data.meta?.ad_id || '—';
+      const landing = data.landingPageUrl || plan.landingPageUrl;
+      const landingLink = document.getElementById('ok-landing');
+      landingLink.href = landing || '#';
+      const camp = data.campaign_id || data.meta?.campaign_id;
+      if (camp) {
+        document.getElementById('ok-ads').href =
+          `https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${camp}`;
+      }
     };
   </script>
 </body>

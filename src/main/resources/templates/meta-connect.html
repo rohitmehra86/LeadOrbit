@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Connect Meta — LeadOrbit</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}"/>
-</head>
+<head th:replace="~{fragments :: head('Connect Meta — LeadOrbit')}"></head>
 <body>
-  <header class="top">
-    <a class="brand" href="/">LeadOrbit</a>
-    <nav>
-      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
-      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
-      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
-    </nav>
-  </header>
+  <header th:replace="~{fragments :: nav(${orgId}, 'meta')}"></header>
   <main>
-    <h1>Connect Meta</h1>
-    <p class="muted">OAuth per organization. Save Pixel for website OUTCOME_LEADS.</p>
+    <div class="section-head">
+      <div>
+        <h1>Connect Meta</h1>
+        <p class="lede">Authorize an ad account and Page, then save the Pixel used for website OUTCOME_LEADS.</p>
+      </div>
+      <span class="badge" th:classappend="${connection.connected} ? ' ok' : ' warn'"
+            th:text="${connection.connected} ? 'Connected' : 'Not connected'">status</span>
+    </div>
+
     <p class="err" th:if="${error}" th:text="${error}"></p>
     <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
-    <p class="ok" th:if="${connected}">Connected.</p>
+    <p class="ok" th:if="${connected}">Connection saved.</p>
 
-    <section class="panel" th:if="${step == 'status'}">
-      <h2>Status</h2>
-      <p>Connected: <strong th:text="${connection.connected}">false</strong></p>
-      <p>Ad account: <span th:text="${connection.adAccountId} ?: '—'">—</span></p>
-      <p>Page: <span th:text="${connection.pageId} ?: '—'">—</span></p>
-      <p>Pixel: <span th:text="${connection.pixelId} ?: '—'">—</span></p>
-      <div class="row" style="margin-top:1rem">
+    <section class="form-shell" th:if="${step == 'status'}">
+      <h2>Integration status</h2>
+      <dl class="plan-preview" style="border:0;padding:0;margin:0.75rem 0 0">
+        <dt>Ad account</dt><dd th:text="${connection.adAccountId} ?: '—'">—</dd>
+        <dt>Page</dt><dd th:text="${connection.pageId} ?: '—'">—</dd>
+        <dt>Pixel</dt><dd th:text="${connection.pixelId} ?: '—'">—</dd>
+        <dt>Lead form</dt><dd th:text="${connection.leadGenFormId} ?: 'Optional'">Optional</dd>
+      </dl>
+      <div class="row" style="margin-top:1.1rem">
         <button type="button" id="btn-connect">Connect with Meta</button>
         <button type="button" class="secondary" id="btn-refresh-assets">Refresh Pixel / Forms</button>
       </div>
-      <div class="panel" style="margin-top:1rem">
+
+      <div style="margin-top:1.35rem;padding-top:1.1rem;border-top:1px solid var(--line)">
         <h3>Lead destination assets</h3>
-        <div class="row">
+        <div class="row" style="margin-top:0.75rem">
           <label>Pixel ID
             <input id="pixelId" th:value="${connection.pixelId}"/>
           </label>
@@ -48,7 +46,7 @@
       </div>
     </section>
 
-    <section class="panel" th:if="${step == 'pick'}">
+    <section class="form-shell" th:if="${step == 'pick'}">
       <h2>Pick ad account &amp; Page</h2>
       <div class="row">
         <label>Ad account

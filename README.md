@@ -59,12 +59,33 @@ mvn -q -DskipTests package
 java -jar target/leadorbit-0.1.0-SNAPSHOT.jar
 ```
 
+Docker / Cursor publish uses the prebuilt fat JAR at `deploy/leadorbit.jar` (Maven Central is often unreachable in those builders). After code changes:
+
+```bash
+./scripts/refresh-deploy-jar.sh
+```
+
 Health: `/api/v1/health` and `/actuator/health`
 
 ## Demo org
 
 `33333333-3333-4333-8333-333333333333`
 
+- Home / dashboard → `/` or `/app/orgs/<orgId>`
 - Connect Meta → `/app/orgs/<orgId>/settings/meta-connect`
-- Marketing → `/app/orgs/<orgId>/marketing`
-- Leads → `/app/orgs/<orgId>/leads`
+- Launch → `/app/orgs/<orgId>/marketing`
+- Campaigns → `/app/orgs/<orgId>/campaigns`
+- Leads (+ CSV) → `/app/orgs/<orgId>/leads`
+
+## How to test (Render)
+
+Live site: `https://leadorbit-tsaf.onrender.com`
+
+1. Open `/api/v1/health` — expect `"db":"up"`.
+2. **Connect** → Connect with Meta → pick ad account + Page → save Pixel.
+3. **Launch** → Prepare → review landing URL → Approve. Expect success panel with Meta IDs.
+4. In **Ads Manager**, filter Off/PAUSED — your campaign name should appear (e.g. Flat by VRS).
+5. Open the **landing page** URL → submit name/email/phone → check **Leads** and Export CSV.
+6. **Campaigns** → Copy landing / Ads Manager links.
+
+Local H2: `mvn spring-boot:run` then http://127.0.0.1:43127 (Meta OAuth still needs public `APP_URL` + redirect URI).

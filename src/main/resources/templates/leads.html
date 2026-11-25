@@ -1,39 +1,42 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Leads — LeadOrbit</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}"/>
-</head>
+<head th:replace="~{fragments :: head('Leads — LeadOrbit')}"></head>
 <body>
-  <header class="top">
-    <a class="brand" href="/">LeadOrbit</a>
-    <nav>
-      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
-      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
-      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
-    </nav>
-  </header>
+  <header th:replace="~{fragments :: nav(${orgId}, 'leads')}"></header>
   <main>
-    <h1>Leads</h1>
-    <p class="muted">Captured from published landing pages.</p>
-    <div class="panel">
-      <table class="table" th:if="${!leads.isEmpty()}">
+    <div class="section-head">
+      <div>
+        <h1>Leads</h1>
+        <p class="lede">People who submitted your published landing pages.</p>
+      </div>
+      <a class="btn secondary" th:href="@{|/api/v1/orgs/${orgId}/leads.csv|}">Export CSV</a>
+    </div>
+
+    <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
+
+    <div class="form-shell" th:if="${leads != null and !leads.isEmpty()}">
+      <table class="table">
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Phone</th><th>Created</th></tr>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Source</th>
+            <th>Created</th>
+          </tr>
         </thead>
         <tbody>
           <tr th:each="lead : ${leads}">
             <td th:text="${lead.fullName}">Name</td>
-            <td th:text="${lead.email}">email</td>
-            <td th:text="${lead.phone}">phone</td>
-            <td th:text="${lead.createdAt}">when</td>
+            <td><a th:href="|mailto:${lead.email}|" th:text="${lead.email}">email</a></td>
+            <td th:text="${lead.phone} ?: '—'">phone</td>
+            <td th:text="${lead.source} ?: 'landing'">source</td>
+            <td class="muted" th:text="${lead.createdAt}">when</td>
           </tr>
         </tbody>
       </table>
-      <p class="muted" th:if="${leads.isEmpty()}">No leads yet. Submit a landing page form to capture one.</p>
     </div>
+    <p class="empty" th:if="${leads == null or leads.isEmpty()}">No leads yet. Open a campaign landing page and submit the form to capture one.</p>
   </main>
 </body>
 </html>
