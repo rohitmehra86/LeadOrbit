@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="628" viewBox="0 0 1200 628" role="img" aria-label="Ad creative placeholder">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b6b63"/>
+      <stop offset="55%" stop-color="#1f5f8b"/>
+      <stop offset="100%" stop-color="#10232b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="628" fill="url(#g)"/>
+  <circle cx="980" cy="120" r="160" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="160" cy="520" r="220" fill="rgba(255,255,255,0.06)"/>
+  <text x="72" y="290" fill="#f7fafc" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700">LeadOrbit</text>
+  <text x="72" y="360" fill="rgba(247,250,252,0.82)" font-family="Arial, Helvetica, sans-serif" font-size="30">Upload a real photo for a stronger ad</text>
+</svg>

@@ -17,60 +17,70 @@
 
     <div class="studio">
       <section class="form-shell">
-        <h2>1 · Trend templates</h2>
-        <p class="muted">2025 feed patterns — local proof, benefit-first, UGC voice, soft urgency.</p>
-        <div class="template-grid" id="templates"></div>
+        <div class="studio-step">
+          <h2>1 · Trend templates</h2>
+          <p class="step-help">2025 feed patterns — local proof, benefit-first, UGC voice, soft urgency.</p>
+          <div class="template-grid" id="templates"></div>
+        </div>
 
-        <h2>2 · Offer details</h2>
-        <div class="row">
-          <label>Campaign / offer name
-            <input id="name" value="Flat by VRS" autocomplete="off"/>
-          </label>
-          <label>Geo
-            <input id="geo" value="Rajpura" placeholder="City or country (IN)"/>
-          </label>
-          <label>Daily budget (INR)
-            <input id="budget" type="number" min="50" step="50" value="100"/>
+        <div class="studio-step">
+          <h2>2 · Offer details</h2>
+          <p class="step-help">Name the campaign, geo, and daily budget.</p>
+          <div class="row">
+            <label>Campaign / offer name
+              <input id="name" value="Flat by VRS" autocomplete="off"/>
+            </label>
+            <label>Geo
+              <input id="geo" value="Rajpura" placeholder="City or country (IN)"/>
+            </label>
+            <label>Daily budget (INR)
+              <input id="budget" type="number" min="50" step="50" value="100"/>
+            </label>
+          </div>
+        </div>
+
+        <div class="studio-step">
+          <h2>3 · Creative photo</h2>
+          <p class="step-help">Upload a real property / product photo (best), or paste a public image URL. Square or 1.91:1 works well.</p>
+          <div class="dropzone" id="dropzone">
+            <strong>Drop photo here</strong> or click to upload<br/>
+            <span style="font-size:0.85rem">JPG / PNG · under ~8 MB</span>
+            <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"/>
+          </div>
+          <label style="margin-top:0.75rem">Or image URL
+            <input id="imageUrl" placeholder="https://…/your-photo.jpg"/>
           </label>
         </div>
 
-        <h2 style="margin-top:1.25rem">3 · Creative photo</h2>
-        <p class="muted">Upload a real property / product photo (best), or paste a public image URL. Square or 1.91:1 works well.</p>
-        <div class="dropzone" id="dropzone">
-          <strong>Drop photo here</strong> or click to upload<br/>
-          <span style="font-size:0.85rem">JPG / PNG · under ~8 MB</span>
-          <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"/>
-        </div>
-        <label style="margin-top:0.75rem">Or image URL
-          <input id="imageUrl" placeholder="https://…/your-photo.jpg"/>
-        </label>
-
-        <h2 style="margin-top:1.25rem">4 · Ad copy</h2>
-        <div class="row">
-          <label style="flex:1 1 100%">Primary text
-            <textarea id="primaryText" rows="3"></textarea>
-          </label>
-        </div>
-        <div class="row" style="margin-top:0.65rem">
-          <label>Headline
-            <input id="headline"/>
-          </label>
-          <label>Description
-            <input id="description"/>
-          </label>
-          <label>Call to action
-            <select id="cta">
-              <option value="SIGN_UP">Sign up</option>
-              <option value="LEARN_MORE">Learn more</option>
-              <option value="GET_QUOTE">Get quote</option>
-              <option value="CONTACT_US">Contact us</option>
-              <option value="DOWNLOAD">Download</option>
-              <option value="APPLY_NOW">Apply now</option>
-            </select>
-          </label>
+        <div class="studio-step">
+          <h2>4 · Ad copy</h2>
+          <p class="step-help">Edit anything — the preview on the right updates live.</p>
+          <div class="row">
+            <label style="flex:1 1 100%">Primary text
+              <textarea id="primaryText" rows="3"></textarea>
+            </label>
+          </div>
+          <div class="row" style="margin-top:0.65rem">
+            <label>Headline
+              <input id="headline"/>
+            </label>
+            <label>Description
+              <input id="description"/>
+            </label>
+            <label>Call to action
+              <select id="cta">
+                <option value="SIGN_UP">Sign up</option>
+                <option value="LEARN_MORE">Learn more</option>
+                <option value="GET_QUOTE">Get quote</option>
+                <option value="CONTACT_US">Contact us</option>
+                <option value="DOWNLOAD">Download</option>
+                <option value="APPLY_NOW">Apply now</option>
+              </select>
+            </label>
+          </div>
         </div>
 
-        <div class="row" style="margin-top:1.1rem">
+        <div class="row" style="margin-top:0.35rem">
           <button type="button" id="btn-prepare">Prepare landing + plan</button>
           <button type="button" id="btn-approve" class="secondary" disabled>Approve (post PAUSED to Meta)</button>
         </div>
@@ -102,7 +112,7 @@
             </div>
           </div>
           <div class="ad-mock-copy" id="mock-primary">Primary text appears here</div>
-          <img class="ad-mock-image" id="mock-image" th:src="@{/images/lead-creative.jpg}" alt="Ad creative"/>
+          <img class="ad-mock-image" id="mock-image" th:src="@{/images/ad-placeholder.svg}" alt="Ad creative"/>
           <div class="ad-mock-footer">
             <div class="site">leadorbit.com</div>
             <div class="hl" id="mock-headline">Headline</div>
@@ -116,7 +126,7 @@
   </main>
   <script th:inline="javascript">
     const orgId = /*[[${orgId}]]*/ '';
-    const defaultImage = /*[[@{/images/lead-creative.jpg}]]*/ '/images/lead-creative.jpg';
+    const defaultImage = /*[[@{/images/ad-placeholder.svg}]]*/ '/images/ad-placeholder.svg';
     let plan = null;
     let templates = [];
     let selectedTemplate = 'local_proof';
@@ -131,7 +141,10 @@
       CONTACT_US: 'Contact us', DOWNLOAD: 'Download', APPLY_NOW: 'Apply now'
     };
 
-    function showErr(msg) { errEl.textContent = msg || ''; }
+    function showErr(msg) {
+      errEl.className = 'err';
+      errEl.textContent = msg || '';
+    }
 
     function fill(str, name, geo) {
       return (str || '').replaceAll('{name}', name).replaceAll('{geo}', geo);
@@ -183,10 +196,16 @@
         btn.type = 'button';
         btn.className = 'template-card' + (t.id === selectedTemplate ? ' is-active' : '');
         btn.dataset.id = t.id;
-        btn.innerHTML = `<div class="t-name"></div><div class="t-trend"></div><div class="t-tip"></div>`;
-        btn.querySelector('.t-name').textContent = t.name;
-        btn.querySelector('.t-trend').textContent = t.trend;
-        btn.querySelector('.t-tip').textContent = t.tip;
+        const name = document.createElement('div');
+        name.className = 't-name';
+        name.textContent = t.name;
+        const trend = document.createElement('div');
+        trend.className = 't-trend';
+        trend.textContent = t.trend;
+        const tip = document.createElement('div');
+        tip.className = 't-tip';
+        tip.textContent = t.tip;
+        btn.append(name, trend, tip);
         btn.onclick = () => applyTemplate(t.id, true);
         root.appendChild(btn);
       });
@@ -237,12 +256,13 @@
           imageBase64 = null;
           if (previewObjectUrl) { URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
         }
-        if (id === 'name' || id === 'geo') {
-          // re-apply selected template fields lightly when name/geo change if user hasn't heavily edited
-        }
         refreshMock();
       });
     });
+
+    document.getElementById('mock-image').onerror = () => {
+      document.getElementById('mock-image').src = defaultImage;
+    };
 
     document.getElementById('btn-prepare').onclick = async () => {
       showErr('');
@@ -274,7 +294,6 @@
       plan = data.item?.plan || null;
       document.getElementById('btn-approve').disabled = !plan;
       if (plan?.landingPageUrl) {
-        showErr('');
         errEl.className = 'ok';
         errEl.textContent = 'Prepared. Landing: ' + plan.landingPageUrl + ' — review the preview, then Approve.';
       }
@@ -283,11 +302,9 @@
     document.getElementById('btn-approve').onclick = async () => {
       if (!plan) return;
       showErr('');
-      errEl.className = 'err';
       const btn = document.getElementById('btn-approve');
       btn.disabled = true;
       btn.textContent = 'Posting to Meta…';
-      // Refresh creative fields onto plan in case user edited after prepare
       plan = {
         ...plan,
         primaryText: document.getElementById('primaryText').value,

@@ -85,13 +85,7 @@ public class MetaLaunchService {
     String imageBase64 = str(input.get("imageBase64"), null);
     String imageName = str(input.get("imageName"), "ad-creative.jpg");
 
-    if ((imageUrl == null || imageUrl.isBlank())
-        && (imageBase64 == null || imageBase64.isBlank())) {
-      // Default site creative so Meta ads aren't text-only
-      String base = app.appUrl() == null ? "" : app.appUrl().replaceAll("/$", "");
-      imageUrl = base + "/images/lead-creative.jpg";
-    }
-
+    // Preview placeholder stays UI-only. Meta needs a real photo upload or public JPG/PNG URL.
     String slug =
         name.toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", "-")
