@@ -2,7 +2,8 @@ package com.leadorbit.web;
 
 import com.leadorbit.store.LeadStore;
 import com.leadorbit.store.MetaConnectionStore;
-import java.util.Map;
+import java.util.List;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class UiController {
 
   public static final String DEMO_ORG = "33333333-3333-4333-8333-333333333333";
+
+  private static final String DB_HINT =
+      "Database unreachable. On Render set DATABASE_URL to the Supabase pooler "
+          + "(aws-0-ap-northeast-1.pooler.supabase.com:6543), "
+          + "DATABASE_USERNAME=postgres.kqmuxocbmtydkxdvmypy, and DATABASE_PASSWORD "
+          + "from Supabase → Database. Do not use db.*.supabase.co (IPv6-only on Render free).";
 
   private final MetaConnectionStore connections;
   private final LeadStore leads;
@@ -45,23 +52,43 @@ public class UiController {
     model.addAttribute("orgId", orgId);
     model.addAttribute("step", step == null ? "status" : step);
     model.addAttribute("nonce", nonce);
-    model.addAttribute("error", error);
     model.addAttribute("connected", connected);
-    model.addAttribute("connection", connections.toPublic(orgId));
+    try {
+      model.addAttribute("connection", connections.toPublic(orgId));
+      model.addAttribute("error", error);
+    } catch (DataAccessException ex) {
+      model.addAttribute(
+          "connection",
+          new MetaConnectionStore.PublicConnection(orgId, null, null, null, null, false));
+      model.addAttribute("error", error != null ? error : "db_unavailable");
+      model.addAttribute("dbHint", DB_HINT);
+    }
     return "meta-connect";
   }
 
   @GetMapping("/app/orgs/{orgId}/marketing")
   public String marketing(@PathVariable String orgId, Model model) {
     model.addAttribute("orgId", orgId);
-    model.addAttribute("connection", connections.toPublic(orgId));
+    try {
+      model.addAttribute("connection", connections.toPublic(orgId));
+    } catch (DataAccessException ex) {
+      model.addAttribute(
+          "connection",
+          new MetaConnectionStore.PublicConnection(orgId, null, null, null, null, false));
+      model.addAttribute("dbHint", DB_HINT);
+    }
     return "marketing";
   }
 
   @GetMapping("/app/orgs/{orgId}/leads")
   public String leadsPage(@PathVariable String orgId, Model model) {
     model.addAttribute("orgId", orgId);
-    model.addAttribute("leads", leads.listLeads(orgId));
+    try {
+      model.addAttribute("leads", leads.listLeads(orgId));
+    } catch (DataAccessException ex) {
+      model.addAttribute("leads", List.of());
+      model.addAttribute("dbHint", DB_HINT);
+    }
     return "leads";
   }
 

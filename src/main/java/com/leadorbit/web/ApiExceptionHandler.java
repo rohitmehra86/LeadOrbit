@@ -4,10 +4,12 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-@RestControllerAdvice
+/** JSON problem responses for REST APIs only — HTML (@Controller) pages keep Thymeleaf errors. */
+@RestControllerAdvice(annotations = RestController.class)
 public class ApiExceptionHandler {
 
   @ExceptionHandler(IllegalStateException.class)
@@ -27,7 +29,14 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> generic(Exception ex) {
-    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error", ex.getMessage());
+    String detail = ex.getMessage();
+    if (detail != null && detail.contains("JDBC")) {
+      detail =
+          "Database unreachable. On Render set DATABASE_URL to the Supabase pooler "
+              + "(aws-0-…pooler.supabase.com:6543), DATABASE_USERNAME=postgres.<project-ref>, "
+              + "and DATABASE_PASSWORD from Supabase → Database settings. Do not use db.<ref>.supabase.co on Render free (IPv6-only).";
+    }
+    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error", detail);
   }
 
   static ResponseEntity<Map<String, Object>> problem(HttpStatus status, String title, String detail) {
