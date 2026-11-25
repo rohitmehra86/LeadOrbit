@@ -83,9 +83,9 @@ Live site: `https://leadorbit-tsaf.onrender.com`
 
 1. Open `/api/v1/health` — expect `"db":"up"`.
 2. **Connect** → Connect with Meta → pick ad account + Page → save Pixel.
-3. **Launch** → Prepare → review landing URL → Approve. Expect success panel with Meta IDs.
-4. In **Ads Manager**, filter Off/PAUSED — your campaign name should appear (e.g. Flat by VRS).
-5. Open the **landing page** URL → submit name/email/phone → check **Leads** and Export CSV.
+3. **Launch (Create ad)** → pick a trend template → upload a real photo (or image URL) → edit copy → Prepare → Approve.
+4. In **Ads Manager**, filter Off/PAUSED — campaign appears with photo creative.
+5. Open the **landing page** URL → submit a lead → **Leads** + Export CSV.
 6. **Campaigns** → Copy landing / Ads Manager links.
 
 Local H2: `mvn spring-boot:run` then http://127.0.0.1:43127 (Meta OAuth still needs public `APP_URL` + redirect URI).

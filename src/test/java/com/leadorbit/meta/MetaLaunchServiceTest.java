@@ -37,4 +37,27 @@ class MetaLaunchServiceTest {
     assertTrue(formatted.contains("4834011"));
     assertTrue(formatted.contains("act_1/campaigns"));
   }
+
+  @Test
+  void buildLinkDataPrefersImageHashOverUrl() {
+    String json =
+        MetaLaunchService.buildLinkData(
+            "https://example.com/p",
+            "Primary",
+            "Headline",
+            "Desc",
+            "SIGN_UP",
+            "abc123hash",
+            "https://example.com/pic.jpg");
+    assertTrue(json.contains("\"image_hash\":\"abc123hash\""));
+    assertTrue(!json.contains("\"picture\""));
+    assertTrue(json.contains("\"call_to_action\""));
+  }
+
+  @Test
+  void templatesApplyGeoAndName() {
+    var applied = CreativeTemplates.apply("urgency", "Flat by VRS", "Rajpura");
+    assertEquals("GET_QUOTE", applied.get("callToAction"));
+    assertTrue(applied.get("primaryText").contains("Rajpura") || applied.get("primaryText").contains("Flat by VRS"));
+  }
 }

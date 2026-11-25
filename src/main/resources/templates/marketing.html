@@ -6,8 +6,8 @@
   <main>
     <div class="section-head">
       <div>
-        <h1>Launch</h1>
-        <p class="lede">Prepare a landing page, then Approve to create a PAUSED Meta website-lead campaign.</p>
+        <h1>Create ad</h1>
+        <p class="lede">Pick a trending style, add a real photo, edit the copy, then Prepare &amp; Approve a PAUSED Meta lead ad.</p>
       </div>
     </div>
 
@@ -15,74 +15,256 @@
     <p th:if="${connection == null or !connection.connected}" class="err">Connect Meta before launching.</p>
     <p th:if="${connection != null and connection.connected and connection.pixelId == null}" class="err">Save a Pixel in Connect before Approve.</p>
 
-    <section class="form-shell">
-      <div class="row">
-        <label>Campaign name
-          <input id="name" value="Flat by VRS" autocomplete="off"/>
-        </label>
-        <label>Geo
-          <input id="geo" value="Rajpura" placeholder="City or country (IN)"/>
-        </label>
-        <label>Daily budget (INR)
-          <input id="budget" type="number" min="50" step="50" value="100"/>
-        </label>
-      </div>
-      <div class="row" style="margin-top:1rem">
-        <button type="button" id="btn-prepare">Prepare</button>
-        <button type="button" id="btn-approve" class="secondary" disabled>Approve (create PAUSED)</button>
-      </div>
+    <div class="studio">
+      <section class="form-shell">
+        <h2>1 · Trend templates</h2>
+        <p class="muted">2025 feed patterns — local proof, benefit-first, UGC voice, soft urgency.</p>
+        <div class="template-grid" id="templates"></div>
 
-      <div id="preview" class="plan-preview" hidden>
-        <h2>Prepared plan</h2>
-        <dl>
-          <dt>Landing</dt><dd id="pv-landing">—</dd>
-          <dt>Headline</dt><dd id="pv-headline">—</dd>
-          <dt>Primary text</dt><dd id="pv-primary">—</dd>
-          <dt>Objective</dt><dd>OUTCOME_LEADS · website · PAUSED</dd>
-        </dl>
-      </div>
-
-      <div id="success" class="plan-preview success-panel" hidden>
-        <h2>Created in Meta (PAUSED)</h2>
-        <p class="ok" id="success-detail"></p>
-        <dl>
-          <dt>Campaign</dt><dd id="ok-campaign">—</dd>
-          <dt>Ad set</dt><dd id="ok-adset">—</dd>
-          <dt>Ad</dt><dd id="ok-ad">—</dd>
-        </dl>
-        <div class="actions" style="margin-top:0.75rem">
-          <a class="btn" id="ok-landing" href="#" target="_blank" rel="noopener">Open landing page</a>
-          <a class="btn secondary" id="ok-ads" href="https://adsmanager.facebook.com/" target="_blank" rel="noopener">Open Ads Manager</a>
-          <a class="btn ghost" th:href="@{|/app/orgs/${orgId}/campaigns|}">View in Campaigns</a>
+        <h2>2 · Offer details</h2>
+        <div class="row">
+          <label>Campaign / offer name
+            <input id="name" value="Flat by VRS" autocomplete="off"/>
+          </label>
+          <label>Geo
+            <input id="geo" value="Rajpura" placeholder="City or country (IN)"/>
+          </label>
+          <label>Daily budget (INR)
+            <input id="budget" type="number" min="50" step="50" value="100"/>
+          </label>
         </div>
-      </div>
 
-      <p class="err" id="err" style="margin-top:1rem"></p>
-    </section>
+        <h2 style="margin-top:1.25rem">3 · Creative photo</h2>
+        <p class="muted">Upload a real property / product photo (best), or paste a public image URL. Square or 1.91:1 works well.</p>
+        <div class="dropzone" id="dropzone">
+          <strong>Drop photo here</strong> or click to upload<br/>
+          <span style="font-size:0.85rem">JPG / PNG · under ~8 MB</span>
+          <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"/>
+        </div>
+        <label style="margin-top:0.75rem">Or image URL
+          <input id="imageUrl" placeholder="https://…/your-photo.jpg"/>
+        </label>
+
+        <h2 style="margin-top:1.25rem">4 · Ad copy</h2>
+        <div class="row">
+          <label style="flex:1 1 100%">Primary text
+            <textarea id="primaryText" rows="3"></textarea>
+          </label>
+        </div>
+        <div class="row" style="margin-top:0.65rem">
+          <label>Headline
+            <input id="headline"/>
+          </label>
+          <label>Description
+            <input id="description"/>
+          </label>
+          <label>Call to action
+            <select id="cta">
+              <option value="SIGN_UP">Sign up</option>
+              <option value="LEARN_MORE">Learn more</option>
+              <option value="GET_QUOTE">Get quote</option>
+              <option value="CONTACT_US">Contact us</option>
+              <option value="DOWNLOAD">Download</option>
+              <option value="APPLY_NOW">Apply now</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:1.1rem">
+          <button type="button" id="btn-prepare">Prepare landing + plan</button>
+          <button type="button" id="btn-approve" class="secondary" disabled>Approve (post PAUSED to Meta)</button>
+        </div>
+        <p class="err" id="err" style="margin-top:0.85rem"></p>
+
+        <div id="success" class="plan-preview success-panel" hidden>
+          <h2>Posted to Meta (PAUSED)</h2>
+          <p class="ok" id="success-detail"></p>
+          <dl>
+            <dt>Campaign</dt><dd id="ok-campaign">—</dd>
+            <dt>Ad set</dt><dd id="ok-adset">—</dd>
+            <dt>Ad</dt><dd id="ok-ad">—</dd>
+          </dl>
+          <div class="actions" style="margin-top:0.75rem">
+            <a class="btn" id="ok-landing" href="#" target="_blank" rel="noopener">Open landing page</a>
+            <a class="btn secondary" id="ok-ads" href="https://adsmanager.facebook.com/" target="_blank" rel="noopener">Open Ads Manager</a>
+            <a class="btn ghost" th:href="@{|/app/orgs/${orgId}/campaigns|}">View in Campaigns</a>
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="ad-mock" aria-label="Ad preview">
+          <div class="ad-mock-head">
+            <div class="ad-mock-avatar"></div>
+            <div class="ad-mock-meta">
+              <strong>Your Page</strong>
+              <span>Sponsored · Meta preview</span>
+            </div>
+          </div>
+          <div class="ad-mock-copy" id="mock-primary">Primary text appears here</div>
+          <img class="ad-mock-image" id="mock-image" th:src="@{/images/lead-creative.jpg}" alt="Ad creative"/>
+          <div class="ad-mock-footer">
+            <div class="site">leadorbit.com</div>
+            <div class="hl" id="mock-headline">Headline</div>
+            <div class="desc" id="mock-desc">Description</div>
+            <div class="ad-mock-cta" id="mock-cta">Sign up</div>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:0.75rem;font-size:0.88rem">Preview updates as you type. Approve creates a PAUSED ad — turn it on in Ads Manager when ready.</p>
+      </aside>
+    </div>
   </main>
   <script th:inline="javascript">
     const orgId = /*[[${orgId}]]*/ '';
+    const defaultImage = /*[[@{/images/lead-creative.jpg}]]*/ '/images/lead-creative.jpg';
     let plan = null;
-    const err = document.getElementById('err');
-    const preview = document.getElementById('preview');
-    const success = document.getElementById('success');
+    let templates = [];
+    let selectedTemplate = 'local_proof';
+    let imageBase64 = null;
+    let imageName = null;
+    let previewObjectUrl = null;
 
-    function showErr(msg) {
-      err.textContent = msg || '';
+    const errEl = document.getElementById('err');
+    const success = document.getElementById('success');
+    const ctaLabels = {
+      SIGN_UP: 'Sign up', LEARN_MORE: 'Learn more', GET_QUOTE: 'Get quote',
+      CONTACT_US: 'Contact us', DOWNLOAD: 'Download', APPLY_NOW: 'Apply now'
+    };
+
+    function showErr(msg) { errEl.textContent = msg || ''; }
+
+    function fill(str, name, geo) {
+      return (str || '').replaceAll('{name}', name).replaceAll('{geo}', geo);
     }
+
+    function applyTemplate(id, overwrite = true) {
+      selectedTemplate = id;
+      document.querySelectorAll('.template-card').forEach(el => {
+        el.classList.toggle('is-active', el.dataset.id === id);
+      });
+      const t = templates.find(x => x.id === id);
+      if (!t) return;
+      const name = document.getElementById('name').value || 'Your offer';
+      const geo = document.getElementById('geo').value || 'your city';
+      if (overwrite || !document.getElementById('primaryText').value) {
+        document.getElementById('primaryText').value = fill(t.primaryText, name, geo);
+      }
+      if (overwrite || !document.getElementById('headline').value) {
+        document.getElementById('headline').value = fill(t.headline, name, geo);
+      }
+      if (overwrite || !document.getElementById('description').value) {
+        document.getElementById('description').value = fill(t.description, name, geo);
+      }
+      if (overwrite) document.getElementById('cta').value = t.callToAction || 'SIGN_UP';
+      refreshMock();
+    }
+
+    function refreshMock() {
+      document.getElementById('mock-primary').textContent =
+        document.getElementById('primaryText').value || 'Primary text appears here';
+      document.getElementById('mock-headline').textContent =
+        document.getElementById('headline').value || 'Headline';
+      document.getElementById('mock-desc').textContent =
+        document.getElementById('description').value || 'Description';
+      const cta = document.getElementById('cta').value;
+      document.getElementById('mock-cta').textContent = ctaLabels[cta] || cta;
+      const url = document.getElementById('imageUrl').value.trim();
+      const img = document.getElementById('mock-image');
+      if (previewObjectUrl) img.src = previewObjectUrl;
+      else if (url) img.src = url;
+      else img.src = defaultImage;
+    }
+
+    function renderTemplates() {
+      const root = document.getElementById('templates');
+      root.innerHTML = '';
+      templates.forEach(t => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'template-card' + (t.id === selectedTemplate ? ' is-active' : '');
+        btn.dataset.id = t.id;
+        btn.innerHTML = `<div class="t-name"></div><div class="t-trend"></div><div class="t-tip"></div>`;
+        btn.querySelector('.t-name').textContent = t.name;
+        btn.querySelector('.t-trend').textContent = t.trend;
+        btn.querySelector('.t-tip').textContent = t.tip;
+        btn.onclick = () => applyTemplate(t.id, true);
+        root.appendChild(btn);
+      });
+    }
+
+    async function loadTemplates() {
+      const res = await fetch('/api/v1/meta/creative-templates');
+      const data = await res.json();
+      templates = data.items || [];
+      renderTemplates();
+      applyTemplate(selectedTemplate, true);
+    }
+
+    function readFile(file) {
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        showErr('Image must be under 8 MB');
+        return;
+      }
+      imageName = file.name;
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = URL.createObjectURL(file);
+      document.getElementById('imageUrl').value = '';
+      refreshMock();
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        imageBase64 = result.includes('base64,') ? result.split('base64,')[1] : result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('imageFile');
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = () => readFile(fileInput.files?.[0]);
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('is-drag'); };
+    dropzone.ondragleave = () => dropzone.classList.remove('is-drag');
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('is-drag');
+      readFile(e.dataTransfer.files?.[0]);
+    };
+
+    ['name','geo','primaryText','headline','description','cta','imageUrl'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        if (id === 'imageUrl' && document.getElementById('imageUrl').value.trim()) {
+          imageBase64 = null;
+          if (previewObjectUrl) { URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
+        }
+        if (id === 'name' || id === 'geo') {
+          // re-apply selected template fields lightly when name/geo change if user hasn't heavily edited
+        }
+        refreshMock();
+      });
+    });
 
     document.getElementById('btn-prepare').onclick = async () => {
       showErr('');
       success.hidden = true;
+      const payload = {
+        action: 'prepare',
+        name: document.getElementById('name').value,
+        geo: document.getElementById('geo').value,
+        budgetAmount: Number(document.getElementById('budget').value || 100),
+        templateId: selectedTemplate,
+        primaryText: document.getElementById('primaryText').value,
+        headline: document.getElementById('headline').value,
+        description: document.getElementById('description').value,
+        callToAction: document.getElementById('cta').value,
+        imageUrl: document.getElementById('imageUrl').value.trim() || null,
+        imageBase64: imageBase64,
+        imageName: imageName
+      };
       const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action: 'prepare',
-          name: document.getElementById('name').value,
-          geo: document.getElementById('geo').value,
-          budgetAmount: Number(document.getElementById('budget').value || 100)
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -91,27 +273,38 @@
       }
       plan = data.item?.plan || null;
       document.getElementById('btn-approve').disabled = !plan;
-      if (plan) {
-        preview.hidden = false;
-        document.getElementById('pv-landing').textContent = plan.landingPageUrl || '—';
-        document.getElementById('pv-headline').textContent = plan.headline || '—';
-        document.getElementById('pv-primary').textContent = plan.primaryText || '—';
+      if (plan?.landingPageUrl) {
+        showErr('');
+        errEl.className = 'ok';
+        errEl.textContent = 'Prepared. Landing: ' + plan.landingPageUrl + ' — review the preview, then Approve.';
       }
     };
 
     document.getElementById('btn-approve').onclick = async () => {
       if (!plan) return;
       showErr('');
+      errEl.className = 'err';
       const btn = document.getElementById('btn-approve');
       btn.disabled = true;
-      btn.textContent = 'Creating…';
+      btn.textContent = 'Posting to Meta…';
+      // Refresh creative fields onto plan in case user edited after prepare
+      plan = {
+        ...plan,
+        primaryText: document.getElementById('primaryText').value,
+        headline: document.getElementById('headline').value,
+        description: document.getElementById('description').value,
+        callToAction: document.getElementById('cta').value,
+        imageUrl: document.getElementById('imageUrl').value.trim() || plan.imageUrl,
+        imageBase64: imageBase64 || plan.imageBase64,
+        imageName: imageName || plan.imageName
+      };
       const res = await fetch(`/api/v1/orgs/${orgId}/meta/launch`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'approve', plan })
       });
       const data = await res.json().catch(() => ({}));
-      btn.textContent = 'Approve (create PAUSED)';
+      btn.textContent = 'Approve (post PAUSED to Meta)';
       if (!res.ok) {
         btn.disabled = false;
         showErr(data.detail || 'Approve failed');
@@ -123,14 +316,15 @@
       document.getElementById('ok-adset').textContent = data.adset_id || data.meta?.adset_id || '—';
       document.getElementById('ok-ad').textContent = data.ad_id || data.meta?.ad_id || '—';
       const landing = data.landingPageUrl || plan.landingPageUrl;
-      const landingLink = document.getElementById('ok-landing');
-      landingLink.href = landing || '#';
+      document.getElementById('ok-landing').href = landing || '#';
       const camp = data.campaign_id || data.meta?.campaign_id;
       if (camp) {
         document.getElementById('ok-ads').href =
           `https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${camp}`;
       }
     };
+
+    loadTemplates();
   </script>
 </body>
 </html>
