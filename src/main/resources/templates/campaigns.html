@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Campaigns — LeadOrbit')}"></head>
+<body>
+  <header th:replace="~{fragments :: nav(${orgId}, 'campaigns')}"></header>
+  <main>
+    <div class="section-head">
+      <div>
+        <h1>Campaigns</h1>
+        <p class="lede">PAUSED Meta launches created from LeadOrbit. Turn them on in Ads Manager when ready.</p>
+      </div>
+      <a class="btn" th:href="@{|/app/orgs/${orgId}/marketing|}">New launch</a>
+    </div>
+
+    <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
+
+    <div class="form-shell" th:if="${campaigns != null and !campaigns.isEmpty()}">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Campaign</th>
+            <th>Geo / Budget</th>
+            <th>Meta IDs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="c : ${campaigns}">
+            <td>
+              <strong th:text="${c.name}">Name</strong><br/>
+              <span class="badge warn" th:text="${c.status}">status</span>
+            </td>
+            <td>
+              <span th:text="${c.geo}">Geo</span><br/>
+              <span class="muted" th:text="${c.budgetAmount != null} ? |₹${c.budgetAmount} / day| : '—'">budget</span>
+            </td>
+            <td class="muted" style="font-size:0.85rem">
+              <div th:if="${c.metaCampaignId}">camp <span th:text="${c.metaCampaignId}">id</span></div>
+              <div th:if="${c.metaAdsetId}">adset <span th:text="${c.metaAdsetId}">id</span></div>
+              <div th:if="${c.metaAdId}">ad <span th:text="${c.metaAdId}">id</span></div>
+            </td>
+            <td>
+              <div class="actions">
+                <button type="button" class="secondary btn-copy"
+                        th:attr="data-url=${c.landingPageUrl}"
+                        th:disabled="${c.landingPageUrl == null}">Copy landing</button>
+                <a class="btn secondary" th:if="${c.landingPageUrl}" th:href="${c.landingPageUrl}" target="_blank" rel="noopener">Open page</a>
+                <a class="btn ghost"
+                   th:if="${c.metaCampaignId}"
+                   th:href="|https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${c.metaCampaignId}|"
+                   target="_blank" rel="noopener">Ads Manager</a>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="empty" th:if="${campaigns == null or campaigns.isEmpty()}">No launches yet. Prepare a campaign on the Launch page, then Approve.</p>
+  </main>
+  <div class="toast" id="toast">Copied</div>
+  <script>
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-url');
+        if (!url) return;
+        await navigator.clipboard.writeText(url);
+        const toast = document.getElementById('toast');
+        toast.textContent = 'Landing URL copied';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 1600);
+      });
+    });
+  </script>
+</body>
+</html>

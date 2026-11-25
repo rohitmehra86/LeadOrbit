@@ -1,30 +1,97 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>LeadOrbit — AI Lead &amp; Revenue Cloud</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}"/>
-</head>
+<head th:replace="~{fragments :: head('LeadOrbit — Meta lead engine')}"></head>
 <body>
-  <header class="top">
-    <a class="brand" href="/">LeadOrbit</a>
-    <nav>
-      <a th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
-      <a th:href="@{|/app/orgs/${orgId}/marketing|}">Marketing</a>
-      <a th:href="@{|/app/orgs/${orgId}/leads|}">Leads</a>
-    </nav>
-  </header>
+  <header th:replace="~{fragments :: nav(${orgId}, 'home')}"></header>
   <main>
     <section class="hero">
-      <p class="muted">Java · Spring Boot</p>
-      <h1>LeadOrbit</h1>
-      <p class="muted">Connect Meta, launch paused website lead campaigns, and capture leads on published landing pages.</p>
-      <div class="row" style="margin-top:1.25rem">
-        <a class="btn" th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}" style="padding:0.7rem 1rem;border-radius:8px">Connect Meta</a>
-        <a class="btn secondary" th:href="@{|/app/orgs/${orgId}/marketing|}" style="padding:0.7rem 1rem;border-radius:8px;display:inline-block">Marketing</a>
+      <p class="hero-brand">LeadOrbit</p>
+      <p class="hero-copy">Connect Meta, publish landing pages, and create PAUSED website-lead campaigns your team can review in Ads Manager.</p>
+      <div class="cta-row">
+        <a class="btn" th:href="@{|/app/orgs/${orgId}/settings/meta-connect|}">Connect Meta</a>
+        <a class="btn secondary" th:href="@{|/app/orgs/${orgId}/marketing|}">Launch campaign</a>
       </div>
     </section>
+
+    <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Meta</div>
+        <div class="value" th:text="${connection != null and connection.connected} ? 'Live' : 'Setup'">Setup</div>
+        <p class="muted" th:if="${connection != null and connection.connected}">Pixel ready for website leads</p>
+        <p class="muted" th:unless="${connection != null and connection.connected}">OAuth + Pixel required before Approve</p>
+      </div>
+      <div class="metric">
+        <div class="label">Campaigns</div>
+        <div class="value" th:text="${launchCount}">0</div>
+        <p class="muted">PAUSED launches saved locally</p>
+      </div>
+      <div class="metric">
+        <div class="label">Leads</div>
+        <div class="value" th:text="${leadCount}">0</div>
+        <p class="muted">Captured from landing pages</p>
+      </div>
+    </div>
+
+    <section class="section-head">
+      <div>
+        <h2>How it works</h2>
+        <p class="muted">Three steps from blank org to Ads Manager.</p>
+      </div>
+    </section>
+    <div class="steps">
+      <div class="step">
+        <div>
+          <strong>Connect Meta</strong>
+          <p class="muted">Authorize the ad account, Page, and Pixel for website OUTCOME_LEADS.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <strong>Prepare &amp; Approve</strong>
+          <p class="muted">We publish a landing page, then create a PAUSED campaign, ad set, and ad.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <strong>Review leads</strong>
+          <p class="muted">Open the landing URL, submit a test lead, then export from Leads.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="section-head">
+      <div>
+        <h2>Recent campaigns</h2>
+        <p class="muted">Latest Meta launches for this org.</p>
+      </div>
+      <a class="btn secondary" th:href="@{|/app/orgs/${orgId}/campaigns|}">View all</a>
+    </section>
+
+    <div class="form-shell" th:if="${recentCampaigns != null and !recentCampaigns.isEmpty()}">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Geo</th>
+            <th>Status</th>
+            <th>Landing</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="c : ${recentCampaigns}">
+            <td th:text="${c.name}">Name</td>
+            <td th:text="${c.geo}">Geo</td>
+            <td><span class="badge warn" th:text="${c.status}">paused</span></td>
+            <td>
+              <a th:if="${c.landingPageUrl}" th:href="${c.landingPageUrl}" target="_blank" rel="noopener">Open</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="empty" th:if="${recentCampaigns == null or recentCampaigns.isEmpty()}">No campaigns yet — use Launch to create your first PAUSED Meta campaign.</p>
   </main>
 </body>
 </html>
