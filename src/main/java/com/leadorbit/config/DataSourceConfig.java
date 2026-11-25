@@ -36,10 +36,12 @@ public class DataSourceConfig {
     ds.setUsername(n.username());
     ds.setPassword(n.password());
     ds.setDriverClassName("org.postgresql.Driver");
-    ds.setMaximumPoolSize(3);
+    ds.setMaximumPoolSize(2);
     ds.setMinimumIdle(0);
-    ds.setConnectionTimeout(25_000);
-    ds.setInitializationFailTimeout(30_000);
+    ds.setConnectionTimeout(10_000);
+    // Don't block Spring boot if Supabase is slow/unreachable (Render free cold start).
+    ds.setInitializationFailTimeout(-1);
+    ds.setValidationTimeout(5_000);
     return ds;
   }
 
