@@ -11,7 +11,7 @@ services:
     autoDeployTrigger: commit
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /actuator/health
+    healthCheckPath: /livez
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: supabase
