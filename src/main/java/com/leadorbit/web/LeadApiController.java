@@ -2,8 +2,11 @@ package com.leadorbit.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.leadorbit.store.LeadStore;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +28,36 @@ public class LeadApiController {
   @GetMapping("/api/v1/orgs/{orgId}/leads")
   public Map<String, Object> list(@PathVariable String orgId) {
     return Map.of("items", leads.listLeads(orgId));
+  }
+
+  @GetMapping("/api/v1/orgs/{orgId}/leads.csv")
+  public ResponseEntity<byte[]> exportCsv(@PathVariable String orgId) {
+    StringBuilder csv = new StringBuilder("full_name,email,phone,source,created_at\n");
+    for (LeadStore.Lead lead : leads.listLeads(orgId)) {
+      csv.append(csvCell(lead.fullName()))
+          .append(',')
+          .append(csvCell(lead.email()))
+          .append(',')
+          .append(csvCell(lead.phone()))
+          .append(',')
+          .append(csvCell(lead.source()))
+          .append(',')
+          .append(csvCell(lead.createdAt()))
+          .append('\n');
+    }
+    byte[] body = csv.toString().getBytes(StandardCharsets.UTF_8);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leads-" + orgId + ".csv\"")
+        .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+        .body(body);
+  }
+
+  private static String csvCell(String value) {
+    String v = value == null ? "" : value;
+    if (v.contains(",") || v.contains("\"") || v.contains("\n")) {
+      return "\"" + v.replace("\"", "\"\"") + "\"";
+    }
+    return v;
   }
 
   @PostMapping("/api/v1/public/forms/{orgId}/submit")

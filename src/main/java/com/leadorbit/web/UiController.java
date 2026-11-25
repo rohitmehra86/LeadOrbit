@@ -31,7 +31,16 @@ public class UiController {
 
   @GetMapping("/")
   public String home(Model model) {
-    model.addAttribute("orgId", DEMO_ORG);
+    String orgId = DEMO_ORG;
+    model.addAttribute("orgId", orgId);
+    fillDashboard(orgId, model);
+    return "home";
+  }
+
+  @GetMapping("/app/orgs/{orgId}")
+  public String orgHome(@PathVariable String orgId, Model model) {
+    model.addAttribute("orgId", orgId);
+    fillDashboard(orgId, model);
     return "home";
   }
 
@@ -80,6 +89,18 @@ public class UiController {
     return "marketing";
   }
 
+  @GetMapping("/app/orgs/{orgId}/campaigns")
+  public String campaigns(@PathVariable String orgId, Model model) {
+    model.addAttribute("orgId", orgId);
+    try {
+      model.addAttribute("campaigns", leads.listLaunchPlans(orgId));
+    } catch (DataAccessException ex) {
+      model.addAttribute("campaigns", List.of());
+      model.addAttribute("dbHint", DB_HINT);
+    }
+    return "campaigns";
+  }
+
   @GetMapping("/app/orgs/{orgId}/leads")
   public String leadsPage(@PathVariable String orgId, Model model) {
     model.addAttribute("orgId", orgId);
@@ -101,5 +122,23 @@ public class UiController {
     model.addAttribute("orgId", orgId);
     model.addAttribute("page", page);
     return "landing";
+  }
+
+  private void fillDashboard(String orgId, Model model) {
+    try {
+      var conn = connections.toPublic(orgId);
+      model.addAttribute("connection", conn);
+      model.addAttribute("leadCount", leads.countLeads(orgId));
+      model.addAttribute("launchCount", leads.countLaunchPlans(orgId));
+      model.addAttribute("recentCampaigns", leads.listLaunchPlans(orgId).stream().limit(5).toList());
+    } catch (DataAccessException ex) {
+      model.addAttribute(
+          "connection",
+          new MetaConnectionStore.PublicConnection(orgId, null, null, null, null, false));
+      model.addAttribute("leadCount", 0);
+      model.addAttribute("launchCount", 0);
+      model.addAttribute("recentCampaigns", List.of());
+      model.addAttribute("dbHint", DB_HINT);
+    }
   }
 }

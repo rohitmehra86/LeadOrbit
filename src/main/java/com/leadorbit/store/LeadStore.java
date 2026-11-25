@@ -164,6 +164,21 @@ public class LeadStore {
         orgId);
   }
 
+  public record LaunchPlan(
+      String id,
+      String orgId,
+      String localCampaignId,
+      String name,
+      String geo,
+      Double budgetAmount,
+      String currency,
+      String landingPageUrl,
+      String metaCampaignId,
+      String metaAdsetId,
+      String metaAdId,
+      String status,
+      String createdAt) {}
+
   public String saveLaunchPlan(Map<String, Object> plan) {
     String id = UUID.randomUUID().toString();
     jdbc.update(
@@ -188,5 +203,49 @@ public class LeadStore {
         plan.get("metaAdId"),
         plan.getOrDefault("status", "created_paused"));
     return id;
+  }
+
+  public List<LaunchPlan> listLaunchPlans(String orgId) {
+    return jdbc.query(
+        """
+        SELECT id, org_id, local_campaign_id, name, geo, budget_amount, currency,
+               landing_page_url, meta_campaign_id, meta_adset_id, meta_ad_id, status, created_at
+        FROM lo_meta_launch_plans
+        WHERE org_id = ?
+        ORDER BY created_at DESC
+        LIMIT 50
+        """,
+        (rs, i) -> {
+          var ts = rs.getTimestamp("created_at");
+          return new LaunchPlan(
+              rs.getString("id"),
+              rs.getString("org_id"),
+              rs.getString("local_campaign_id"),
+              rs.getString("name"),
+              rs.getString("geo"),
+              rs.getObject("budget_amount") == null ? null : rs.getDouble("budget_amount"),
+              rs.getString("currency"),
+              rs.getString("landing_page_url"),
+              rs.getString("meta_campaign_id"),
+              rs.getString("meta_adset_id"),
+              rs.getString("meta_ad_id"),
+              rs.getString("status"),
+              ts == null ? "" : ts.toInstant().toString());
+        },
+        orgId);
+  }
+
+  public int countLeads(String orgId) {
+    Integer n =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM lo_leads WHERE org_id = ?", Integer.class, orgId);
+    return n == null ? 0 : n;
+  }
+
+  public int countLaunchPlans(String orgId) {
+    Integer n =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM lo_meta_launch_plans WHERE org_id = ?", Integer.class, orgId);
+    return n == null ? 0 : n;
   }
 }
