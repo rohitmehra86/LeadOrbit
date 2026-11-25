@@ -6,11 +6,41 @@ import com.leadorbit.store.MetaConnectionStore;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MetaLaunchService {
+
+  private static final Set<String> INDIA_GEO_HINTS =
+      Set.of(
+          "IN",
+          "INDIA",
+          "BHARAT",
+          "PUNJAB",
+          "HARYANA",
+          "DELHI",
+          "NCR",
+          "MOHALI",
+          "RAJPURA",
+          "CHANDIGARH",
+          "LUDHIANA",
+          "AMRITSAR",
+          "PATIALA",
+          "JALANDHAR",
+          "GURUGRAM",
+          "GURGAON",
+          "NOIDA",
+          "MUMBAI",
+          "PUNE",
+          "BANGALORE",
+          "BENGALURU",
+          "HYDERABAD",
+          "CHENNAI",
+          "KOLKATA",
+          "JAIPUR",
+          "AHMEDABAD");
 
   private final MetaConnectionStore connections;
   private final LeadStore leads;
@@ -85,7 +115,7 @@ public class MetaLaunchService {
 
     String act = MetaIds.normalizeActId(conn.adAccountId());
     String name = String.valueOf(plan.get("name"));
-    String geo = String.valueOf(plan.getOrDefault("geo", "US"));
+    String geo = String.valueOf(plan.getOrDefault("geo", "IN"));
     double budget =
         plan.get("budgetAmount") instanceof Number n
             ? n.doubleValue()
@@ -94,37 +124,38 @@ public class MetaLaunchService {
     String primary = String.valueOf(plan.get("primaryText"));
     String headline = String.valueOf(plan.get("headline"));
 
-    // Country targeting: city names fall back to US for Marketing API geo_locations.countries
     String country = guessCountry(geo);
+    // Meta budgets are in the account currency's minor units (paise for INR).
+    long dailyBudgetMinor = Math.max(100L, Math.round(budget * 100));
 
-    String campaignId =
-        graph.createObject(
-            act + "/campaigns",
-            conn.accessToken(),
-            Map.of(
-                "name",
-                name,
-                "objective",
-                "OUTCOME_LEADS",
-                "status",
-                "PAUSED",
-                "special_ad_categories",
-                "[]"));
+    Map<String, Object> campaignBody = new LinkedHashMap<>();
+    campaignBody.put("name", name);
+    campaignBody.put("objective", "OUTCOME_LEADS");
+    campaignBody.put("status", "PAUSED");
+    campaignBody.put("special_ad_categories", "[]");
+    // Required when campaign has no CBO budget (Marketing API v24+). Missing → (#100) Invalid parameter.
+    campaignBody.put("is_adset_budget_sharing_enabled", "false");
+    String campaignId = graph.createObject(act + "/campaigns", conn.accessToken(), campaignBody);
 
     Map<String, Object> adsetBody = new LinkedHashMap<>();
-    adsetBody.put("name", name + " — " + geo);
+    adsetBody.put("name", name + " - " + geo);
     adsetBody.put("campaign_id", campaignId);
     adsetBody.put("billing_event", "IMPRESSIONS");
     adsetBody.put("optimization_goal", "OFFSITE_CONVERSIONS");
     adsetBody.put("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
-    adsetBody.put("daily_budget", String.valueOf(Math.round(budget * 100))); // minor units
+    adsetBody.put("daily_budget", String.valueOf(dailyBudgetMinor));
     adsetBody.put("status", "PAUSED");
+    adsetBody.put("destination_type", "WEBSITE");
     adsetBody.put(
         "targeting",
-        "{\"geo_locations\":{\"countries\":[\"" + country + "\"]},\"age_min\":25,\"age_max\":55}");
+        "{\"geo_locations\":{\"countries\":[\""
+            + country
+            + "\"]},\"age_min\":18,\"age_max\":65}");
     adsetBody.put(
         "promoted_object",
-        "{\"pixel_id\":\"" + conn.pixelId() + "\",\"custom_event_type\":\"LEAD\"}");
+        "{\"pixel_id\":\""
+            + escapeJson(conn.pixelId())
+            + "\",\"custom_event_type\":\"LEAD\"}");
     String adsetId = graph.createObject(act + "/adsets", conn.accessToken(), adsetBody);
 
     String creativeId =
@@ -136,7 +167,7 @@ public class MetaLaunchService {
                 name + " creative",
                 "object_story_spec",
                 "{\"page_id\":\""
-                    + conn.pageId()
+                    + escapeJson(conn.pageId())
                     + "\",\"link_data\":{\"link\":\""
                     + escapeJson(landing)
                     + "\",\"message\":\""
@@ -210,19 +241,24 @@ public class MetaLaunchService {
     return result;
   }
 
-  private static String guessCountry(String geo) {
-    if (geo == null) {
-      return "US";
+  static String guessCountry(String geo) {
+    if (geo == null || geo.isBlank()) {
+      return "IN";
     }
     String g = geo.trim().toUpperCase(Locale.ROOT);
-    if (g.equals("IN") || g.contains("INDIA") || g.contains("MOHALI") || g.contains("PUNJAB")) {
-      // Meta country codes are ISO; city-level needs keys — keep US fallback for city strings
-      // unless clearly a country code.
-    }
-    if (g.length() == 2) {
+    if (g.length() == 2 && Character.isLetter(g.charAt(0)) && Character.isLetter(g.charAt(1))) {
       return g;
     }
-    return "US";
+    for (String hint : INDIA_GEO_HINTS) {
+      if (g.equals(hint) || g.contains(hint)) {
+        return "IN";
+      }
+    }
+    if (g.contains("USA") || g.contains("UNITED STATES") || g.equals("US")) {
+      return "US";
+    }
+    // City / free-text default: India (product market)
+    return "IN";
   }
 
   private static String escapeJson(String value) {

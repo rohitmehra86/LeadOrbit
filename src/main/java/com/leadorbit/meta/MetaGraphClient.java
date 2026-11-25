@@ -137,13 +137,45 @@ public class MetaGraphClient {
       throws Exception {
     JsonNode root = postForm(GRAPH + "/" + path, accessToken, body);
     if (root.has("error")) {
-      throw new IllegalStateException(root.path("error").path("message").asText("Meta API error"));
+      throw new IllegalStateException(formatMetaError(path, root.path("error")));
     }
     String id = textOrNull(root.path("id"));
     if (id == null) {
       throw new IllegalStateException("Meta create returned no id: " + root);
     }
     return id;
+  }
+
+  static String formatMetaError(String path, JsonNode err) {
+    StringBuilder sb = new StringBuilder();
+    String msg = textOrNull(err.path("message"));
+    String user = textOrNull(err.path("error_user_msg"));
+    String title = textOrNull(err.path("error_user_title"));
+    int code = err.path("code").asInt(0);
+    int sub = err.path("error_subcode").asInt(0);
+    sb.append("Meta ").append(path).append(": ");
+    if (user != null) {
+      sb.append(user);
+    } else if (msg != null) {
+      sb.append(msg);
+    } else {
+      sb.append("API error");
+    }
+    if (title != null && (user == null || !user.contains(title))) {
+      sb.append(" [").append(title).append(']');
+    }
+    if (code != 0 || sub != 0) {
+      sb.append(" (code=").append(code);
+      if (sub != 0) {
+        sb.append(" subcode=").append(sub);
+      }
+      sb.append(')');
+    }
+    JsonNode blame = err.path("error_data").path("blame_field_specs");
+    if (blame.isArray() && !blame.isEmpty()) {
+      sb.append(" fields=").append(blame);
+    }
+    return sb.toString();
   }
 
   private TokenExchange tokenGet(String url) {
