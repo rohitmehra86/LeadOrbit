@@ -19,6 +19,7 @@
     <h1>Connect Meta</h1>
     <p class="muted">OAuth per organization. Save Pixel for website OUTCOME_LEADS.</p>
     <p class="err" th:if="${error}" th:text="${error}"></p>
+    <p class="err" th:if="${dbHint}" th:text="${dbHint}"></p>
     <p class="ok" th:if="${connected}">Connected.</p>
 
     <section class="panel" th:if="${step == 'status'}">
